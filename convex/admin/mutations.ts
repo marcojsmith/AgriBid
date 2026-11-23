@@ -19,6 +19,7 @@ import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { requireAdmin, getAuthUser } from "../lib/auth";
 import { logAudit, updateCounter } from "../admin_utils";
+import { adjustBidCount } from "../lib/lotCounters";
 import { sellerResponseTimeValidator } from "../lib/provinces";
 
 // --- Re-export specialized mutation modules ---
@@ -73,6 +74,7 @@ export const voidBid = mutation({
     if (bid.status === "voided") return { success: true };
 
     await ctx.db.patch("bids", args.bidId, { status: "voided" });
+    await adjustBidCount(ctx, bid.lotId, -1);
 
     const lot = await ctx.db.get("lots", bid.lotId);
     if (!lot) throw new Error("Lot not found");

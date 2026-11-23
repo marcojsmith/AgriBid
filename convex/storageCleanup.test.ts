@@ -149,6 +149,7 @@ describe("orphaned-upload sweep", () => {
   it("keeps a file referenced only by a lot past the first page", async () => {
     const late = await storeFile(t, 3 * DAY);
     const conditionReport = await storeFile(t, 3 * DAY);
+    const coldStartVideo = await storeFile(t, 3 * DAY);
     await inPast(t, async (ctx) => {
       for (let i = 0; i < 5; i++) {
         await ctx.db.insert("lots", lotFields({}));
@@ -156,6 +157,7 @@ describe("orphaned-upload sweep", () => {
       await ctx.db.insert("lots", {
         ...lotFields({ additional: [late] }),
         conditionReportUrl: conditionReport,
+        coldStartVideo,
       });
     });
 
@@ -164,6 +166,7 @@ describe("orphaned-upload sweep", () => {
     expect(result.deleted).toBe(0);
     expect(await exists(t, late)).toBe(true);
     expect(await exists(t, conditionReport)).toBe(true);
+    expect(await exists(t, coldStartVideo)).toBe(true);
   });
 
   it("keeps a KYC document referenced only by a profile past the first page", async () => {

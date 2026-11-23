@@ -32,6 +32,9 @@ const { settleLot, findWinningBid } = vi.hoisted(() => ({
 
 vi.mock("../internal", () => ({ settleLot, findWinningBid }));
 
+const deleteAuctionEngagementScores = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/lotCounters", () => ({ deleteAuctionEngagementScores }));
+
 interface MockDb {
   get: ReturnType<typeof vi.fn>;
   patch: ReturnType<typeof vi.fn>;
@@ -567,6 +570,7 @@ describe("Auction container CRUD mutations", () => {
         "a1",
         expect.objectContaining({ status: "closed" })
       );
+      expect(deleteAuctionEngagementScores).toHaveBeenCalledWith(mockCtx, "a1");
     });
 
     it("settles assigned lots before closing the container", async () => {

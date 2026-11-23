@@ -32,6 +32,12 @@ const { issueNextLotNumber } = vi.hoisted(() => ({
 
 vi.mock("../../lib/lotCounters", () => ({ issueNextLotNumber }));
 
+const { getBuyerPremiumPct } = vi.hoisted(() => ({
+  getBuyerPremiumPct: vi.fn().mockResolvedValue(12),
+}));
+
+vi.mock("../../admin/platformSettings", () => ({ getBuyerPremiumPct }));
+
 interface MockDb {
   get: ReturnType<typeof vi.fn>;
   patch: ReturnType<typeof vi.fn>;
@@ -40,6 +46,19 @@ interface MockDb {
 }
 
 let mockCtx: { db: MockDb };
+
+/**
+ * Builds a `profiles` query chain resolving to the given seller profile.
+ * @param profile - The seller profile (or null when missing).
+ * @returns A chainable query mock.
+ */
+function profileQuery(profile: unknown) {
+  return {
+    withIndex: vi.fn().mockReturnValue({
+      unique: vi.fn().mockResolvedValue(profile),
+    }),
+  };
+}
 
 const approvedLot = {
   _id: "l1",
@@ -68,7 +87,7 @@ describe("Lot assignment mutations", () => {
         get: vi.fn(),
         patch: vi.fn().mockResolvedValue(undefined),
         insert: vi.fn().mockResolvedValue("id"),
-        query: vi.fn(),
+        query: vi.fn().mockReturnValue(profileQuery(null)),
       },
     };
   });
@@ -97,10 +116,107 @@ describe("Lot assignment mutations", () => {
         auctionId: "a1",
         lotNumber: 7,
         status: "assigned",
-        resolvedBuyerPremiumPct: undefined,
+        resolvedBuyerPremiumPct: 0.12,
+        premiumSource: "platform",
         resolvedSellerCommissionPct: undefined,
+        sellerVatRegistered: undefined,
+        sellerType: undefined,
       });
       expect(issueNextLotNumber).toHaveBeenCalledWith(mockCtx, "a1");
+    });
+
+    it("falls back to the platform buyer premium as a fraction rounded to 4 dp", async () => {
+      getBuyerPremiumPct.mockResolvedValueOnce(12.3456);
+      mockCtx.db.get
+        .mockResolvedValueOnce(approvedLot)
+        .mockResolvedValueOnce(auctionDoc);
+
+      await assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        auctionId: "a1" as Id<"auctions">,
+      });
+
+      const patchArgs = mockCtx.db.patch.mock.calls[0]?.[2] as Record<
+        string,
+        unknown
+      >;
+      expect(patchArgs.resolvedBuyerPremiumPct).toBe(0.1235);
+      expect(patchArgs.premiumSource).toBe("platform");
+    });
+
+    it("always snapshots the platform premium without consulting fee rows", async () => {
+      mockCtx.db.get
+        .mockResolvedValueOnce(approvedLot)
+        .mockResolvedValueOnce(auctionDoc);
+
+      await assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        auctionId: "a1" as Id<"auctions">,
+      });
+
+      expect(mockCtx.db.query).not.toHaveBeenCalledWith("platformFees");
+      const patchArgs = mockCtx.db.patch.mock.calls[0]?.[2] as Record<
+        string,
+        unknown
+      >;
+      expect(patchArgs.resolvedBuyerPremiumPct).toBe(0.12);
+      expect(patchArgs.premiumSource).toBe("platform");
+    });
+
+    it("keeps a 0% auction premium as an auction snapshot", async () => {
+      mockCtx.db.get.mockResolvedValueOnce(approvedLot).mockResolvedValueOnce({
+        ...auctionDoc,
+        defaultBuyerPremiumPct: 0,
+      });
+
+      await assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        auctionId: "a1" as Id<"auctions">,
+      });
+
+      const patchArgs = mockCtx.db.patch.mock.calls[0]?.[2] as Record<
+        string,
+        unknown
+      >;
+      expect(patchArgs.resolvedBuyerPremiumPct).toBe(0);
+      expect(patchArgs.premiumSource).toBe("auction");
+      expect(getBuyerPremiumPct).not.toHaveBeenCalled();
+    });
+
+    it("snapshots the seller's VAT status and type from their profile", async () => {
+      mockCtx.db.query.mockReturnValue(
+        profileQuery({ vatRegistered: false, sellerType: "private_farmer" })
+      );
+      mockCtx.db.get
+        .mockResolvedValueOnce(approvedLot)
+        .mockResolvedValueOnce(auctionDoc);
+
+      await assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        auctionId: "a1" as Id<"auctions">,
+      });
+
+      expect(mockCtx.db.query).toHaveBeenCalledWith("profiles");
+      const patchArgs = mockCtx.db.patch.mock.calls[0]?.[2] as Record<
+        string,
+        unknown
+      >;
+      expect(patchArgs.sellerVatRegistered).toBe(false);
+      expect(patchArgs.sellerType).toBe("private_farmer");
+    });
+
+    it("does not consult the platform premium when the auction sets one", async () => {
+      mockCtx.db.get.mockResolvedValueOnce(approvedLot).mockResolvedValueOnce({
+        ...auctionDoc,
+        defaultBuyerPremiumPct: 0.05,
+      });
+
+      await assignLotToAuctionHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "l1" as Id<"lots">,
+        auctionId: "a1" as Id<"auctions">,
+      });
+
+      expect(getBuyerPremiumPct).not.toHaveBeenCalled();
     });
 
     it("snapshots the auction fee defaults onto the lot at assignment", async () => {
@@ -121,11 +237,15 @@ describe("Lot assignment mutations", () => {
         lotNumber: 7,
         status: "assigned",
         resolvedBuyerPremiumPct: 0.05,
+        premiumSource: "auction",
         resolvedSellerCommissionPct: 0.03,
+        commissionSource: "auction",
+        sellerVatRegistered: undefined,
+        sellerType: undefined,
       });
     });
 
-    it("copies undefined defaults so later auction edits cannot leak in", async () => {
+    it("leaves the commission snapshot undefined when the auction has none", async () => {
       mockCtx.db.get.mockResolvedValueOnce(approvedLot).mockResolvedValueOnce({
         ...auctionDoc,
         defaultBuyerPremiumPct: undefined,
@@ -141,11 +261,12 @@ describe("Lot assignment mutations", () => {
         string,
         unknown
       >;
-      expect(patchArgs).toHaveProperty("resolvedBuyerPremiumPct", undefined);
+      expect(patchArgs).toHaveProperty("resolvedBuyerPremiumPct", 0.12);
       expect(patchArgs).toHaveProperty(
         "resolvedSellerCommissionPct",
         undefined
       );
+      expect(patchArgs).toHaveProperty("commissionSource", undefined);
     });
 
     it("throws when the lot is missing", async () => {

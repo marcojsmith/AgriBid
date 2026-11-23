@@ -1,4 +1,6 @@
 import React from "react";
+import { useQuery } from "convex/react";
+import { api } from "convex/_generated/api";
 import {
   Camera,
   X,
@@ -10,11 +12,13 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import type { PhotoAngle } from "@/lib/lotSpecs";
 import { cn } from "@/lib/utils";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 import { useListingMedia } from "@/hooks/listing-wizard/useListingMedia";
 
 import { PHOTO_SLOTS } from "../constants";
+import { PhotoAngleList, type AnglePhoto } from "../PhotoAngleList";
 
 /**
  * Step 2 of the listing wizard: Media Gallery.
@@ -22,7 +26,9 @@ import { PHOTO_SLOTS } from "../constants";
  * @returns The rendered media gallery step.
  */
 export const MediaGalleryStep = () => {
-  const { formData, previews, isSubmitting } = useListingWizard();
+  const { formData, previews, isSubmitting, setFormData, setDraftSaved } =
+    useListingWizard();
+  const settings = useQuery(api.admin.platformSettings.getPlatformSettings);
   const { handleUpload, handleAdditionalUpload, handleRemove } =
     useListingMedia();
   const [uploadingSlots, setUploadingSlots] = React.useState<
@@ -49,6 +55,36 @@ export const MediaGalleryStep = () => {
     } finally {
       setUploadingSlots((prev) => ({ ...prev, [slotId]: false }));
     }
+  };
+
+  const uploadedPhotos: AnglePhoto[] = [
+    ...PHOTO_SLOTS.flatMap((slot) => {
+      const ref =
+        formData.images[
+          slot.id as keyof Omit<typeof formData.images, "additional">
+        ];
+      return ref ? [{ ref, label: slot.label }] : [];
+    }),
+    ...formData.images.additional.map((ref, index) => ({
+      ref,
+      label: `Additional ${String(index + 1)}`,
+    })),
+  ];
+
+  const handleAngleChange = (
+    ref: string,
+    angle: PhotoAngle | undefined
+  ): void => {
+    setFormData((prev) => {
+      const rest: Record<string, PhotoAngle> = Object.fromEntries(
+        Object.entries(prev.imageAngles ?? {}).filter(([key]) => key !== ref)
+      );
+      return {
+        ...prev,
+        imageAngles: angle ? { ...rest, [ref]: angle } : rest,
+      };
+    });
+    setDraftSaved(false);
   };
 
   return (
@@ -209,11 +245,22 @@ export const MediaGalleryStep = () => {
         </div>
       </div>
 
+      <PhotoAngleList
+        photos={uploadedPhotos}
+        angles={formData.imageAngles}
+        onChange={handleAngleChange}
+      />
+
       <div className="bg-primary/5 p-4 rounded-md flex items-center gap-3 border border-primary/10">
         <Info className="h-5 w-5 text-primary shrink-0" />
         <p className="text-xs font-semibold text-primary">
           Required: At least one photo. Recommended: Front, Engine, Cabin, Rear.
           Clear photos increase trust.
+          {settings !== undefined && (
+            <span className="block">
+              {`Minimum ${String(settings.minPhotosPerLot)} photos to submit (${String(uploadedPhotos.length)} added).`}
+            </span>
+          )}
         </p>
       </div>
     </div>

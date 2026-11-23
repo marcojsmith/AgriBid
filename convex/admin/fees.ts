@@ -4,18 +4,19 @@ import { query, mutation } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { requireAdmin, getAuthUser, resolveUserId } from "../lib/auth";
 import { logAudit } from "../admin_utils";
-import { computeResolvedDefaultFees } from "../auctions/internal";
-import type { Id } from "../_generated/dataModel";
+import {
+  AUCTION_BUYER_FEE_NAME,
+  AUCTION_SELLER_FEE_NAME,
+  PLATFORM_BUYER_FEE_NAME,
+  computeResolvedDefaultFees,
+} from "../auctions/internal";
+import { resolveBuyerPremium } from "../lib/buyerPremium";
+import type { Doc, Id } from "../_generated/dataModel";
 
 const MIN_PERCENTAGE = 0.0001;
 const MAX_PERCENTAGE = 1.0;
 const MAX_FIXED_FEE = 1000000;
 const MAX_NAME_LENGTH = 100;
-
-// Display names for fee line items derived from a lot's snapshotted auction
-// defaults (they have no `platformFees` row to draw a name from).
-const RESOLVED_BUYER_FEE_NAME = "Auction Buyer Premium";
-const RESOLVED_SELLER_FEE_NAME = "Auction Seller Commission";
 
 function validateFeeValue(feeType: string, value: number): void {
   if (feeType === "percentage") {
@@ -454,7 +455,14 @@ export const getLotFees = query({
       _id: v.id("lotFees"),
       _creationTime: v.number(),
       lotId: v.id("lots"),
-      feeId: v.id("platformFees"),
+      feeId: v.optional(v.id("platformFees")),
+      source: v.optional(
+        v.union(
+          v.literal("auction"),
+          v.literal("fee_row"),
+          v.literal("platform")
+        )
+      ),
       feeName: v.string(),
       appliedTo: v.union(v.literal("buyer"), v.literal("seller")),
       feeType: v.union(v.literal("percentage"), v.literal("fixed")),
@@ -476,6 +484,91 @@ export const getLotFees = query({
   },
 });
 
+/** A fee line as shown to a lot's buyer or seller. */
+interface LotFeeLine {
+  feeName: string;
+  feeType: "percentage" | "fixed";
+  rate: number;
+  calculatedAmount: number;
+}
+
+/**
+ * Whether a lot's fees are final and must be read from the `lotFees` ledger:
+ * it settled (`sold`/`unsold` with `settledAt`) or already has ledger rows.
+ *
+ * @param lot - The lot.
+ * @param rows - The lot's `lotFees` rows.
+ * @returns True when fee reads must use only the persisted rows.
+ */
+function isLotSettled(lot: Doc<"lots">, rows: Doc<"lotFees">[]): boolean {
+  return (
+    rows.length > 0 ||
+    ((lot.status === "sold" || lot.status === "unsold") &&
+      lot.settledAt !== undefined)
+  );
+}
+
+/**
+ * Fee lines of a settled lot, read ONLY from its persisted `lotFees` ledger
+ * (what settlement charged). It never resolves premium/commission sources and
+ * never looks at the current fee rows, `buyer_premium_pct` or auction defaults.
+ *
+ * Legacy fallback: a lot settled before the premium/commission was persisted
+ * has no percentage ledger row for a side; if its snapshot exists, the
+ * snapshot-derived line is shown for that side (a `platform`-sourced legacy
+ * snapshot is the assignment-time value, a best-effort display only).
+ *
+ * @param lot - The settled lot.
+ * @param rows - The lot's `lotFees` rows.
+ * @returns The buyer and seller fee lines.
+ */
+function settledLotFeeLines(
+  lot: Doc<"lots">,
+  rows: Doc<"lotFees">[]
+): { buyerFees: LotFeeLine[]; sellerFees: LotFeeLine[] } {
+  const buyerFees: LotFeeLine[] = [];
+  const sellerFees: LotFeeLine[] = [];
+  for (const row of rows) {
+    const line: LotFeeLine = {
+      feeName: row.feeName,
+      feeType: row.feeType,
+      rate: row.rate,
+      calculatedAmount: row.calculatedAmount,
+    };
+    (row.appliedTo === "buyer" ? buyerFees : sellerFees).push(line);
+  }
+
+  const salePrice = lot.currentPrice;
+  const hasPercentage = (lines: LotFeeLine[]): boolean =>
+    lines.some((line) => line.feeType === "percentage");
+  const legacyLine = (feeName: string, rate: number): LotFeeLine => ({
+    feeName,
+    feeType: "percentage",
+    rate,
+    calculatedAmount: Math.round(salePrice * rate * 100) / 100,
+  });
+
+  if (!hasPercentage(buyerFees) && lot.resolvedBuyerPremiumPct !== undefined) {
+    buyerFees.push(
+      legacyLine(
+        lot.premiumSource === "platform"
+          ? PLATFORM_BUYER_FEE_NAME
+          : AUCTION_BUYER_FEE_NAME,
+        lot.resolvedBuyerPremiumPct
+      )
+    );
+  }
+  if (
+    !hasPercentage(sellerFees) &&
+    lot.resolvedSellerCommissionPct !== undefined
+  ) {
+    sellerFees.push(
+      legacyLine(AUCTION_SELLER_FEE_NAME, lot.resolvedSellerCommissionPct)
+    );
+  }
+  return { buyerFees, sellerFees };
+}
+
 /**
  * Returns lot fees for the authenticated caller (winner or seller).
  * @param ctx - Query context
@@ -483,13 +576,16 @@ export const getLotFees = query({
  * @param args.lotId - ID of the lot
  * @returns Object with buyerFees and sellerFees arrays containing feeName, feeType, rate, calculatedAmount
  * Authorization: returns empty arrays if caller is unauthenticated or is neither lot winner nor seller.
- * Side effects: read-only query; filters out inactive platform fees.
+ * Side effects: read-only query.
  *
- * In addition to the persisted `platformFees`-sourced `lotFees` rows, this
- * merges the amounts derived from the lot's snapshotted auction fee defaults
- * (`resolvedBuyerPremiumPct`/`resolvedSellerCommissionPct`) applied to the
- * lot's current (or, once settled, final) `currentPrice`. See
- * `computeResolvedDefaultFees` for why those are not persisted.
+ * Settled lots (see `isLotSettled`) are read ONLY from the persisted `lotFees`
+ * ledger written by settlement, so later fee-row, `buyer_premium_pct` or
+ * auction-default changes never alter them (see `settledLotFeeLines`).
+ *
+ * Live (unsettled) lots show estimates derived from the lot's single resolved
+ * buyer premium (auction snapshot or platform default read now; see
+ * `resolveBuyerPremium`) and its snapshotted seller commission, applied to the
+ * current `currentPrice`. Fee rows are only charged (and shown) at settlement.
  */
 export const getLotFeesForUserHandler = async (
   ctx: QueryCtx,
@@ -516,64 +612,28 @@ export const getLotFeesForUserHandler = async (
     .withIndex("by_lot", (q) => q.eq("lotId", args.lotId))
     .collect();
 
-  const activeFeeIds = (
-    await ctx.db
-      .query("platformFees")
-      .withIndex("by_active", (q) => q.eq("isActive", true))
-      .collect()
-  ).map((f) => f._id);
-
-  const buyerFees: {
-    feeName: string;
-    feeType: "percentage" | "fixed";
-    rate: number;
-    calculatedAmount: number;
-  }[] = [];
-  const sellerFees: {
-    feeName: string;
-    feeType: "percentage" | "fixed";
-    rate: number;
-    calculatedAmount: number;
-  }[] = [];
-
-  for (const fee of fees) {
-    if (!activeFeeIds.includes(fee.feeId)) continue;
-
-    const platformFee = await ctx.db.get("platformFees", fee.feeId);
-    if (!platformFee) continue;
-
-    const feeData = {
-      feeName: fee.feeName,
-      feeType: fee.feeType,
-      rate: fee.rate,
-      calculatedAmount: fee.calculatedAmount,
-    };
-
-    if (fee.appliedTo === "buyer") {
-      buyerFees.push(feeData);
-    } else {
-      sellerFees.push(feeData);
-    }
+  if (isLotSettled(lot, fees)) {
+    return settledLotFeeLines(lot, fees);
   }
 
-  // Merge the lot's snapshotted auction-default fees. `currentPrice` holds the
-  // final sale price once a lot is settled, and the current high bid beforehand.
-  for (const fee of computeResolvedDefaultFees(lot, lot.currentPrice)) {
-    const feeData = {
-      feeName:
-        fee.appliedTo === "buyer"
-          ? RESOLVED_BUYER_FEE_NAME
-          : RESOLVED_SELLER_FEE_NAME,
-      feeType: "percentage" as const,
+  // Live estimate: the lot has no ledger rows yet, so only the single resolved
+  // buyer premium (see `resolveBuyerPremium`) and seller commission (see
+  // `resolveSellerCommission`) apply, read from the current settings.
+  const buyerFees: LotFeeLine[] = [];
+  const sellerFees: LotFeeLine[] = [];
+  const buyerPremium = await resolveBuyerPremium(ctx, lot);
+  for (const fee of computeResolvedDefaultFees(
+    lot,
+    lot.currentPrice,
+    buyerPremium
+  )) {
+    const line: LotFeeLine = {
+      feeName: fee.feeName,
+      feeType: "percentage",
       rate: fee.rate,
       calculatedAmount: fee.calculatedAmount,
     };
-
-    if (fee.appliedTo === "buyer") {
-      buyerFees.push(feeData);
-    } else {
-      sellerFees.push(feeData);
-    }
+    (fee.appliedTo === "buyer" ? buyerFees : sellerFees).push(line);
   }
 
   return { buyerFees, sellerFees };

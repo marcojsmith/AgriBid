@@ -44,6 +44,7 @@ function idsFromRow(
     const lot = row as Doc<"lots">;
     const ids = extractImageStorageIds(lot.images);
     if (lot.conditionReportUrl) ids.push(lot.conditionReportUrl);
+    if (lot.coldStartVideo) ids.push(lot.coldStartVideo);
     return ids;
   }
   if (table === "profiles") {

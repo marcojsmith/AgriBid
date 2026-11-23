@@ -2,6 +2,7 @@ import { v, ConvexError, type Infer } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { requireAdmin, resolveUserId } from "../../lib/auth";
+import { deleteAuctionEngagementScores } from "../../lib/lotCounters";
 import { findWinningBid, settleLot } from "../internal";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
@@ -266,6 +267,7 @@ export const closeAuctionContainerHandler = async (
     status: "closed",
     updatedAt: now,
   });
+  await deleteAuctionEngagementScores(ctx, args.auctionId);
 
   return { success: true };
 };

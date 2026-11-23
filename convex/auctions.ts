@@ -57,6 +57,7 @@ export {
 export {
   updateLot,
   adminUpdateLot,
+  adminSetLotSellerVat,
   bulkUpdateLots,
   uploadConditionReport,
 } from "./auctions/mutations/update";

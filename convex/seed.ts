@@ -2,18 +2,35 @@
 import { v } from "convex/values";
 
 import { internalMutation, mutation } from "./_generated/server";
-import { MS_PER_DAY, MS_PER_HOUR } from "./constants";
+import {
+  DEFAULT_BUYER_PREMIUM_PCT,
+  DEFAULT_DEPOSIT_AMOUNT,
+  DEFAULT_DEPOSIT_ENABLED,
+  DEFAULT_DEPOSIT_REFUND_DAYS,
+  DEFAULT_MIN_PHOTOS_PER_LOT,
+  DEFAULT_SELLER_COMMISSION_PCT,
+  DEFAULT_SELLER_LISTING_FEE,
+  DEFAULT_SELLER_PAYOUT_DAYS,
+  MS_PER_DAY,
+  MS_PER_HOUR,
+} from "./constants";
+import type { Drive, PhotoAngle, SellerType } from "./lib/lotSpecs";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCallerRole } from "./lib/auth";
 import { deleteAuctionImages, safeDelete } from "./lib/storage";
 import { updateCounter, logAudit } from "./admin_utils";
 import { getLotCounterKey } from "./lots/mutations/helpers";
-import { issueNextLotNumber, watcherCounterName } from "./lib/lotCounters";
+import {
+  bidCounterName,
+  issueNextLotNumber,
+  watcherCounterName,
+} from "./lib/lotCounters";
 import { ensureLegalPageDraftRows } from "./lib/legalPages";
 import {
   PROVINCES,
   SELLER_RESPONSE_TIMES,
+  type Province,
   type SellerResponseTime,
 } from "./lib/provinces";
 
@@ -28,6 +45,8 @@ type SeedTableNames =
   | "equipmentMetadata"
   | "equipmentCategories"
   | "counters"
+  | "lotViewers"
+  | "engagementScores"
   | "proxy_bids"
   | "reviews"
   | "conversations"
@@ -99,11 +118,133 @@ const MOCK_IMAGE_URLS = {
     "1mnh8ao7tBzk%3D",
 };
 
+/**
+ * Builds a webuytractors.shop photo URL (Wix media, hot-linked, never
+ * downloaded) from a media id, in the `fit` form the site's own sitemap uses.
+ *
+ * @param id - Wix media id without the `cd3e79_` prefix.
+ * @param ext - File extension of the original upload.
+ * @returns Absolute photo URL.
+ */
+function wixPhoto(id: string, ext: "jpg" | "jpeg"): string {
+  return (
+    `https://static.wixstatic.com/media/cd3e79_${id}~mv2.${ext}` +
+    "/v1/fit/w_1280,h_960,q_90/file.jpg"
+  );
+}
+
+/**
+ * Real photo URLs from https://webuytractors.shop (the owner's own site).
+ * Hot-linked as-is: refs starting with `http` are used unchanged by the app.
+ */
+const WBT_PHOTOS = {
+  // Massey Ferguson 455 Xtra 4x4: 8 photos, in the site's gallery order.
+  MF455: [
+    wixPhoto("60a2bb48a7a44088bb492de43f5f758f", "jpg"),
+    wixPhoto("0b27b6e45fef4b76a138ba5ce893f320", "jpg"),
+    wixPhoto("a83e319f71764b1d8d0a813094634338", "jpg"),
+    wixPhoto("64bcbed935a94114a8c9f0f9e3e2c934", "jpg"),
+    wixPhoto("8093127c503b429caf8ad3f199256e98", "jpg"),
+    wixPhoto("c81a9a09a5f04167abcf343b809ddb87", "jpg"),
+    wixPhoto("6a11425891694e2fb101c0fcbe00a42b", "jpg"),
+    wixPhoto("b7c48312089841d3ba9b5c502527b509", "jpg"),
+  ],
+  NH8030: [
+    wixPhoto("2b9b110683e149bca3b3392ddd2e8c88", "jpeg"),
+    wixPhoto("27a1d0d328f54751a0422828d92d06cc", "jpeg"),
+    wixPhoto("48155daec99b4454a15c406ab9ff8043", "jpeg"),
+  ],
+  TD5_110: [wixPhoto("359af10b7a5f4972b89a919c2f828440", "jpeg")],
+  MF440_4X4: [wixPhoto("4fd6c65ff22444c49c1cedf0b4fb58e7", "jpeg")],
+  MF399: [wixPhoto("668641e585e246a4888f8ab626dc6ce9", "jpeg")],
+  MF290: [wixPhoto("3a6cb1667c3547ae83497b06165a067a", "jpeg")],
+  JD5725: [wixPhoto("1414644248b848969fcaae0383a67694", "jpeg")],
+  MF165: [wixPhoto("5c069e469f504cf5b0509a0dc2ea5888", "jpeg")],
+  FORD5000: [wixPhoto("e7836d58c23c49a7a393085a99ad5e7b", "jpeg")],
+  FARMTRAC80: [wixPhoto("b621db6c7aca41b988ecffa1d2eefda5", "jpeg")],
+  MF440: [
+    wixPhoto("e9c304b460ce412f901ec7e7ec0fef39", "jpeg"),
+    wixPhoto("e9e26c3018ea413283214480299e7be4", "jpeg"),
+    wixPhoto("a77ab484598d48488de2a88919595123", "jpeg"),
+  ],
+  // New Holland T6070: the only photo the owner's auction listing
+  // (auctions.webuytractors.shop, lot 36) publishes. The shop has no gallery
+  // for this machine, so it is captioned "front" only, not padded with
+  // unrelated photos.
+  T6070:
+    "https://d7c0fzax1fy4f.cloudfront.net/" +
+    "eyJidWNrZXQiOiJid3BhcGVyY2xpcC1pbnRlcm5hdGlvbmFsIiwia2V5IjoiaXRlbV9pbWFnZXMv" +
+    "YXNzZXRzL2NvbXBhbnlfNjQ5LzExNi8zODEvMTAwL29yaWdpbmFsL0lNRy0yMDI2MTAxOS1XQTAw" +
+    "NTMuanBnIiwidiI6MTc5MjU3MDk1OSwiZWRpdHMiOnsicmVzaXplIjp7InciOjEyMDAsImgiOjc1" +
+    "Nn0sImF2aWYiOnsicSI6NzAsInN0eWxlIjoibGcifSwianBlZyI6eyJxIjo4NX19fQ==" +
+    "?signature=fa774adb6ce0f439b09c7ae1f54a4714d39afa186d88e3d58cd1bcdf6dc08a44",
+};
+
+/** The fixed shot list in the order a full 8-photo gallery is captioned. */
+const SHOT_LIST_ORDER: readonly PhotoAngle[] = [
+  "front",
+  "rear",
+  "left_side",
+  "right_side",
+  "cab_interior",
+  "hour_meter",
+  "engine_bay",
+  "tyres",
+];
+
+/** Lot images in the stored object form, plus the per-photo angle captions. */
+interface MockPhotoSet {
+  images: {
+    front: string;
+    engine?: string;
+    cabin?: string;
+    additional: string[];
+  };
+  imageAngles: Record<string, PhotoAngle>;
+}
+
+/**
+ * Turns a list of photo URLs into stored lot images plus angle captions.
+ * Photos are captioned by position along the fixed shot list (the site's
+ * galleries do not carry captions, so this assignment is a demo convention).
+ * The first photo is the front; `engine`/`cabin` take the engine-bay and
+ * cab-interior shots when present, everything else goes to `additional`.
+ *
+ * @param urls - Hot-linked photo URLs (at most the shot-list length).
+ * @returns Stored images and their angle captions.
+ */
+function mockPhotoSet(urls: readonly string[]): MockPhotoSet {
+  const captions = new Map<string, PhotoAngle>();
+  const byAngle = new Map<PhotoAngle, string>();
+  for (const [index, url] of urls.entries()) {
+    const angle = SHOT_LIST_ORDER[index];
+    captions.set(url, angle);
+    byAngle.set(angle, url);
+  }
+  const imageAngles: Record<string, PhotoAngle> = Object.fromEntries(captions);
+  const front = urls[0];
+  const engine = byAngle.get("engine_bay");
+  const cabin = byAngle.get("cab_interior");
+  const additional = urls.filter(
+    (url) => url !== front && url !== engine && url !== cabin
+  );
+  return {
+    images: {
+      front,
+      ...(engine ? { engine } : {}),
+      ...(cabin ? { cabin } : {}),
+      additional,
+    },
+    imageAngles,
+  };
+}
+
 const BATCH_SIZE = 500;
 
 /**
- * Deletes the `lotNumber:*` and `watchers:*` counters, which are scoped to
- * lots and auctions that no longer exist after a lots/auctions clear.
+ * Deletes the `lotNumber:*`, `watchers:*`, `bids:*`, `views:*` and
+ * `anonviews:*` counters, which are scoped to lots and auctions that no longer
+ * exist after a lots/auctions clear.
  *
  * @param ctx - Mutation context.
  */
@@ -111,6 +252,9 @@ async function clearLotScopedCounters(ctx: MutationCtx): Promise<void> {
   for (const [from, to] of [
     ["lotNumber:", "lotNumber;"],
     ["watchers:", "watchers;"],
+    ["bids:", "bids;"],
+    ["views:", "views;"],
+    ["anonviews:", "anonviews;"],
   ] as const) {
     let batch = await ctx.db
       .query("counters")
@@ -213,6 +357,8 @@ const MOCK_EXTRA_SELLER_PROFILES = [
     location: "Bloemfontein, ZA",
     bio: "Importer and reseller of quality pre-owned agricultural equipment.",
     createdDaysAgo: 200,
+    sellerType: "dealer",
+    vatRegistered: true,
   },
   {
     userId: "mock-seller-3",
@@ -221,11 +367,46 @@ const MOCK_EXTRA_SELLER_PROFILES = [
     location: "Pretoria, ZA",
     bio: "Family-run machinery dealership serving Highveld farmers since 1994.",
     createdDaysAgo: 150,
+    sellerType: "dealer",
+    vatRegistered: true,
   },
-];
+  {
+    // The private (non-VAT) seller of the demo: Malmesbury farmer.
+    userId: "mock-seller-4",
+    name: "Koos Steyn",
+    email: "mock-seller-4@agribid.demo",
+    location: "Malmesbury, ZA",
+    bio: "Wheat and canola farmer in the Swartland selling surplus machinery.",
+    createdDaysAgo: 90,
+    sellerType: "private_farmer",
+    vatRegistered: false,
+  },
+] satisfies {
+  userId: string;
+  name: string;
+  email: string;
+  location: string;
+  bio: string;
+  createdDaysAgo: number;
+  sellerType: SellerType;
+  vatRegistered: boolean;
+}[];
 
-/** Default fee snapshot used for every seeded auction event. */
-const MOCK_DEFAULT_BUYER_PREMIUM_PCT = 0.02;
+/**
+ * Seller type and VAT status for the Clerk-synced mock seller (a VAT-registered
+ * farming business). Applied only while the real profile has none, so an
+ * admin- or seller-set value is never overwritten.
+ */
+const MOCK_PRIMARY_SELLER_VAT: {
+  sellerType: SellerType;
+  vatRegistered: boolean;
+} = { sellerType: "farming_business", vatRegistered: true };
+
+/**
+ * Default fee snapshot used for every seeded auction event. The buyer premium
+ * is a fraction (0.12 = 12%), matching `DEFAULT_BUYER_PREMIUM_PCT` (12).
+ */
+const MOCK_DEFAULT_BUYER_PREMIUM_PCT = 0.12;
 const MOCK_DEFAULT_SELLER_COMMISSION_PCT = 0.05;
 
 /**
@@ -271,10 +452,20 @@ interface MockLot {
   auctionEventSeedId?: string;
   images: {
     front: string;
-    engine: string;
-    cabin: string;
+    engine?: string;
+    cabin?: string;
     additional: string[];
   };
+  /** Province the machine is in; defaults to a cycled province when absent. */
+  province?: Province;
+  powerKw?: number;
+  drive?: Drive;
+  transmission?: string;
+  frontTyrePct?: number;
+  rearTyrePct?: number;
+  serialNumber?: string;
+  /** Photo URL -> shot-list angle caption. */
+  imageAngles?: Record<string, PhotoAngle>;
 }
 
 interface MockBidPlan {
@@ -296,11 +487,18 @@ interface MockMessagePlan {
  * lot's `minIncrement`.
  */
 const ACTIVE_BID_AMOUNTS: Record<string, number[]> = {
-  "jd-8r-410": [260000, 267500, 275000],
-  "case-magnum-380": [205000, 210000, 215000],
-  "nh-t7-315": [155000, 160000, 165000],
-  "mf-8s-305": [141500, 143000],
-  "fendt-1050": [310000, 325000],
+  "mf-455-xtra-4x4": [110000, 115000, 120000],
+  "nh-8030": [95000, 100000],
+  "nh-t6070": [350000, 375000, 400000],
+  "nh-td5-110-4x4": [180000, 185000],
+  "mf-440-4x4": [90000, 95000],
+  "mf-399-se-4x4": [130000, 135000, 140000],
+  "mf-290": [100000, 102500],
+  "jd-5725": [120000, 125000],
+  "mf-165": [75000, 77500, 80000],
+  "ford-5000": [40000, 42000],
+  "farmtrac-80": [45000, 46000],
+  "mf-440": [85000, 87500],
   "case-axial-flow-8250": [224000, 230000, 236000],
   "jd-r4038": [173500, 178500, 184000],
   "case-early-riser-2150": [97000, 100000, 103000],
@@ -390,7 +588,7 @@ const REVIEW_PLANS: {
 /** Mock buyers watching live mock lots. */
 const WATCHLIST_PLANS: { userId: string; seedId: string }[] = [
   { userId: "mock-buyer-1", seedId: "case-axial-flow-8250" },
-  { userId: "mock-buyer-2", seedId: "jd-8r-410" },
+  { userId: "mock-buyer-2", seedId: "mf-455-xtra-4x4" },
   { userId: "mock-buyer-3", seedId: "jcb-541-70" },
   { userId: "mock-buyer-4", seedId: "nh-speedrower-260" },
   { userId: "mock-buyer-5", seedId: "bell-l1206e" },
@@ -399,8 +597,8 @@ const WATCHLIST_PLANS: { userId: string; seedId: string }[] = [
   { userId: "mock-buyer-2", seedId: "case-axial-flow-8250" },
   { userId: "mock-buyer-3", seedId: "case-axial-flow-8250" },
   { userId: "mock-buyer-4", seedId: "case-axial-flow-8250" },
-  { userId: "mock-buyer-1", seedId: "jd-8r-410" },
-  { userId: "mock-buyer-5", seedId: "jd-8r-410" },
+  { userId: "mock-buyer-1", seedId: "mf-455-xtra-4x4" },
+  { userId: "mock-buyer-5", seedId: "mf-455-xtra-4x4" },
 ];
 
 /** Response times cycled across seeded sellers so every copy variant shows. */
@@ -609,6 +807,9 @@ async function clearLotsTableWithStorage(ctx: MutationCtx): Promise<number> {
         if (lot.conditionReportUrl) {
           await safeDelete(ctx, lot.conditionReportUrl, "condition report");
         }
+        if (lot.coldStartVideo) {
+          await safeDelete(ctx, lot.coldStartVideo, "cold start video");
+        }
         await ctx.db.delete("lots", lot._id);
       })
     );
@@ -794,6 +995,132 @@ async function seedPublicSettings(
 }
 
 /**
+ * Inserts one setting row when its key is absent. Never overwrites.
+ *
+ * @param ctx - Mutation context.
+ * @param now - Timestamp for `updatedAt`.
+ * @param key - Setting key.
+ * @param value - Value to store when absent.
+ * @param description - Row description.
+ */
+async function insertSettingIfAbsent(
+  ctx: MutationCtx,
+  now: number,
+  key: string,
+  value: string | number | boolean,
+  description: string
+): Promise<void> {
+  const existing = await ctx.db
+    .query("settings")
+    .withIndex("by_key", (q) => q.eq("key", key))
+    .unique();
+  if (!existing) {
+    await ctx.db.insert("settings", {
+      key,
+      value,
+      description,
+      updatedAt: now,
+    });
+  }
+}
+
+/**
+ * Seeds the platform settings owned by `convex/admin/platformSettings.ts`
+ * (buyer premium, registration deposit, seller costs, minimum photos) with
+ * their built-in defaults, so the admin screen shows real rows. These equal
+ * the values the app already falls back to, so seeding them changes no
+ * behaviour. Insert-if-absent only: admin-set values are never overwritten.
+ *
+ * @param ctx - Mutation context.
+ * @param now - Timestamp for `updatedAt`.
+ */
+async function seedPlatformSettingDefaults(
+  ctx: MutationCtx,
+  now: number
+): Promise<void> {
+  const rows: [string, string | number | boolean, string][] = [
+    [
+      "buyer_premium_pct",
+      DEFAULT_BUYER_PREMIUM_PCT,
+      "Default buyer's premium (percent, 0-100) for auctions without their own",
+    ],
+    [
+      "deposit_enabled",
+      DEFAULT_DEPOSIT_ENABLED,
+      "Whether a registration deposit is required",
+    ],
+    [
+      "deposit_amount",
+      DEFAULT_DEPOSIT_AMOUNT,
+      "Registration deposit in rand (0-1,000,000)",
+    ],
+    [
+      "deposit_refund_days",
+      DEFAULT_DEPOSIT_REFUND_DAYS,
+      "Days to refund a registration deposit (1-30)",
+    ],
+    [
+      "seller_commission_pct",
+      DEFAULT_SELLER_COMMISSION_PCT,
+      "Seller commission (percent, display only)",
+    ],
+    [
+      "seller_listing_fee",
+      DEFAULT_SELLER_LISTING_FEE,
+      "Seller listing fee in rand",
+    ],
+    [
+      "seller_payout_days",
+      DEFAULT_SELLER_PAYOUT_DAYS,
+      "Days until seller payout (1-60)",
+    ],
+    [
+      "min_photos_per_lot",
+      DEFAULT_MIN_PHOTOS_PER_LOT,
+      "Minimum photos required per lot (1-30)",
+    ],
+  ];
+  for (const [key, value, description] of rows) {
+    await insertSettingIfAbsent(ctx, now, key, value, description);
+  }
+}
+
+/**
+ * DEMO finance contact (name, company, phone). These are invented showcase
+ * values copied from the design mockups; they are NOT real company details and
+ * every row is labelled "DEMO" in its description so an admin can spot and
+ * replace it on the admin settings screen.
+ */
+const DEMO_FINANCE_CONTACT: [string, string][] = [
+  ["finance_contact_name", "Lee-Anne Vermeulen"],
+  ["finance_contact_company", "com-fin"],
+  ["finance_contact_phone", "083 277 0178"],
+];
+
+/**
+ * Seeds the DEMO finance contact, insert-if-absent. Only the demo seed
+ * (`runSeed`) calls this. `weeklyReset` runs against the production showcase
+ * and must never invent company or contact details, so it skips it.
+ *
+ * @param ctx - Mutation context.
+ * @param now - Timestamp for `updatedAt`.
+ */
+async function seedDemoFinanceContact(
+  ctx: MutationCtx,
+  now: number
+): Promise<void> {
+  for (const [key, value] of DEMO_FINANCE_CONTACT) {
+    await insertSettingIfAbsent(
+      ctx,
+      now,
+      key,
+      value,
+      "DEMO value for the showcase, not a real contact. Replace in admin settings."
+    );
+  }
+}
+
+/**
  * Populates the database with the full showcase dataset: categories, equipment
  * metadata, mock users, auction events, lots, and every related record (bids,
  * proxy bids, reviews, lot fees, watchlist, conversations, notifications,
@@ -809,11 +1136,23 @@ async function seedPublicSettings(
  * over a handful of rows, so a `.collect()` + `.find()` is fine).
  *
  * @param ctx - Mutation context.
+ * @param options - Seed options.
+ * @param options.demoFinanceContact - Seed the DEMO finance contact settings.
+ * True only for the explicit demo seed (`runSeed`); `weeklyReset` passes false
+ * because it also runs on the production showcase, where nothing may be
+ * invented about the company or its contacts.
  */
-async function performSeed(ctx: MutationCtx): Promise<void> {
+async function performSeed(
+  ctx: MutationCtx,
+  options: { demoFinanceContact: boolean }
+): Promise<void> {
   const now = Date.now();
 
   await seedPublicSettings(ctx, now);
+  await seedPlatformSettingDefaults(ctx, now);
+  if (options.demoFinanceContact) {
+    await seedDemoFinanceContact(ctx, now);
+  }
 
   // 0. Seed Categories
   const categories = [
@@ -1075,6 +1414,24 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     });
   }
 
+  // The mock seller is a VAT-registered farming business. Applied only while
+  // the profile has no seller type, so a value set by the seller or an admin
+  // is never overwritten.
+  if (
+    sellerProfile.sellerType === undefined ||
+    sellerProfile.vatRegistered === undefined
+  ) {
+    await ctx.db.patch("profiles", sellerProfile._id, {
+      ...(sellerProfile.sellerType === undefined && {
+        sellerType: MOCK_PRIMARY_SELLER_VAT.sellerType,
+      }),
+      ...(sellerProfile.vatRegistered === undefined && {
+        vatRegistered: MOCK_PRIMARY_SELLER_VAT.vatRegistered,
+      }),
+      updatedAt: now,
+    });
+  }
+
   // 2.5. Promote Mock Admin User Profile (Idempotent)
   const adminProfile = await ctx.db
     .query("profiles")
@@ -1120,7 +1477,23 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", seller.userId))
       .unique();
-    if (existing) continue;
+    if (existing) {
+      // Synthetic profile from an earlier seed: backfill the VAT fields only.
+      if (
+        existing.sellerType === undefined ||
+        existing.vatRegistered === undefined
+      ) {
+        await ctx.db.patch("profiles", existing._id, {
+          ...(existing.sellerType === undefined && {
+            sellerType: seller.sellerType,
+          }),
+          ...(existing.vatRegistered === undefined && {
+            vatRegistered: seller.vatRegistered,
+          }),
+        });
+      }
+      continue;
+    }
 
     await ctx.db.insert("profiles", {
       userId: seller.userId,
@@ -1131,6 +1504,8 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
       kycStatus: "verified",
       location: seller.location,
       bio: seller.bio,
+      sellerType: seller.sellerType,
+      vatRegistered: seller.vatRegistered,
       createdAt: now - seller.createdDaysAgo * MS_PER_DAY,
       updatedAt: now,
     });
@@ -1139,27 +1514,38 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   // 2.8. Seed Platform Fees (only when the table is empty)
   const existingFee = await ctx.db.query("platformFees").first();
   if (!existingFee) {
+    // Inserted INACTIVE on purpose. Seeded lots carry an auction-sourced 5%
+    // commission snapshot, which is the one seller commission; an active seller
+    // % row would be ignored for them anyway (and charging both would double
+    // charge). Keeping it inactive documents the rule and lets an admin switch
+    // the platform to fee-row commissions deliberately.
     await ctx.db.insert("platformFees", {
       name: "Seller Commission",
       description: "Percentage fee charged to sellers on successful sales.",
       feeType: "percentage",
-      value: 5,
+      // Percentage fee values are fractions (0.05 = 5%).
+      value: 0.05,
       appliesTo: "seller",
-      isActive: true,
+      isActive: false,
       visibleToBuyer: true,
       visibleToSeller: true,
       sortOrder: 1,
       createdAt: now,
       updatedAt: now,
     });
+    // Inserted INACTIVE on purpose. Seeded lots carry an auction-sourced 12%
+    // snapshot, which is the one buyer premium; an active buyer % row would be
+    // ignored for them anyway. Keeping it inactive documents the rule (one
+    // premium, never both) and lets an admin switch the platform to fee-row
+    // premiums deliberately. The seeded lotFees ledger still references it.
     await ctx.db.insert("platformFees", {
       name: "Buyer's Premium",
       description:
         "Percentage premium added to the winning bid, paid by the buyer.",
       feeType: "percentage",
-      value: 2,
+      value: DEFAULT_BUYER_PREMIUM_PCT / 100,
       appliesTo: "buyer",
-      isActive: true,
+      isActive: false,
       visibleToBuyer: true,
       visibleToSeller: true,
       sortOrder: 2,
@@ -1198,9 +1584,9 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     },
     {
       seedId: "row-crop-tractor-sale",
-      title: "Row Crop Tractor Sale",
+      title: "Year-End Tractor Sale",
       description:
-        "Live sale featuring row crop tractors from multiple sellers.",
+        "Live sale of tractors from We Buy Tractors and farm sellers across South Africa.",
       status: "published",
       startTime: now - 3 * MS_PER_DAY,
       endTime: now + 6 * MS_PER_DAY,
@@ -1293,133 +1679,320 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     return event;
   };
 
+  /**
+   * Builds a live-sale tractor lot (approved and assigned to the main sale)
+   * with photos captioned along the fixed shot list.
+   * @param spec - Lot fields plus the hot-linked photo URLs.
+   * @returns The mock lot.
+   */
+  const liveTractor = (
+    spec: Omit<
+      MockLot,
+      "categoryId" | "status" | "auctionEventSeedId" | "images" | "imageAngles"
+    > & { photos: readonly string[] }
+  ): MockLot => {
+    const { photos, ...fields } = spec;
+    return {
+      ...fields,
+      ...mockPhotoSet(photos),
+      categoryId: getCategoryId("Tractor"),
+      status: "assigned",
+      auctionEventSeedId: "row-crop-tractor-sale",
+    };
+  };
+
   // 3.2. Seed Mock Lots
   const mockLots: MockLot[] = [
-    {
-      seedId: "jd-8r-410",
-      title: "John Deere 8R 410 — Row Crop Titan",
-      categoryId: getCategoryId("Tractor"),
-      make: "John Deere",
-      model: "8R 410",
-      year: 2023,
-      operatingHours: 450,
-      location: "Moline, IL",
+    // Live sale: real stock from https://webuytractors.shop (the owner's own
+    // site) and its timed auction (auctions.webuytractors.shop). Titles, order
+    // and photos are real; the site publishes no year, hours or specs for most
+    // machines, so those, the towns and the serial numbers are DEMO values.
+    // Lot numbers follow this order (the T6070 is lot 3, as in the mockups).
+    // Only the T6070 has a single photo (that is all the owner publishes for
+    // it); the MF 455 Xtra has a full 8-photo shot list.
+    liveTractor({
+      seedId: "mf-455-xtra-4x4",
+      title: "Massey Ferguson 455 Xtra 4x4",
+      make: "Massey Ferguson",
+      model: "455 Xtra",
+      year: 2018,
+      operatingHours: 3200,
+      location: "Pretoria, Gauteng",
+      province: "gauteng",
       description:
-        "This 2023 John Deere 8R 410 is in excellent condition with low hours. Features the Row Crop Titan package, premium cab, and advanced telemetry. Full service history available. Perfect for large-scale production.",
-      reservePrice: 385000,
-      startingPrice: 250000,
-      currentPrice: 275000,
+        "Massey Ferguson 455 Xtra 4x4 utility tractor from We Buy Tractors. Eight inspection photos cover every angle of the machine.",
+      reservePrice: 170000,
+      startingPrice: 110000,
+      currentPrice: 120000,
       minIncrement: 5000,
       sellerId: sellerId,
-      status: "assigned",
-      auctionEventSeedId: "row-crop-tractor-sale",
-      images: {
-        front: MOCK_IMAGE_URLS.JD_FRONT,
-        engine: MOCK_IMAGE_URLS.JD_ENGINE,
-        cabin: MOCK_IMAGE_URLS.JD_CABIN,
-        additional: [],
-      },
-    },
-    {
-      seedId: "case-magnum-380",
-      title: "Case IH Magnum 380 — Prairie Powerhouse",
-      categoryId: getCategoryId("Tractor"),
-      make: "Case IH",
-      model: "Magnum 380",
-      year: 2022,
-      operatingHours: 820,
-      location: "Racine, WI",
+      powerKw: 41,
+      drive: "4wd",
+      transmission: "12F/12R synchromesh",
+      frontTyrePct: 60,
+      rearTyrePct: 55,
+      serialNumber: "MF455X-0418271",
+      photos: WBT_PHOTOS.MF455,
+    }),
+    liveTractor({
+      seedId: "nh-8030",
+      title: "New Holland 8030",
+      make: "New Holland",
+      model: "8030",
+      year: 2009,
+      operatingHours: 6200,
+      location: "Benoni, Gauteng",
+      province: "gauteng",
       description:
-        "A 2022 Case IH Magnum 380, the ultimate Prairie Powerhouse. Features the CVXDrive transmission, luxury AFS Connect cab, and dual wheels for maximum traction. Exceptionally well-maintained unit.",
-      reservePrice: 320000,
-      startingPrice: 200000,
-      currentPrice: 215000,
+        "New Holland 8030 four-wheel-drive tractor from We Buy Tractors, sold as seen.",
+      reservePrice: 150000,
+      startingPrice: 95000,
+      currentPrice: 100000,
+      minIncrement: 5000,
+      sellerId: "mock-seller-2",
+      powerKw: 96,
+      drive: "4wd",
+      transmission: "Syncro 12x12",
+      frontTyrePct: 50,
+      rearTyrePct: 45,
+      serialNumber: "NH8030-5520913",
+      photos: WBT_PHOTOS.NH8030,
+    }),
+    liveTractor({
+      seedId: "nh-t6070",
+      title: "New Holland T6070",
+      make: "New Holland",
+      model: "T6070",
+      year: 2016,
+      operatingHours: 4850,
+      location: "Malmesbury, Western Cape",
+      province: "western_cape",
+      description:
+        "New Holland T6070 four-wheel-drive tractor in good running condition. Starts, runs and drives, no known faults. Sold as is.",
+      reservePrice: 480000,
+      startingPrice: 350000,
+      currentPrice: 400000,
+      minIncrement: 5000,
+      sellerId: "mock-seller-4",
+      powerKw: 104,
+      drive: "4wd",
+      transmission: "Semi-powershift",
+      frontTyrePct: 70,
+      rearTyrePct: 65,
+      serialNumber: "ZBJC12345",
+      photos: [WBT_PHOTOS.T6070],
+    }),
+    liveTractor({
+      seedId: "nh-td5-110-4x4",
+      title: "2022 New Holland TD5.110 4x4",
+      make: "New Holland",
+      model: "TD5.110",
+      year: 2022,
+      operatingHours: 1400,
+      location: "Pretoria, Gauteng",
+      province: "gauteng",
+      description:
+        "2022 New Holland TD5.110 4x4 cab tractor from We Buy Tractors.",
+      reservePrice: 260000,
+      startingPrice: 180000,
+      currentPrice: 185000,
+      minIncrement: 5000,
+      sellerId: "mock-seller-2",
+      powerKw: 81,
+      drive: "4wd",
+      transmission: "12x12 synchromesh",
+      frontTyrePct: 85,
+      rearTyrePct: 80,
+      serialNumber: "NHTD5-2204417",
+      photos: WBT_PHOTOS.TD5_110,
+    }),
+    liveTractor({
+      seedId: "mf-440-4x4",
+      title: "Massey Ferguson 440 4x4",
+      make: "Massey Ferguson",
+      model: "440",
+      year: 2012,
+      operatingHours: 5400,
+      location: "Bloemfontein, Free State",
+      province: "free_state",
+      description: "Massey Ferguson 440 4x4 tractor from We Buy Tractors.",
+      reservePrice: 140000,
+      startingPrice: 90000,
+      currentPrice: 95000,
       minIncrement: 2500,
       sellerId: sellerId,
-      status: "assigned",
-      auctionEventSeedId: "row-crop-tractor-sale",
-      images: {
-        front: MOCK_IMAGE_URLS.CASE_FRONT,
-        engine: MOCK_IMAGE_URLS.CASE_ENGINE,
-        cabin: MOCK_IMAGE_URLS.CASE_CABIN,
-        additional: [],
-      },
-    },
-    {
-      seedId: "nh-t7-315",
-      title: "New Holland T7.315 — Blue Diamond",
-      categoryId: getCategoryId("Tractor"),
-      make: "New Holland",
-      model: "T7.315",
-      year: 2023,
-      operatingHours: 210,
-      location: "Basildon, UK",
-      description:
-        "The 2023 New Holland T7.315 Blue Diamond edition. Low operating hours, heavy-duty rear hitch, and PLM Intelligence. Versatile machine for both tillage and transport work.",
-      reservePrice: 245000,
-      startingPrice: 150000,
-      currentPrice: 165000,
-      minIncrement: 2000,
-      sellerId: sellerId,
-      status: "assigned",
-      auctionEventSeedId: "row-crop-tractor-sale",
-      images: {
-        front: MOCK_IMAGE_URLS.NH_FRONT,
-        engine: MOCK_IMAGE_URLS.NH_ENGINE,
-        cabin: MOCK_IMAGE_URLS.NH_CABIN,
-        additional: [],
-      },
-    },
-    {
-      seedId: "mf-8s-305",
-      title: "Massey Ferguson 8S.305 — Crimson Legend",
-      categoryId: getCategoryId("Tractor"),
+      powerKw: 56,
+      drive: "4wd",
+      transmission: "8F/2R synchromesh",
+      frontTyrePct: 55,
+      rearTyrePct: 50,
+      serialNumber: "MF440-4X-3381",
+      photos: WBT_PHOTOS.MF440_4X4,
+    }),
+    liveTractor({
+      seedId: "mf-399-se-4x4",
+      title: "Massey Ferguson 399 SE 4x4",
       make: "Massey Ferguson",
-      model: "8S.305",
-      year: 2024,
-      operatingHours: 15,
-      location: "Beauvais, FR",
+      model: "399 SE",
+      year: 2014,
+      operatingHours: 4100,
+      location: "Potchefstroom, North West",
+      province: "north_west",
+      description: "Massey Ferguson 399 SE 4x4 tractor from We Buy Tractors.",
+      reservePrice: 190000,
+      startingPrice: 130000,
+      currentPrice: 140000,
+      minIncrement: 5000,
+      sellerId: "mock-seller-3",
+      powerKw: 74,
+      drive: "4wd",
+      transmission: "12F/12R synchromesh",
+      frontTyrePct: 65,
+      rearTyrePct: 60,
+      serialNumber: "MF399-SE-7712",
+      photos: WBT_PHOTOS.MF399,
+    }),
+    liveTractor({
+      seedId: "mf-290",
+      title: "Massey Ferguson 290",
+      make: "Massey Ferguson",
+      model: "290",
+      year: 2005,
+      operatingHours: 7300,
+      location: "Malmesbury, Western Cape",
+      province: "western_cape",
       description:
-        "Virtually new 2024 Massey Ferguson 8S.305. The Crimson Legend features the innovative Protect-U design, Dyna-VT transmission, and exceptional visibility. Demonstration unit with only 15 delivery hours.",
-      reservePrice: 210000,
-      startingPrice: 140000,
-      currentPrice: 143000,
-      minIncrement: 1500,
+        "Massey Ferguson 290 two-wheel-drive tractor from a Swartland farm.",
+      reservePrice: 140000,
+      startingPrice: 100000,
+      currentPrice: 102500,
+      minIncrement: 2500,
+      sellerId: "mock-seller-4",
+      powerKw: 52,
+      drive: "2wd",
+      transmission: "8F/2R synchromesh",
+      frontTyrePct: 40,
+      rearTyrePct: 45,
+      serialNumber: "MF290-2W-0915",
+      photos: WBT_PHOTOS.MF290,
+    }),
+    liveTractor({
+      seedId: "jd-5725",
+      title: "John Deere 5725",
+      make: "John Deere",
+      model: "5725",
+      year: 2011,
+      operatingHours: 5900,
+      location: "Polokwane, Limpopo",
+      province: "limpopo",
+      description: "John Deere 5725 tractor from We Buy Tractors.",
+      reservePrice: 180000,
+      startingPrice: 120000,
+      currentPrice: 125000,
+      minIncrement: 5000,
       sellerId: sellerId,
-      status: "assigned",
-      auctionEventSeedId: "row-crop-tractor-sale",
-      images: {
-        front: MOCK_IMAGE_URLS.MF_FRONT,
-        engine: MOCK_IMAGE_URLS.MF_ENGINE,
-        cabin: MOCK_IMAGE_URLS.MF_CABIN,
-        additional: [],
-      },
-    },
-    {
-      seedId: "fendt-1050",
-      title: "Fendt 1050 Vario — German Precision",
-      categoryId: getCategoryId("Tractor"),
-      make: "Fendt",
-      model: "1050 Vario",
-      year: 2023,
-      operatingHours: 580,
-      location: "Marktoberdorf, DE",
+      powerKw: 70,
+      drive: "4wd",
+      transmission: "12F/12R PowrReverser",
+      frontTyrePct: 60,
+      rearTyrePct: 55,
+      serialNumber: "JD5725-1PY5725",
+      photos: WBT_PHOTOS.JD5725,
+    }),
+    liveTractor({
+      seedId: "mf-165",
+      title: "Massey Ferguson 165",
+      make: "Massey Ferguson",
+      model: "165",
+      year: 1978,
+      operatingHours: 9800,
+      location: "Bethlehem, Free State",
+      province: "free_state",
       description:
-        "2023 Fendt 1050 Vario, the peak of German Precision engineering. Fendt iD low engine speed concept, VarioDrive, and LifeCab. A powerhouse for the most demanding agricultural tasks.",
-      reservePrice: 450000,
-      startingPrice: 300000,
-      currentPrice: 325000,
-      minIncrement: 10000,
+        "Massey Ferguson 165 two-wheel-drive tractor, a farm classic.",
+      reservePrice: 105000,
+      startingPrice: 75000,
+      currentPrice: 80000,
+      minIncrement: 2500,
+      sellerId: "mock-seller-3",
+      powerKw: 35,
+      drive: "2wd",
+      transmission: "6F/2R",
+      frontTyrePct: 45,
+      rearTyrePct: 40,
+      serialNumber: "MF165-76-2204",
+      photos: WBT_PHOTOS.MF165,
+    }),
+    liveTractor({
+      seedId: "ford-5000",
+      title: "Ford 5000",
+      make: "Ford",
+      model: "5000",
+      year: 1980,
+      operatingHours: 8800,
+      location: "Piketberg, Western Cape",
+      province: "western_cape",
+      description: "Ford 5000 two-wheel-drive tractor, sold as seen.",
+      reservePrice: 60000,
+      startingPrice: 40000,
+      currentPrice: 42000,
+      minIncrement: 1000,
+      sellerId: "mock-seller-4",
+      powerKw: 37,
+      drive: "2wd",
+      transmission: "8F/2R",
+      frontTyrePct: 35,
+      rearTyrePct: 40,
+      serialNumber: "FORD5000-B1187",
+      photos: WBT_PHOTOS.FORD5000,
+    }),
+    liveTractor({
+      seedId: "farmtrac-80",
+      title: "Farmtrac 80",
+      make: "Farmtrac",
+      model: "80",
+      year: 2015,
+      operatingHours: 3600,
+      location: "Ermelo, Mpumalanga",
+      province: "mpumalanga",
+      description: "Farmtrac 80 tractor from We Buy Tractors.",
+      reservePrice: 65000,
+      startingPrice: 45000,
+      currentPrice: 46000,
+      minIncrement: 1000,
+      sellerId: "mock-seller-2",
+      powerKw: 59,
+      drive: "4wd",
+      transmission: "12F/12R synchromesh",
+      frontTyrePct: 60,
+      rearTyrePct: 55,
+      serialNumber: "FT80-15-6023",
+      photos: WBT_PHOTOS.FARMTRAC80,
+    }),
+    liveTractor({
+      seedId: "mf-440",
+      title: "Massey Ferguson 440",
+      make: "Massey Ferguson",
+      model: "440",
+      year: 2010,
+      operatingHours: 6100,
+      location: "Pretoria, Gauteng",
+      province: "gauteng",
+      description:
+        "Massey Ferguson 440 two-wheel-drive tractor from We Buy Tractors.",
+      reservePrice: 120000,
+      startingPrice: 85000,
+      currentPrice: 87500,
+      minIncrement: 2500,
       sellerId: sellerId,
-      status: "assigned",
-      auctionEventSeedId: "row-crop-tractor-sale",
-      images: {
-        front: MOCK_IMAGE_URLS.FENDT_FRONT,
-        engine: MOCK_IMAGE_URLS.FENDT_ENGINE,
-        cabin: MOCK_IMAGE_URLS.FENDT_CABIN,
-        additional: [],
-      },
-    },
+      powerKw: 56,
+      drive: "2wd",
+      transmission: "8F/2R synchromesh",
+      frontTyrePct: 50,
+      rearTyrePct: 50,
+      serialNumber: "MF440-2W-1184",
+      photos: WBT_PHOTOS.MF440,
+    }),
     {
       seedId: "jd-s780",
       title: "John Deere S780 — Combine Harvester",
@@ -1879,18 +2452,30 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         ? await issueNextLotNumber(ctx, event._id)
         : existing?.lotNumber;
 
+    // Snapshot the seller's VAT status/type like the assignment mutation does.
+    const lotSellerProfile = event
+      ? await ctx.db
+          .query("profiles")
+          .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
+          .unique()
+      : null;
+
     const lotData = {
       ...lotFields,
       description: lot.description || "No description provided.",
       auctionId: event?._id,
       lotNumber: event ? lotNumber : undefined,
-      province: PROVINCES[lotIndex % PROVINCES.length],
+      province: lot.province ?? PROVINCES[lotIndex % PROVINCES.length],
       resolvedBuyerPremiumPct: event
         ? MOCK_DEFAULT_BUYER_PREMIUM_PCT
         : undefined,
+      premiumSource: event ? ("auction" as const) : undefined,
+      sellerVatRegistered: lotSellerProfile?.vatRegistered,
+      sellerType: lotSellerProfile?.sellerType,
       resolvedSellerCommissionPct: event
         ? MOCK_DEFAULT_SELLER_COMMISSION_PCT
         : undefined,
+      commissionSource: event ? ("auction" as const) : undefined,
     };
 
     if (!existing) {
@@ -1975,7 +2560,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
     bidderId: string;
     maxBid: number;
   }[] = [
-    { seedId: "jd-8r-410", bidderId: "mock-buyer-6", maxBid: 290000 },
+    { seedId: "mf-455-xtra-4x4", bidderId: "mock-buyer-6", maxBid: 140000 },
     {
       seedId: "case-axial-flow-8250",
       bidderId: "mock-buyer-1",
@@ -2060,7 +2645,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         feeType: sellerFee.feeType,
         rate: sellerFee.value,
         salePrice,
-        calculatedAmount: Math.round((salePrice * sellerFee.value) / 100),
+        calculatedAmount: Math.round(salePrice * sellerFee.value * 100) / 100,
         createdAt: settledAt,
       });
       await ctx.db.insert("lotFees", {
@@ -2071,7 +2656,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
         feeType: buyerFee.feeType,
         rate: buyerFee.value,
         salePrice,
-        calculatedAmount: Math.round((salePrice * buyerFee.value) / 100),
+        calculatedAmount: Math.round(salePrice * buyerFee.value * 100) / 100,
         createdAt: settledAt,
       });
     }
@@ -2154,7 +2739,7 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   // 3.11. Seed notifications (only while the table is empty)
   const existingNotification = await ctx.db.query("notifications").first();
   if (!existingNotification) {
-    const jd8r = getLotBySeedId("jd-8r-410");
+    const jd8r = getLotBySeedId("mf-455-xtra-4x4");
     const jdS780 = getLotBySeedId("jd-s780");
     const speedrower = getLotBySeedId("nh-speedrower-260");
 
@@ -2475,6 +3060,15 @@ async function performSeed(ctx: MutationCtx): Promise<void> {
   // Bids
   const allBids = await ctx.db.query("bids").collect();
   await updateCounter(ctx, "bids", "total", allBids.length, true);
+  // Per-lot valid-bid counters feed the engagement ranking.
+  const validBidsByLot = new Map<Id<"lots">, number>();
+  for (const bid of allBids) {
+    if (bid.status === "voided") continue;
+    validBidsByLot.set(bid.lotId, (validBidsByLot.get(bid.lotId) ?? 0) + 1);
+  }
+  for (const [lotId, count] of validBidsByLot) {
+    await updateCounter(ctx, bidCounterName(lotId), "total", count, true);
+  }
 
   const soldLots = allLots.filter((l) => l.status === "sold");
   const salesVolume = soldLots.reduce(
@@ -2594,6 +3188,8 @@ export const runSeed = mutation({
         "profileFlags",
         "lotFees",
         "counters",
+        "lotViewers",
+        "engagementScores",
         "equipmentMetadata",
         "equipmentCategories",
       ];
@@ -2615,7 +3211,7 @@ export const runSeed = mutation({
       }
     }
 
-    await performSeed(ctx);
+    await performSeed(ctx, { demoFinanceContact: true });
 
     return null;
   },
@@ -2643,6 +3239,8 @@ export const clearAuctions = mutation({
     const lotsCount = await clearLotsTableWithStorage(ctx);
     // Watch rows and per-lot / per-sale counters belong to the lots just deleted.
     await clearTable(ctx, "watchlist");
+    await clearTable(ctx, "lotViewers");
+    await clearTable(ctx, "engagementScores");
     await clearLotScopedCounters(ctx);
     const auctionsCount = await clearAuctionsTableWithStorage(ctx);
     const lotFeesCount = await clearTable(ctx, "lotFees");
@@ -2682,6 +3280,8 @@ export const clearAllData = mutation({
       "bids",
       "watchlist",
       "counters",
+      "lotViewers",
+      "engagementScores",
       "equipmentMetadata",
       "lotFees",
     ];
@@ -2755,6 +3355,8 @@ export const weeklyReset = internalMutation({
       "profileFlags",
       "lotFees",
       "counters",
+      "lotViewers",
+      "engagementScores",
     ];
     for (const tableName of tablesToClear) {
       const deletedCount = await clearTable(ctx, tableName);
@@ -2770,7 +3372,8 @@ export const weeklyReset = internalMutation({
 
     await ensureMockSellerProfile(ctx);
 
-    await performSeed(ctx);
+    // Production-safe: no demo finance contact (see performSeed).
+    await performSeed(ctx, { demoFinanceContact: false });
 
     return null;
   },

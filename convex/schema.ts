@@ -3,6 +3,11 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 import {
+  driveValidator,
+  imageAnglesValidator,
+  sellerTypeValidator,
+} from "./lib/lotSpecs";
+import {
   provinceValidator,
   sellerResponseTimeValidator,
 } from "./lib/provinces";
@@ -88,6 +93,26 @@ export default defineSchema({
     // Snapshot of the parent auction's fee defaults at assignment time, so later auction edits don't change an already-assigned lot's fees.
     resolvedBuyerPremiumPct: v.optional(v.number()),
     resolvedSellerCommissionPct: v.optional(v.number()),
+    // Where `resolvedSellerCommissionPct` came from. Only "auction" exists: the
+    // snapshot is the single seller commission (active seller % platformFees
+    // rows are ignored). Undefined on legacy lots (their snapshot also came
+    // from the auction). There is no platform commission default.
+    commissionSource: v.optional(v.literal("auction")),
+    // Where `resolvedBuyerPremiumPct` came from. "auction": the snapshot is the
+    // single buyer premium (active buyer % platformFees rows are ignored).
+    // "platform": informational only (kept for audit and as the display
+    // fallback for legacy settled lots with no ledger row); live estimates and
+    // settlement use active buyer % fee rows if any, else the platform default
+    // read at that moment, and settlement persists it to `lotFees`. Undefined on
+    // legacy lots (a legacy snapshot always came from the auction).
+    premiumSource: v.optional(
+      v.union(v.literal("auction"), v.literal("platform"))
+    ),
+    // Seller VAT status/type snapshotted from the seller profile at assignment
+    // (undefined = unknown = treated as VAT-registered). Profile edits then only
+    // affect future assignments; admins can correct a lot via adminSetLotSellerVat.
+    sellerVatRegistered: v.optional(v.boolean()),
+    sellerType: v.optional(sellerTypeValidator),
     winnerId: v.optional(v.union(v.string(), v.null())),
     images: v.union(
       v.object({
@@ -99,6 +124,16 @@ export default defineSchema({
       }),
       v.array(v.string()) // legacy format
     ),
+    // Machine specs (all optional; existing lots are grandfathered).
+    powerKw: v.optional(v.number()),
+    drive: v.optional(driveValidator),
+    transmission: v.optional(v.string()),
+    frontTyrePct: v.optional(v.number()), // tread remaining, 0-100
+    rearTyrePct: v.optional(v.number()), // tread remaining, 0-100
+    serialNumber: v.optional(v.string()),
+    coldStartVideo: v.optional(v.id("_storage")),
+    // Fixed-shot-list angle per photo, keyed by the photo's storage id / URL.
+    imageAngles: v.optional(imageAnglesValidator),
     description: v.optional(v.string()),
     conditionReportUrl: v.optional(v.id("_storage")), // PDF storage ID
     isExtended: v.optional(v.boolean()),
@@ -259,6 +294,10 @@ export default defineSchema({
     phoneNumber: v.optional(v.string()), // Encrypted PII
     companyName: v.optional(v.string()),
     location: v.optional(v.string()),
+    // Seller VAT status and type (seller- or admin-set). Unset = unknown, which
+    // buyers' estimates treat as VAT-registered (worst case).
+    vatRegistered: v.optional(v.boolean()),
+    sellerType: v.optional(sellerTypeValidator),
     // Admin-set: how quickly this seller usually replies (public copy).
     sellerResponseTime: v.optional(sellerResponseTimeValidator),
     emailVerified: v.optional(v.boolean()),
@@ -394,6 +433,36 @@ export default defineSchema({
     .index("by_user_lot", ["userId", "lotId"])
     .index("by_lot", ["lotId"]),
 
+  // Dedupe + rate-limit rows for the public lot view counter. One row per
+  // (lot, viewer) pair; `viewerKey` is the signed-in user id or a client
+  // session id. Purged daily (see cronJobs.purgeLotViewers).
+  lotViewers: defineTable({
+    lotId: v.id("lots"),
+    viewerKey: v.string(),
+    lastViewedAt: v.number(),
+  })
+    .index("by_lotId_and_viewerKey", ["lotId", "viewerKey"])
+    .index("by_viewerKey_and_lastViewedAt", ["viewerKey", "lastViewedAt"])
+    .index("by_lastViewedAt", ["lastViewedAt"]),
+
+  // Precomputed engagement score per assigned lot of a live auction, rebuilt
+  // every 5 minutes by `engagement.refreshEngagementScores` from the lot's
+  // counters. Read by `getMostEngagedLots` so views never re-trigger it.
+  // score = bids * 3 + watchers * 2 + log2(1 + views). `lotNumber` is
+  // denormalised for the tie-break.
+  engagementScores: defineTable({
+    lotId: v.id("lots"),
+    auctionId: v.id("auctions"),
+    lotNumber: v.optional(v.number()),
+    bids: v.number(),
+    watchers: v.number(),
+    views: v.number(),
+    score: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_auctionId_and_score", ["auctionId", "score"])
+    .index("by_lotId", ["lotId"]),
+
   presence: defineTable({
     userId: v.string(),
     updatedAt: v.number(),
@@ -433,7 +502,10 @@ export default defineSchema({
 
   counters: defineTable({
     // e.g., "auctions", "profiles", "support", "announcements",
-    // "lotNumber:<auctionId>" (last lot number issued) or "watchers:<lotId>" (`total`).
+    // "lotNumber:<auctionId>" (last lot number issued), "watchers:<lotId>" (`total`),
+    // "views:<lotId>" (`total`), "bids:<lotId>" (`total` = valid bids) or
+    // "anonviews:<lotId>" (`active` = hour bucket, `total` = anonymous views
+    // counted in it).
     name: v.string(),
     total: v.number(),
     active: v.optional(v.number()),
@@ -504,9 +576,19 @@ export default defineSchema({
     .index("by_sortOrder", ["sortOrder"]),
 
   // Lot Fee Ledger - records fees calculated per lot at settlement
+  // Settlement ledger: exactly what was charged on a settled lot. Fee reads of
+  // a settled lot use ONLY these rows (never live fee settings).
+  // `source` says where a row came from: "fee_row" (an active `platformFees`
+  // row; `feeId` set), "auction" (the lot's auction snapshot premium or
+  // commission) or "platform" (the platform default premium read at
+  // settlement). Auction/platform rows have no `feeId`. Rows written before
+  // `source` existed have it undefined and are always fee rows.
   lotFees: defineTable({
     lotId: v.id("lots"),
-    feeId: v.id("platformFees"),
+    feeId: v.optional(v.id("platformFees")),
+    source: v.optional(
+      v.union(v.literal("auction"), v.literal("fee_row"), v.literal("platform"))
+    ),
     feeName: v.string(),
     appliedTo: v.union(v.literal("buyer"), v.literal("seller")),
     feeType: v.union(v.literal("percentage"), v.literal("fixed")),

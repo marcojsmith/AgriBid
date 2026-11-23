@@ -6,11 +6,13 @@ import {
   settleExpiredLotsHandler,
 } from "./internal";
 import * as adminUtils from "../admin_utils";
+import { deleteAuctionEngagementScores } from "../lib/lotCounters";
 import type { MutationCtx } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
 
 vi.mock("../lib/lotCounters", () => ({
   removeLotWatchData: vi.fn().mockResolvedValue(undefined),
+  deleteAuctionEngagementScores: vi.fn().mockResolvedValue(0),
 }));
 
 vi.mock("../admin_utils", () => ({
@@ -130,6 +132,7 @@ describe("Internal Logic Coverage", () => {
       if (table === "lotFees") {
         const q = mockQuery();
         q.first = vi.fn().mockResolvedValue(existingFee);
+        q.collect = vi.fn().mockResolvedValue(existingFee ? [existingFee] : []);
         return q;
       }
       if (table === "auctions") {
@@ -546,6 +549,10 @@ describe("Internal Logic Coverage", () => {
         "auc1",
         expect.objectContaining({ status: "closed" })
       );
+      expect(deleteAuctionEngagementScores).toHaveBeenCalledWith(
+        mockCtx,
+        "auc1"
+      );
     });
 
     it("leaves an auction open while assigned lots remain", async () => {
@@ -652,7 +659,12 @@ describe("Internal Logic Coverage", () => {
         mockLot as never
       );
 
-      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+      // The fee-row ledger entry is not duplicated (only the resolved platform
+      // premium, which has no `feeId`, is newly recorded).
+      expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
+        "lotFees",
+        expect.objectContaining({ feeId: "f1" })
+      );
     });
 
     it("should insert lotFee when no existing record found", async () => {
@@ -758,7 +770,7 @@ describe("Internal Logic Coverage", () => {
       expect(appliedTo).not.toContain("buyer");
     });
 
-    it("records the resolved auction-default fees in the audit total without persisting ledger rows", async () => {
+    it("persists the resolved auction-default fees as ledger rows and counts them in the audit total", async () => {
       const mockLot = {
         _id: "a1",
         title: "Test",
@@ -775,7 +787,23 @@ describe("Internal Logic Coverage", () => {
         mockLot as never
       );
 
-      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+      expect(mockCtx.db.insert).toHaveBeenCalledTimes(2);
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "lotFees",
+        expect.objectContaining({
+          source: "auction",
+          appliedTo: "buyer",
+          calculatedAmount: 50,
+        })
+      );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "lotFees",
+        expect.objectContaining({
+          source: "auction",
+          appliedTo: "seller",
+          calculatedAmount: 30,
+        })
+      );
       expect(adminUtils.logAudit).toHaveBeenCalledWith(
         mockCtx,
         expect.objectContaining({
@@ -783,6 +811,31 @@ describe("Internal Logic Coverage", () => {
           details: expect.stringContaining("80.00") as string,
         })
       );
+    });
+
+    it("does not re-insert or re-count a resolved fee that is already in the ledger", async () => {
+      const mockLot = {
+        _id: "a1",
+        title: "Test",
+        currentPrice: 1000,
+        status: "sold",
+        resolvedBuyerPremiumPct: 0.05,
+      };
+
+      setupTableQuery([], [], [], {
+        _id: "af1",
+        lotId: "a1",
+        appliedTo: "buyer",
+        source: "auction",
+      });
+
+      await calculateAndRecordFees(
+        mockCtx as unknown as MutationCtx,
+        mockLot as never
+      );
+
+      expect(mockCtx.db.insert).not.toHaveBeenCalled();
+      expect(adminUtils.logAudit).not.toHaveBeenCalled();
     });
 
     it("combines platformFees-sourced and resolved auction-default fees", async () => {
@@ -809,7 +862,8 @@ describe("Internal Logic Coverage", () => {
         mockLot as never
       );
 
-      expect(mockCtx.db.insert).toHaveBeenCalledTimes(1);
+      // The seller fee row and the buyer premium row.
+      expect(mockCtx.db.insert).toHaveBeenCalledTimes(2);
       expect(adminUtils.logAudit).toHaveBeenCalledWith(
         mockCtx,
         expect.objectContaining({

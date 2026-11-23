@@ -1,4 +1,4 @@
-import { v, ConvexError } from "convex/values";
+import { v, ConvexError, type ObjectType } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import {
@@ -13,6 +13,8 @@ import { logActivity } from "../../userActivity";
 import {
   assertLotEditable,
   assertLotOwnership,
+  assertMinPhotos,
+  assertMinPhotosOnEdit,
   validateLotBeforeSubmit,
 } from "../../lots/mutations/helpers";
 import {
@@ -23,8 +25,50 @@ import {
   LOT_CREATION_COOLDOWN_MS,
   MAX_DRAFTS_PER_USER,
 } from "../../constants";
+import {
+  assertImageAnglesMatchImages,
+  assertValidColdStartVideo,
+  assertValidLotSpecs,
+  deleteReplacedColdStartVideo,
+  lotSpecEditFields,
+  lotSpecFields,
+} from "../../lib/lotSpecs";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
+
+/** Optional machine spec fields accepted by lot creation and draft saving. */
+type LotSpecArgs = ObjectType<typeof lotSpecFields>;
+
+/** Spec fields accepted by draft edits: `coldStartVideo: null` removes the video. */
+type LotSpecEditArgs = ObjectType<typeof lotSpecEditFields>;
+
+/**
+ * Picks the provided (defined) spec fields from mutation args so they can be
+ * spread into a db insert. A `null` cold start video (removal) is skipped.
+ * @param args - Mutation args that may carry spec fields.
+ * @returns Only the spec fields that were provided.
+ */
+function pickSpecFields(args: LotSpecEditArgs): LotSpecArgs {
+  return {
+    ...(args.powerKw !== undefined && { powerKw: args.powerKw }),
+    ...(args.drive !== undefined && { drive: args.drive }),
+    ...(args.transmission !== undefined && {
+      transmission: args.transmission,
+    }),
+    ...(args.frontTyrePct !== undefined && {
+      frontTyrePct: args.frontTyrePct,
+    }),
+    ...(args.rearTyrePct !== undefined && { rearTyrePct: args.rearTyrePct }),
+    ...(args.serialNumber !== undefined && {
+      serialNumber: args.serialNumber,
+    }),
+    ...(args.coldStartVideo !== undefined &&
+      args.coldStartVideo !== null && {
+        coldStartVideo: args.coldStartVideo,
+      }),
+    ...(args.imageAngles !== undefined && { imageAngles: args.imageAngles }),
+  };
+}
 
 /**
  * Handler for generating a storage upload URL.
@@ -105,7 +149,7 @@ export const createLotHandler = async (
     };
     isDraft?: boolean;
     startTime?: number;
-  }
+  } & LotSpecArgs
 ) => {
   const userId = await getAuthenticatedUserId(ctx);
 
@@ -161,6 +205,10 @@ export const createLotHandler = async (
   const normalizedImages = normalizeImages(images);
   const status = isDraft ? "draft" : "pending_review";
 
+  assertValidLotSpecs(args);
+  assertImageAnglesMatchImages(args.imageAngles, normalizedImages);
+  await assertValidColdStartVideo(ctx, args.coldStartVideo);
+
   if (!isDraft) {
     if (!args.province) {
       throw new ConvexError("Province is required");
@@ -172,6 +220,7 @@ export const createLotHandler = async (
       reservePrice: args.reservePrice,
       images: normalizedImages,
     });
+    await assertMinPhotos(ctx, normalizedImages);
   }
 
   // A lot does not own a schedule; the parent auction does. `durationDays` and
@@ -191,6 +240,7 @@ export const createLotHandler = async (
     reservePrice: args.reservePrice,
     images: normalizedImages,
     conditionChecklist: args.conditionChecklist,
+    ...pickSpecFields(args),
     sellerId: userId,
     status,
     currentPrice: args.startingPrice,
@@ -257,6 +307,7 @@ export const createLot = mutation({
     }),
     isDraft: v.optional(v.boolean()),
     startTime: v.optional(v.number()),
+    ...lotSpecFields,
   },
   returns: v.id("lots"),
   handler: createLotHandler,
@@ -326,7 +377,7 @@ export const saveDraftHandler = async (
       notes?: string;
     };
     startTime?: number;
-  }
+  } & LotSpecEditArgs
 ) => {
   const { userId } = await requireVerified(ctx);
 
@@ -379,6 +430,20 @@ export const saveDraftHandler = async (
     assertLotOwnership(existing, userId);
     assertLotEditable(existing);
 
+    assertValidLotSpecs(restArgs);
+    assertImageAnglesMatchImages(
+      restArgs.imageAngles,
+      images ?? existing.images
+    );
+    // Re-attaching the video the lot already has is a no-op, not re-validated.
+    if (restArgs.coldStartVideo !== existing.coldStartVideo) {
+      await assertValidColdStartVideo(ctx, restArgs.coldStartVideo);
+    }
+
+    // The minimum photo count is enforced on submit (createLot non-draft,
+    // submitLotForReview) and, for a lot awaiting review, only when an edit
+    // LOWERS its photo count below the minimum, so already-short lots stay
+    // grandfathered and editable.
     if (existing.status === "pending_review") {
       const mergedState = {
         ...existing,
@@ -386,6 +451,9 @@ export const saveDraftHandler = async (
         ...(images && { images }),
       };
       validateLotBeforeSubmit(mergedState);
+      if (images) {
+        await assertMinPhotosOnEdit(ctx, existing.images, images);
+      }
     }
 
     // `durationDays` and `startTime` are legacy scheduling fields the lot no
@@ -402,6 +470,10 @@ export const saveDraftHandler = async (
     if (images !== undefined) {
       patchData.images = images;
     }
+    // `null` removes the video (patching with `undefined` unsets the field).
+    if (restArgs.coldStartVideo === null) {
+      patchData.coldStartVideo = undefined;
+    }
     if (restArgs.startingPrice !== undefined) {
       patchData.currentPrice = restArgs.startingPrice;
       patchData.minIncrement =
@@ -411,6 +483,11 @@ export const saveDraftHandler = async (
     }
 
     await ctx.db.patch("lots", validLotId, patchData);
+    await deleteReplacedColdStartVideo(
+      ctx,
+      existing.coldStartVideo,
+      restArgs.coldStartVideo
+    );
 
     return validLotId;
   }
@@ -422,6 +499,9 @@ export const saveDraftHandler = async (
   if (images === undefined) {
     throw new ConvexError("Images are required to create a new draft");
   }
+  assertValidLotSpecs(args);
+  assertImageAnglesMatchImages(args.imageAngles, images);
+  await assertValidColdStartVideo(ctx, args.coldStartVideo);
 
   // Draft cap: max MAX_DRAFTS_PER_USER drafts per user
   const existingDrafts = await ctx.db
@@ -452,6 +532,7 @@ export const saveDraftHandler = async (
     ...(args.conditionChecklist && {
       conditionChecklist: args.conditionChecklist,
     }),
+    ...pickSpecFields(args),
     sellerId: userId,
     status: "draft",
     currentPrice: args.startingPrice ?? 0,
@@ -507,6 +588,7 @@ export const saveDraft = mutation({
       })
     ),
     startTime: v.optional(v.number()),
+    ...lotSpecEditFields,
   },
   returns: v.id("lots"),
   handler: saveDraftHandler,

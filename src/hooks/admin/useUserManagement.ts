@@ -4,6 +4,7 @@ import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 
+import type { SellerType } from "@/lib/lotSpecs";
 import type { SellerResponseTime } from "@/lib/provinces";
 
 /**
@@ -33,6 +34,10 @@ export interface AdminProfile {
   kycStatus?: string;
   /** Admin-set seller reply time, if any. */
   sellerResponseTime?: SellerResponseTime;
+  /** Whether the seller is VAT registered. */
+  vatRegistered?: boolean;
+  /** Seller type, if set. */
+  sellerType?: SellerType;
   createdAt: number;
   isOnline?: boolean;
 }

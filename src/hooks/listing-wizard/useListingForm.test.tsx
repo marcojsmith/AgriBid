@@ -11,10 +11,80 @@ import { DEFAULT_FORM_DATA } from "@/components/listing-wizard/constants";
 import { useListingForm } from "./useListingForm";
 
 const mockSetCurrentStep = vi.fn();
+const mockUseQuery = vi.hoisted(() => vi.fn());
+
+vi.mock("convex/react", () => ({ useQuery: mockUseQuery }));
+vi.mock("convex/_generated/api", () => ({
+  api: {
+    admin: {
+      platformSettings: { getPlatformSettings: "admin:getPlatformSettings" },
+    },
+  },
+}));
+
+/**
+ * Renders the hook with the given form data on the media step.
+ *
+ * @param images - Image slots to place in the form data.
+ * @returns The hook's render result.
+ */
+function renderMediaStep(images: Partial<typeof DEFAULT_FORM_DATA.images>) {
+  const formData = {
+    ...DEFAULT_FORM_DATA,
+    images: { ...DEFAULT_FORM_DATA.images, ...images },
+  };
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <ListingWizardContext.Provider
+      value={
+        {
+          formData,
+          currentStep: 3,
+          setCurrentStep: mockSetCurrentStep,
+        } as unknown as ListingWizardContextType
+      }
+    >
+      {children}
+    </ListingWizardContext.Provider>
+  );
+  return renderHook(() => useListingForm(), { wrapper: Wrapper });
+}
 
 describe("useListingForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseQuery.mockReturnValue({ minPhotosPerLot: 8 });
+  });
+
+  it("requires the configured minimum number of distinct photos on the media step", () => {
+    const { result } = renderMediaStep({
+      front: "a",
+      engine: "b",
+      additional: ["c", "c", "d"],
+    });
+    expect(result.current.getStepError(3)).toBe(
+      "At least 8 photos are required (you have 4)"
+    );
+  });
+
+  it("accepts the media step once the minimum is met", () => {
+    const { result } = renderMediaStep({
+      front: "a",
+      engine: "b",
+      cabin: "c",
+      rear: "d",
+      additional: ["e", "f", "g", "h"],
+    });
+    expect(result.current.getStepError(3)).toBeNull();
+  });
+
+  it("only requires one photo until the platform settings have loaded", () => {
+    mockUseQuery.mockReturnValue(undefined);
+    expect(renderMediaStep({}).result.current.getStepError(3)).toBe(
+      "At least one photo is required"
+    );
+    expect(
+      renderMediaStep({ front: "a" }).result.current.getStepError(3)
+    ).toBeNull();
   });
 
   it("should validate General Info step (step 0)", () => {

@@ -52,6 +52,7 @@ vi.mock("convex/_generated/api", () => ({
       verifyUser: "users:verifyUser",
       promoteToAdmin: "users:promoteToAdmin",
       getProfileForKYC: "users:getProfileForKYC",
+      adminSetSellerVatProfile: "users:adminSetSellerVatProfile",
     },
   },
 }));
@@ -571,6 +572,82 @@ describe("AdminUsers Page", () => {
       within(dialog).getByText("No documents uploaded.")
     ).toBeInTheDocument();
   });
+  describe("seller VAT profile", () => {
+    const sellerProfile = {
+      _id: "id6",
+      userId: "seller6",
+      name: "Karoo Dealers",
+      email: "karoo@example.com",
+      role: "seller",
+      isVerified: true,
+      kycStatus: "approved",
+      vatRegistered: false,
+      createdAt: Date.now(),
+    };
+
+    beforeEach(() => {
+      vi.mocked(usePaginatedQuery).mockReturnValue({
+        results: [...mockProfiles, sellerProfile],
+        status: "Exhausted",
+        loadMore: vi.fn(),
+        isLoading: false,
+      });
+    });
+
+    it("only offers the control for sellers", () => {
+      renderPage();
+      expect(
+        screen.getAllByRole("button", { name: "VAT & type" })
+      ).toHaveLength(1);
+    });
+
+    it("saves VAT registration and seller type", async () => {
+      const setProfile = vi.fn().mockResolvedValue(null);
+      mockMutations[api.users.adminSetSellerVatProfile as unknown as string] =
+        setProfile;
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "VAT & type" }));
+      fireEvent.change(await screen.findByLabelText("VAT registered"), {
+        target: { value: "registered" },
+      });
+      fireEvent.change(screen.getByLabelText("Seller type"), {
+        target: { value: "dealer" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(setProfile).toHaveBeenCalledWith({
+          userId: "seller6",
+          vatRegistered: true,
+          sellerType: "dealer",
+        });
+      });
+      expect(toast.success).toHaveBeenCalledWith("Seller VAT profile updated");
+      await waitFor(() => {
+        expect(screen.queryByLabelText("Seller type")).toBeNull();
+      });
+    });
+
+    it("shows an error toast when saving fails", async () => {
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {
+        // intentional no-op: suppress expected failure logging
+      });
+      mockMutations[api.users.adminSetSellerVatProfile as unknown as string] =
+        vi.fn().mockRejectedValue(new Error("Profile not found"));
+      renderPage();
+
+      fireEvent.click(screen.getByRole("button", { name: "VAT & type" }));
+      await screen.findByLabelText("Seller type");
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith("Profile not found");
+      });
+      errSpy.mockRestore();
+    });
+  });
+
   describe("seller response time", () => {
     const sellerProfile = {
       _id: "id5",

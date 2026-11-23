@@ -25,6 +25,7 @@ import {
 import { logActivity } from "./userActivity";
 import { sellerResponseTimeValidator } from "./lib/provinces";
 import { getPresenceThresholdMs } from "./presence";
+import { sellerTypeValidator, type SellerType } from "./lib/lotSpecs";
 import {
   MAX_PROFILE_BIO_LENGTH,
   MAX_PROFILE_FIELD_LENGTH,
@@ -60,6 +61,8 @@ export const ProfileValidator = v.object({
   phoneVerified: v.optional(v.boolean()),
   bankingVerified: v.optional(v.boolean()),
   taxNumberVerified: v.optional(v.boolean()),
+  vatRegistered: v.optional(v.boolean()),
+  sellerType: v.optional(sellerTypeValidator),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -263,6 +266,8 @@ export const listAllProfilesHandler = async (
       name: p.name,
       email: p.email,
       sellerResponseTime: p.sellerResponseTime,
+      vatRegistered: p.vatRegistered,
+      sellerType: p.sellerType,
       createdAt: p.createdAt,
       isOnline,
     };
@@ -294,6 +299,8 @@ export const listAllProfiles = query({
         name: v.optional(v.string()),
         email: v.optional(v.string()),
         sellerResponseTime: v.optional(sellerResponseTimeValidator),
+        vatRegistered: v.optional(v.boolean()),
+        sellerType: v.optional(sellerTypeValidator),
         createdAt: v.number(),
         isOnline: v.boolean(),
       })
@@ -739,11 +746,19 @@ export const deleteMyKYCDocument = mutation({
  * @param args.bio - Optional short biography for the profile.
  * @param args.location - Optional location of the user.
  * @param args.companyName - Optional company name of the user.
+ * @param args.vatRegistered - Optional VAT registration status of the seller.
+ * @param args.sellerType - Optional seller type.
  * @returns null on success.
  */
 export const updateMyProfileHandler = async (
   ctx: MutationCtx,
-  args: { bio?: string; location?: string; companyName?: string }
+  args: {
+    bio?: string;
+    location?: string;
+    companyName?: string;
+    vatRegistered?: boolean;
+    sellerType?: SellerType;
+  }
 ): Promise<null> => {
   const userId = await getAuthenticatedUserId(ctx);
 
@@ -800,7 +815,64 @@ export const updateMyProfile = mutation({
     bio: v.optional(v.string()),
     location: v.optional(v.string()),
     companyName: v.optional(v.string()),
+    vatRegistered: v.optional(v.boolean()),
+    sellerType: v.optional(sellerTypeValidator),
   },
   returns: v.null(),
   handler: updateMyProfileHandler,
+});
+
+/**
+ * Handler for the admin override of a seller's VAT profile.
+ * @param ctx - Mutation context.
+ * @param args - Target user and the fields to set.
+ * @param args.userId - The user id of the profile to update.
+ * @param args.vatRegistered - Whether the seller is VAT-registered.
+ * @param args.sellerType - The seller's type.
+ * @returns null on success.
+ */
+export const adminSetSellerVatProfileHandler = async (
+  ctx: MutationCtx,
+  args: { userId: string; vatRegistered?: boolean; sellerType?: SellerType }
+): Promise<null> => {
+  await requireAdmin(ctx);
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+    .unique();
+  if (!profile) throw new ConvexError("Profile not found");
+
+  await ctx.db.patch("profiles", profile._id, {
+    ...(args.vatRegistered !== undefined && {
+      vatRegistered: args.vatRegistered,
+    }),
+    ...(args.sellerType !== undefined && { sellerType: args.sellerType }),
+    updatedAt: Date.now(),
+  });
+
+  await logAudit(ctx, {
+    action: "UPDATE_SELLER_VAT_PROFILE",
+    targetId: args.userId,
+    targetType: "user",
+    details: JSON.stringify({
+      vatRegistered: args.vatRegistered,
+      sellerType: args.sellerType,
+    }),
+  });
+
+  return null;
+};
+
+/**
+ * Admin: Set a seller's VAT registration status and seller type.
+ */
+export const adminSetSellerVatProfile = mutation({
+  args: {
+    userId: v.string(),
+    vatRegistered: v.optional(v.boolean()),
+    sellerType: v.optional(sellerTypeValidator),
+  },
+  returns: v.null(),
+  handler: adminSetSellerVatProfileHandler,
 });

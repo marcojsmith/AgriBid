@@ -45,6 +45,11 @@ vi.mock("convex/_generated/api", () => ({
       },
     },
     admin: {
+      platformSettings: {
+        getPlatformSettings: {
+          _path: "admin:platformSettings:getPlatformSettings",
+        },
+      },
       categories: {
         addCategory: { _path: "admin:categories:addCategory" },
         updateCategory: { _path: "admin:categories:updateCategory" },
@@ -69,6 +74,11 @@ vi.mock("convex/react", () => ({
     const path = apiFunc?._path ?? "";
     if (path === "auctions:getCategories") {
       return [{ _id: "cat1", name: "Tractor", isActive: true }];
+    }
+    if (path === "admin:platformSettings:getPlatformSettings") {
+      // One photo keeps the step-by-step flow tests short; the minimum-photo
+      // rule itself is covered in useListingForm.test.tsx.
+      return { minPhotosPerLot: 1 };
     }
     return [];
   },
@@ -295,6 +305,72 @@ describe("ListingWizard Full Coverage", () => {
       expect(mockCreateAuction).toHaveBeenCalled();
       expect(screen.getByText(/Submission Received/i)).toBeInTheDocument();
     });
+  });
+
+  it("passes specs and kept photo angles to createLot", async () => {
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({
+        powerKw: 150,
+        drive: "4wd",
+        transmission: " CVT ",
+        imageAngles: { "test-storage-id": "front", stale: "rear" },
+      })
+    );
+    renderWizard();
+    await fillAllSteps();
+    await screen.findByText(/Review & Submit/i);
+
+    mockCreateAuction.mockResolvedValue({ success: true });
+    fireEvent.click(screen.getByRole("button", { name: /Submit Listing/i }));
+
+    await waitFor(() => {
+      expect(mockCreateAuction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          powerKw: 150,
+          drive: "4wd",
+          transmission: "CVT",
+          imageAngles: { "test-storage-id": "front" },
+        })
+      );
+    });
+  });
+
+  it("passes specs to saveDraft", async () => {
+    localStorage.setItem(
+      "agribid_listing_draft",
+      JSON.stringify({ categoryId: "cat1", serialNumber: "SN42" })
+    );
+    renderWizard();
+    mockSaveDraft.mockResolvedValue("draft-1");
+    // A hydrated draft reads "Saved" until a field is edited.
+    fireEvent.change(screen.getByLabelText(/Listing Title/i), {
+      target: { value: "Edited" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Save Draft/i }));
+
+    await waitFor(() => {
+      expect(mockSaveDraft).toHaveBeenCalledWith(
+        expect.objectContaining({ serialNumber: "SN42" })
+      );
+    });
+  });
+
+  it("blocks Next on the specs step when a spec is out of range", async () => {
+    renderWizard();
+    fillStep1();
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+    await screen.findByText(/Tractor/i);
+    fireEvent.click(screen.getByText(/Tractor/i));
+    fireEvent.click(screen.getByText(/John Deere/i));
+    fireEvent.click(screen.getByText(/6155R/i));
+    fireEvent.change(screen.getByLabelText("Front tyre (%)"), {
+      target: { value: "150" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Next Step/i }));
+    expect(
+      await screen.findByText("Front tyre must be between 0 and 100%")
+    ).toBeInTheDocument();
   });
 
   it("submits an existing draft (edit mode) successfully", async () => {

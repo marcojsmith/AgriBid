@@ -1,5 +1,9 @@
+import { useQuery } from "convex/react";
+import { api } from "convex/_generated/api";
+
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 import { STEPS } from "@/components/listing-wizard/constants";
+import { getLotSpecsError } from "@/lib/lotSpecs";
 
 /**
  * Custom hook for managing listing wizard form navigation and step validation.
@@ -8,6 +12,10 @@ import { STEPS } from "@/components/listing-wizard/constants";
  */
 export function useListingForm() {
   const { formData, currentStep, setCurrentStep } = useListingWizard();
+  const settings = useQuery(api.admin.platformSettings.getPlatformSettings);
+  // Until the settings load, only require one photo so the wizard is never
+  // blocked; the server enforces the real minimum on submit.
+  const minPhotosPerLot = settings?.minPhotosPerLot ?? 1;
 
   /**
    * Validates a specific wizard step.
@@ -43,7 +51,7 @@ export function useListingForm() {
         if (!formData.categoryId) return "Please select a category.";
         if (!formData.make) return "Please select a manufacturer.";
         if (!formData.model) return "Please select a model.";
-        return null;
+        return getLotSpecsError(formData);
       case 2: // Condition Checklist
         if (formData.conditionChecklist.engine === null)
           return "Please specify the engine condition.";
@@ -56,15 +64,18 @@ export function useListingForm() {
         return null;
       case 3: {
         // Media Gallery
-        const hasImages = !!(
-          formData.images.front ??
-          formData.images.engine ??
-          formData.images.cabin ??
-          formData.images.rear ??
-          formData.images.additional.length > 0
-        );
-        if (!hasImages) return "At least one photo is required";
-        return null;
+        const photoCount = new Set(
+          [
+            formData.images.front,
+            formData.images.engine,
+            formData.images.cabin,
+            formData.images.rear,
+            ...formData.images.additional,
+          ].filter((ref): ref is string => !!ref)
+        ).size;
+        if (photoCount >= minPhotosPerLot) return null;
+        if (minPhotosPerLot <= 1) return "At least one photo is required";
+        return `At least ${String(minPhotosPerLot)} photos are required (you have ${String(photoCount)})`;
       }
       case 4: // Pricing
         if (!formData.startingPrice || formData.startingPrice <= 0)

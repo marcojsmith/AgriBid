@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { SettingsCard } from "@/components/admin/SettingsCard";
+import { PlatformSettingsCards } from "@/components/admin/PlatformSettingsCards";
 import { VatRateCard } from "@/components/admin/VatRateCard";
 
 /**
@@ -53,6 +54,7 @@ export default function AdminSettings() {
     >
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
         <VatRateCard />
+        <PlatformSettingsCards />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <SettingsCard
             title="Branding"

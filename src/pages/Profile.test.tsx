@@ -1260,6 +1260,77 @@ describe("Profile Page", () => {
     );
   });
 
+  it("saves VAT registration and seller type from the edit form", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+    expect(screen.getByLabelText("VAT registered")).not.toBeChecked();
+    expect(screen.getByLabelText("Seller type")).toHaveValue("");
+    fireEvent.click(screen.getByLabelText("VAT registered"));
+    fireEvent.change(screen.getByLabelText("Seller type"), {
+      target: { value: "farming_business" },
+    });
+
+    await act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      return Promise.resolve();
+    });
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vatRegistered: true,
+        sellerType: "farming_business",
+      })
+    );
+  });
+
+  it("does not send a VAT status the user never touched", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    fireEvent.change(screen.getByLabelText(/location/i), {
+      target: { value: "Durban, KZN" },
+    });
+
+    await act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      return Promise.resolve();
+    });
+
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+    const sent = mockMutate.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(sent.vatRegistered).toBeUndefined();
+  });
+
+  it("starts the edit form from the stored VAT profile and can clear the type", () => {
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile)
+        return {
+          ...mockMyProfile,
+          profile: {
+            vatRegistered: true,
+            sellerType: "dealer",
+          },
+        };
+      if (apiPath === mockApi.auctions.getSellerInfo) return mockSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
+      return null;
+    });
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+
+    expect(screen.getByLabelText("VAT registered")).toBeChecked();
+    const select = screen.getByLabelText("Seller type");
+    expect(select).toHaveValue("dealer");
+    fireEvent.change(select, { target: { value: "" } });
+    expect(select).toHaveValue("");
+  });
+
   it("handles single-word name for getInitials", () => {
     const shortNameSellerInfo = {
       ...mockSellerInfo,

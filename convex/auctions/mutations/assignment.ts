@@ -1,7 +1,9 @@
 import { v, ConvexError } from "convex/values";
 
 import { mutation } from "../../_generated/server";
+import { getBuyerPremiumPct } from "../../admin/platformSettings";
 import { requireAdmin } from "../../lib/auth";
+import { percentToFraction } from "../../lib/buyerPremium";
 import { issueNextLotNumber } from "../../lib/lotCounters";
 import { adjustLotStatusCounters } from "../../lots/mutations/helpers";
 import type { Id } from "../../_generated/dataModel";
@@ -12,10 +14,19 @@ import type { MutationCtx } from "../../_generated/server";
  * The target auction does not need to be published yet: admins may pre-stage
  * lots into a `draft` auction before publishing it.
  *
- * Snapshots the auction's fee defaults (`defaultBuyerPremiumPct`/
- * `defaultSellerCommissionPct`) onto the lot's `resolvedBuyerPremiumPct`/
- * `resolvedSellerCommissionPct` fields so later auction edits cannot
- * retroactively change this lot's fees (issue #318).
+ * Snapshots, so later edits cannot retroactively change this lot:
+ * - the auction's fee defaults (`defaultBuyerPremiumPct`/
+ *   `defaultSellerCommissionPct`) onto `resolvedBuyerPremiumPct`/
+ *   `resolvedSellerCommissionPct` (issue #318). The buyer premium is always
+ *   snapshotted: from the auction with `premiumSource: "auction"`, otherwise
+ *   the platform default (percent -> fraction, 4 dp) with `premiumSource:
+ *   "platform"`. Settlement decides which premium actually applies (see
+ *   `resolveBuyerPremium`), so the buyer is never charged twice. The seller
+ *   commission is snapshotted only when the auction sets one, with
+ *   `commissionSource: "auction"`; it then replaces active seller % fee rows
+ *   (see `resolveSellerCommission`).
+ * - the seller's VAT status and type from their profile (unset stays
+ *   undefined, i.e. unknown, which is treated as VAT-registered).
  *
  * @param ctx - Mutation context.
  * @param args - The lot and target auction ids.
@@ -47,15 +58,33 @@ export const assignLotToAuctionHandler = async (
     throw new ConvexError("Cannot assign lots to a closed auction");
   }
 
-  // Resolve the auction's fee defaults onto the lot now, so later edits to the
-  // auction's defaults cannot change an already-assigned lot's fees (issue #318).
+  const premiumSource =
+    auction.defaultBuyerPremiumPct !== undefined
+      ? ("auction" as const)
+      : ("platform" as const);
+  const resolvedBuyerPremiumPct =
+    auction.defaultBuyerPremiumPct ??
+    percentToFraction(await getBuyerPremiumPct(ctx));
+
+  const sellerProfile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
+    .unique();
+
   const lotNumber = await issueNextLotNumber(ctx, args.auctionId);
   await ctx.db.patch("lots", args.lotId, {
     auctionId: args.auctionId,
     lotNumber,
     status: "assigned",
-    resolvedBuyerPremiumPct: auction.defaultBuyerPremiumPct,
+    resolvedBuyerPremiumPct,
+    premiumSource,
     resolvedSellerCommissionPct: auction.defaultSellerCommissionPct,
+    commissionSource:
+      auction.defaultSellerCommissionPct !== undefined
+        ? ("auction" as const)
+        : undefined,
+    sellerVatRegistered: sellerProfile?.vatRegistered,
+    sellerType: sellerProfile?.sellerType,
   });
   await adjustLotStatusCounters(ctx, "approved", "assigned");
 

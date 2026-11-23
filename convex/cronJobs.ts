@@ -16,6 +16,10 @@ import {
 } from "./auctions/internal";
 import { CRON_JOBS, cronSettingKey, findCronJob } from "./cronRegistry";
 import type { CronJobKey } from "./cronRegistry";
+import {
+  purgeLotViewersHandler,
+  refreshEngagementScoresHandler,
+} from "./engagement";
 import { requireAdmin } from "./lib/auth";
 import { runOrphanSweep } from "./storageCleanup";
 
@@ -193,6 +197,44 @@ export const cleanupPresenceRecords = internalMutation({
     }
     await ctx.runMutation(internal.presence.cleanup, {});
     return null;
+  },
+});
+
+/**
+ * Cron wrapper: purge stale lot-viewer dedupe rows unless the job is disabled.
+ */
+export const purgeLotViewers = internalMutation({
+  args: {},
+  returns: v.object({ deleted: v.number(), hasMore: v.boolean() }),
+  handler: async (ctx) => {
+    if (!(await isCronJobEnabled(ctx, "purge_lot_viewers"))) {
+      return { deleted: 0, hasMore: false };
+    }
+    const result = await purgeLotViewersHandler(ctx);
+    if (result.hasMore) {
+      // Keep draining the backlog; the rescheduled run re-checks the gate.
+      await ctx.scheduler.runAfter(0, internal.cronJobs.purgeLotViewers, {});
+    }
+    return result;
+  },
+});
+
+/**
+ * Cron wrapper: refresh the precomputed engagement scores unless the job is
+ * disabled.
+ */
+export const refreshEngagementScores = internalMutation({
+  args: {},
+  returns: v.object({
+    auctions: v.number(),
+    upserted: v.number(),
+    removed: v.number(),
+  }),
+  handler: async (ctx) => {
+    if (!(await isCronJobEnabled(ctx, "refresh_engagement_scores"))) {
+      return { auctions: 0, upserted: 0, removed: 0 };
+    }
+    return await refreshEngagementScoresHandler(ctx);
   },
 });
 

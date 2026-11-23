@@ -5,6 +5,12 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { resolveUrlCached } from "../image_cache";
 import { getWatcherCount } from "../lib/lotCounters";
 import { provinceValidator } from "../lib/provinces";
+import {
+  driveValidator,
+  imageAnglesValidator,
+  SELLER_TYPE_LABELS,
+} from "../lib/lotSpecs";
+import { resolveLotSellerVat } from "../lib/sellerVat";
 
 export interface RawImages {
   front?: string;
@@ -346,6 +352,16 @@ export const LotDetailValidator = v.object({
   winnerId: v.optional(v.union(v.string(), v.null())),
   seedId: v.optional(v.string()),
   conditionReportUrl: v.optional(v.string()),
+  powerKw: v.optional(v.number()),
+  drive: v.optional(driveValidator),
+  transmission: v.optional(v.string()),
+  frontTyrePct: v.optional(v.number()),
+  rearTyrePct: v.optional(v.number()),
+  serialNumber: v.optional(v.string()),
+  imageAngles: v.optional(imageAnglesValidator),
+  coldStartVideoUrl: v.optional(v.string()),
+  sellerVatKind: v.union(v.literal("vat"), v.literal("private")),
+  sellerTypeLabel: v.optional(v.string()),
 });
 
 /**
@@ -375,6 +391,10 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
       getWatcherCount(ctx, lot._id),
     ]);
   const isAuthenticated = identity !== null;
+  const sellerVat = resolveLotSellerVat(lot, sellerProfile);
+  const coldStartVideoUrl = lot.coldStartVideo
+    ? ((await ctx.storage.getUrl(lot.coldStartVideo)) ?? undefined)
+    : undefined;
 
   return {
     _id: lot._id,
@@ -413,6 +433,18 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     seedId: lot.seedId,
     conditionReportUrl: lot.conditionReportUrl,
     conditionChecklist: lot.conditionChecklist,
+    powerKw: lot.powerKw,
+    drive: lot.drive,
+    transmission: lot.transmission,
+    frontTyrePct: lot.frontTyrePct,
+    rearTyrePct: lot.rearTyrePct,
+    serialNumber: lot.serialNumber,
+    imageAngles: lot.imageAngles,
+    coldStartVideoUrl,
+    sellerVatKind: sellerVat.vatKind,
+    sellerTypeLabel: sellerVat.sellerType
+      ? SELLER_TYPE_LABELS[sellerVat.sellerType]
+      : undefined,
     images: await resolveImageUrls(ctx.storage, lot.images),
   };
 }

@@ -131,6 +131,8 @@ export default function Profile() {
                   bio: myProfile.profile.bio,
                   location: myProfile.profile.location,
                   companyName: myProfile.profile.companyName,
+                  vatRegistered: myProfile.profile.vatRegistered,
+                  sellerType: myProfile.profile.sellerType,
                 }
               : undefined
           }

@@ -8,6 +8,7 @@ import {
   AlertCircle,
   MapPin,
   Search,
+  Wrench,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -43,6 +44,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatCurrency } from "@/lib/currency";
+import type { LotSpecValues } from "@/lib/lotSpecs";
+import { getErrorMessage } from "@/lib/utils";
 import type { Province } from "@/lib/provinces";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
@@ -51,6 +54,7 @@ import { useBulkOperations } from "@/hooks/admin/useBulkOperations";
 
 import { BulkActionDialog } from "./dialogs/BulkActionDialog";
 import { LotProvinceDialog } from "./dialogs/LotProvinceDialog";
+import { LotSpecsDialog } from "./dialogs/LotSpecsDialog";
 
 /**
  * Format time remaining until a given timestamp.
@@ -152,6 +156,28 @@ export default function AdminLots() {
       toast.error("Failed to update province");
     } finally {
       setIsSavingProvince(false);
+    }
+  };
+
+  const [specsLot, setSpecsLot] = useState<LotSummary | null>(null);
+  const [isSavingSpecs, setIsSavingSpecs] = useState(false);
+
+  /**
+   * Saves the filled-in specs for the lot being edited.
+   * @param specs - The spec values to store.
+   */
+  const handleSaveSpecs = async (specs: LotSpecValues): Promise<void> => {
+    if (!specsLot) return;
+    setIsSavingSpecs(true);
+    try {
+      await adminUpdateLot({ lotId: specsLot._id, updates: specs });
+      toast.success("Lot specs updated");
+      setSpecsLot(null);
+    } catch (err) {
+      console.error("Failed to update lot specs:", err);
+      toast.error(getErrorMessage(err, "Failed to update specs"));
+    } finally {
+      setIsSavingSpecs(false);
     }
   };
 
@@ -470,6 +496,14 @@ export default function AdminLots() {
                           >
                             <MapPin className="h-4 w-4" /> Set Province
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSpecsLot(a);
+                            }}
+                            className="rounded-lg font-bold gap-2"
+                          >
+                            <Wrench className="h-4 w-4" /> Edit Specs
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive font-bold rounded-lg gap-2"
@@ -515,6 +549,16 @@ export default function AdminLots() {
         }}
         onClear={() => {
           void handleSaveProvince(null);
+        }}
+      />
+      <LotSpecsDialog
+        lot={specsLot}
+        isSaving={isSavingSpecs}
+        onClose={() => {
+          setSpecsLot(null);
+        }}
+        onSave={(specs) => {
+          void handleSaveSpecs(specs);
         }}
       />
       <BulkActionDialog

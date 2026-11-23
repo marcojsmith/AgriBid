@@ -61,6 +61,12 @@ async function seedWorld(t: TestContext): Promise<World> {
         updatedAt: now,
       });
     }
+    // Fixtures submit lots with a single photo; relax the minimum-photos gate.
+    await ctx.db.insert("settings", {
+      key: "min_photos_per_lot",
+      value: 1,
+      updatedAt: now,
+    });
     const categoryId = await ctx.db.insert("equipmentCategories", {
       name: "Tractors",
       isActive: true,

@@ -1,3 +1,4 @@
+import type { LotSpecValues, PhotoAngle } from "@/lib/lotSpecs";
 import type { Province } from "@/lib/provinces";
 
 /**
@@ -38,7 +39,9 @@ export interface ListingImages {
  * Complete form data structure for creating or editing a listing.
  * Used throughout the listing wizard to manage form state.
  */
-export interface ListingFormData {
+export interface ListingFormData extends LotSpecValues {
+  /** Angle caption per uploaded image (image reference -> angle) */
+  imageAngles?: Record<string, PhotoAngle>;
   /** The Convex document ID if this draft has been saved to the server */
   lotId?: string;
   /** Manufacturing year of the equipment */

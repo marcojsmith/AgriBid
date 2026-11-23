@@ -24,10 +24,15 @@ import {
   type AdminProfile,
 } from "@/hooks/admin/useUserManagement";
 import type { SellerResponseTime } from "@/lib/provinces";
+import { getErrorMessage } from "@/lib/utils";
 
 import { KycReviewDialog } from "./dialogs/KycReviewDialog";
 import { PromoteAdminDialog } from "./dialogs/PromoteAdminDialog";
 import { SellerResponseTimeDialog } from "./dialogs/SellerResponseTimeDialog";
+import {
+  SellerVatProfileDialog,
+  type SellerVatProfileValues,
+} from "./dialogs/SellerVatProfileDialog";
 
 /**
  * Render the Admin Users page with search, paginated user list, status indicators and actions for KYC review, manual verification and promotion.
@@ -92,6 +97,31 @@ export default function AdminUsers() {
       toast.error("Failed to update response time");
     } finally {
       setIsSavingResponseTime(false);
+    }
+  };
+
+  const setSellerVatProfile = useMutation(api.users.adminSetSellerVatProfile);
+  const [vatTarget, setVatTarget] = useState<AdminProfile | null>(null);
+  const [isSavingVat, setIsSavingVat] = useState(false);
+
+  /**
+   * Saves the seller's VAT registration and type and closes the dialog on success.
+   * @param values - The chosen VAT registration and seller type.
+   */
+  const handleSaveVatProfile = async (
+    values: SellerVatProfileValues
+  ): Promise<void> => {
+    if (!vatTarget) return;
+    setIsSavingVat(true);
+    try {
+      await setSellerVatProfile({ userId: vatTarget.userId, ...values });
+      toast.success("Seller VAT profile updated");
+      setVatTarget(null);
+    } catch (err) {
+      console.error("Failed to set seller VAT profile:", err);
+      toast.error(getErrorMessage(err, "Failed to update seller VAT profile"));
+    } finally {
+      setIsSavingVat(false);
     }
   };
 
@@ -272,6 +302,18 @@ export default function AdminUsers() {
                             Response time
                           </Button>
                         )}
+                        {p.role === "seller" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border font-semibold text-xs"
+                            onClick={() => {
+                              setVatTarget(p);
+                            }}
+                          >
+                            VAT &amp; type
+                          </Button>
+                        )}
                         {p.role !== "admin" && (
                           <Button
                             size="sm"
@@ -336,6 +378,16 @@ export default function AdminUsers() {
         }}
         onSave={(responseTime) => {
           void handleSaveResponseTime(responseTime);
+        }}
+      />
+      <SellerVatProfileDialog
+        user={vatTarget}
+        isSaving={isSavingVat}
+        onClose={() => {
+          setVatTarget(null);
+        }}
+        onSave={(values) => {
+          void handleSaveVatProfile(values);
         }}
       />
       <PromoteAdminDialog

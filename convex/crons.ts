@@ -45,6 +45,25 @@ crons.interval(
 );
 
 /**
+ * Daily job to purge lot-viewer dedupe records older than 24 hours.
+ */
+crons.interval(
+  "purge lot viewers",
+  { hours: 24 },
+  internal.cronJobs.purgeLotViewers
+);
+
+/**
+ * Rebuild the precomputed lot engagement scores of live auctions every 5
+ * minutes (reads counters only; powers `getMostEngagedLots`).
+ */
+crons.interval(
+  "refresh engagement scores",
+  { minutes: 5 },
+  internal.cronJobs.refreshEngagementScores
+);
+
+/**
  * Daily job to process error reports and create GitHub issues.
  * Runs at 2 AM UTC to avoid peak hours.
  */

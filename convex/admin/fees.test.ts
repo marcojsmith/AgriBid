@@ -60,7 +60,15 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
     lotFees: MockLotFee[] = []
   ) => {
     const platformFees = new Map(
-      lotFees.map((f) => [f.feeId, { _id: f.feeId, isActive: true }])
+      lotFees.map((f) => [
+        f.feeId,
+        {
+          _id: f.feeId,
+          isActive: true,
+          feeType: f.feeType,
+          appliesTo: f.appliedTo,
+        },
+      ])
     );
     const mockDb = {
       get: vi.fn().mockImplementation((table: string, id: unknown) => {
@@ -76,6 +84,8 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
       }),
       query: vi.fn().mockImplementation((table: string) => ({
         withIndex: vi.fn().mockReturnThis(),
+        // No `settings` row: the platform buyer premium default applies.
+        unique: vi.fn().mockResolvedValue(null),
         collect: vi
           .fn()
           .mockResolvedValue(
@@ -256,7 +266,7 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
     ]);
   });
 
-  it("excludes fees tied to an inactive platform fee", async () => {
+  it("keeps ledger rows tied to an inactive platform fee and never resolves live settings", async () => {
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       _id: sellerId,
       userId: sellerId,
@@ -282,6 +292,7 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
       (table: string) =>
         ({
           withIndex: vi.fn().mockReturnThis(),
+          unique: vi.fn().mockResolvedValue(null),
           collect: vi.fn().mockResolvedValue(
             table === "lotFees"
               ? [
@@ -301,7 +312,20 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
 
     const result = await getLotFeesForUserHandler(ctx, { lotId });
 
-    expect(result).toEqual({ buyerFees: [], sellerFees: [] });
+    // The lot has ledger rows, so it is settled: the persisted row is shown as
+    // charged (its platform fee is inactive/absent) and no live platform
+    // premium is resolved.
+    expect(result).toEqual({
+      buyerFees: [],
+      sellerFees: [
+        {
+          feeName: "Stale Fee",
+          feeType: "fixed",
+          rate: 100,
+          calculatedAmount: 100,
+        },
+      ],
+    });
   });
 
   it("throws when the lot does not exist", async () => {

@@ -172,6 +172,22 @@ describe("Delete Mutations", () => {
       spy.mockRestore();
     });
 
+    it("deletes the cold start video file with the draft", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({
+        _id: "a1",
+        sellerId: "u1",
+        status: "draft",
+        coldStartVideo: "video1",
+      });
+
+      await deleteDraftHandler(mockCtx as unknown as MutationCtx, {
+        lotId: "a1" as Id<"lots">,
+      });
+
+      expect(mockCtx.storage.delete).toHaveBeenCalledWith("video1");
+    });
+
     it("should throw if auction not found", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
       mockCtx.db.get.mockResolvedValue(null);

@@ -1,10 +1,19 @@
-import { v, ConvexError } from "convex/values";
+import { v, ConvexError, type ObjectType } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
 import { safeDelete } from "../../lib/storage";
 import { provinceValidator, type Province } from "../../lib/provinces";
 import { logAudit } from "../../admin_utils";
+import {
+  assertImageAnglesMatchImages,
+  assertValidColdStartVideo,
+  assertValidLotSpecs,
+  deleteReplacedColdStartVideo,
+  lotSpecEditFields,
+  sellerTypeValidator,
+  type SellerType,
+} from "../../lib/lotSpecs";
 import {
   MAX_ADDITIONAL_IMAGES,
   PRICE_THRESHOLD_FOR_INCREMENT,
@@ -15,6 +24,7 @@ import {
 import {
   assertLotOwnership,
   assertLotEditable,
+  assertMinPhotosOnEdit,
   validateLotBeforeSubmit,
   adjustLotStatusCounters,
 } from "../../lots/mutations/helpers";
@@ -155,6 +165,9 @@ export const updateLotHandler = async (
       reservePrice: updates.reservePrice ?? lot.reservePrice,
       images: updates.images ?? lot.images,
     });
+    if (updates.images) {
+      await assertMinPhotosOnEdit(ctx, lot.images, updates.images);
+    }
   }
 
   await ctx.db.patch("lots", args.lotId, updates);
@@ -259,7 +272,7 @@ export const adminUpdateLotHandler = async (
       reservePrice?: number;
       status?: AdminLotStatus;
       currentPrice?: number;
-    };
+    } & ObjectType<typeof lotSpecEditFields>;
   }
 ) => {
   await requireAdmin(ctx);
@@ -271,17 +284,29 @@ export const adminUpdateLotHandler = async (
   const lot = await ctx.db.get("lots", args.lotId);
   if (!lot) throw new ConvexError("Lot not found");
 
+  assertValidLotSpecs(args.updates);
+  assertImageAnglesMatchImages(args.updates.imageAngles, lot.images);
+  // Re-attaching the video the lot already has is a no-op, not re-validated.
+  if (args.updates.coldStartVideo !== lot.coldStartVideo) {
+    await assertValidColdStartVideo(ctx, args.updates.coldStartVideo);
+  }
+
   const oldStatus = lot.status;
   const newStatus = args.updates.status;
 
-  const { clearProvince, ...fieldUpdates } = args.updates;
+  const { clearProvince, coldStartVideo, ...fieldUpdates } = args.updates;
   const patchData: typeof fieldUpdates & {
+    coldStartVideo?: Id<"_storage">;
     hiddenByFlags?: boolean;
     currentPrice?: number;
     minIncrement?: number;
   } = {
     ...fieldUpdates,
   };
+  // `null` removes the video (patching with `undefined` unsets the field).
+  if (coldStartVideo !== undefined) {
+    patchData.coldStartVideo = coldStartVideo ?? undefined;
+  }
   // Patching a field with `undefined` removes it from the document.
   if (clearProvince) {
     patchData.province = undefined;
@@ -307,6 +332,7 @@ export const adminUpdateLotHandler = async (
   }
 
   await ctx.db.patch("lots", args.lotId, patchData);
+  await deleteReplacedColdStartVideo(ctx, lot.coldStartVideo, coldStartVideo);
 
   if (newStatus && oldStatus !== newStatus) {
     await adjustLotStatusCounters(ctx, oldStatus, newStatus);
@@ -340,10 +366,81 @@ export const adminUpdateLot = mutation({
       reservePrice: v.optional(v.number()),
       status: v.optional(ADMIN_LOT_STATUS_UNION),
       currentPrice: v.optional(v.number()),
+      ...lotSpecEditFields,
     }),
   },
   returns: v.object({ success: v.boolean() }),
   handler: adminUpdateLotHandler,
+});
+
+/**
+ * Handler for the admin correction of a lot's snapshotted seller VAT status and
+ * type. Omitted fields are left unchanged. Profile edits never touch assigned
+ * lots, so this is how an admin fixes a single lot.
+ *
+ * @param ctx - Mutation context
+ * @param args - Arguments
+ * @param args.lotId - The lot to correct
+ * @param args.sellerVatRegistered - New VAT-registration snapshot
+ * @param args.sellerType - New seller-type snapshot
+ * @returns Object with success boolean
+ */
+export const adminSetLotSellerVatHandler = async (
+  ctx: MutationCtx,
+  args: {
+    lotId: Id<"lots">;
+    sellerVatRegistered?: boolean;
+    sellerType?: SellerType;
+  }
+): Promise<{ success: boolean }> => {
+  await requireAdmin(ctx);
+
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot) throw new ConvexError("Lot not found");
+
+  const patch = {
+    ...(args.sellerVatRegistered !== undefined && {
+      sellerVatRegistered: args.sellerVatRegistered,
+    }),
+    ...(args.sellerType !== undefined && { sellerType: args.sellerType }),
+  };
+  if (Object.keys(patch).length === 0) {
+    throw new ConvexError("Provide a VAT status or seller type to set");
+  }
+
+  await ctx.db.patch("lots", args.lotId, patch);
+
+  await logAudit(ctx, {
+    action: "UPDATE_LOT_SELLER_VAT",
+    targetId: args.lotId,
+    targetType: "lot",
+    details: JSON.stringify({
+      before: {
+        sellerVatRegistered: lot.sellerVatRegistered,
+        sellerType: lot.sellerType,
+      },
+      after: {
+        sellerVatRegistered:
+          args.sellerVatRegistered ?? lot.sellerVatRegistered,
+        sellerType: args.sellerType ?? lot.sellerType,
+      },
+    }),
+  });
+
+  return { success: true };
+};
+
+/**
+ * Admin: set a lot's snapshotted seller VAT status and seller type.
+ */
+export const adminSetLotSellerVat = mutation({
+  args: {
+    lotId: v.id("lots"),
+    sellerVatRegistered: v.optional(v.boolean()),
+    sellerType: v.optional(sellerTypeValidator),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: adminSetLotSellerVatHandler,
 });
 
 /**

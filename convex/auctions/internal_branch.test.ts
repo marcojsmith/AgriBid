@@ -360,6 +360,22 @@ describe("Internal Mutations Branch Coverage", () => {
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("storage1");
     });
 
+    it("deletes the cold start video of an abandoned draft", async () => {
+      const lot = {
+        _id: "a1" as Id<"lots">,
+        images: {},
+        coldStartVideo: "video1",
+      };
+
+      mockCtx.db.query.mockReturnValue({
+        withIndex: vi.fn().mockReturnThis(),
+        collect: vi.fn().mockResolvedValue([lot]),
+      });
+
+      await cleanupDraftsHandler(mockCtx as unknown as MutationCtx);
+      expect(mockCtx.storage.delete).toHaveBeenCalledWith("video1");
+    });
+
     it("handles storage delete failure", async () => {
       const lot = {
         _id: "a1" as Id<"lots">,
