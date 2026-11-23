@@ -64,6 +64,41 @@ describe("useLotBid", () => {
     expect(result.current.amount).toBe(414_000);
   });
 
+  it("Cancel returns the field to the live minimum", () => {
+    const { result } = setup(414_000);
+    act(() => {
+      result.current.startBid(430_000);
+    });
+    act(() => {
+      result.current.closeConfirm();
+    });
+    expect(result.current.amount).toBe(414_000);
+  });
+
+  it("ignores a second confirm while one is in flight", async () => {
+    let release: (value: unknown) => void = () => undefined;
+    placeBid.mockReturnValue(
+      new Promise((resolve) => {
+        release = resolve;
+      })
+    );
+    const { result } = setup();
+    act(() => {
+      result.current.startBid();
+    });
+    let first: Promise<void> = Promise.resolve();
+    await act(async () => {
+      first = result.current.confirm();
+      void result.current.confirm();
+      await Promise.resolve();
+    });
+    expect(placeBid).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release({ success: true });
+      await first;
+    });
+  });
+
   it("opens the confirm sheet, optionally at an amount, and closes it", () => {
     const { result } = setup();
     act(() => {

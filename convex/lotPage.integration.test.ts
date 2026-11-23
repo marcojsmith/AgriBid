@@ -9,11 +9,7 @@ import { describe, expect, it } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api } from "./_generated/api";
-import {
-  hashText,
-  LOT_BID_HISTORY_LIMIT,
-  maskedBidderLabel,
-} from "./auctions/queries/lotPage";
+import { LOT_BID_HISTORY_LIMIT } from "./auctions/queries/lotPage";
 import { bidCounterName } from "./lib/lotCounters";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
@@ -91,29 +87,6 @@ async function insertBids(
   });
 }
 
-describe("maskedBidderLabel", () => {
-  it("is stable per bidder and lot, shaped like 'Bidder 7••41'", () => {
-    const label = maskedBidderLabel("user-1", "lot-1", "salt");
-    expect(label).toMatch(/^Bidder \d••\d\d$/);
-    expect(maskedBidderLabel("user-1", "lot-1", "salt")).toBe(label);
-  });
-
-  it("does not contain the user id and changes with the salt", () => {
-    const labels = new Set(
-      ["a", "b", "c", "d", "e", "f"].map((salt) =>
-        maskedBidderLabel("user-1", "lot-1", salt)
-      )
-    );
-    expect(labels.size).toBeGreaterThan(1);
-    expect(maskedBidderLabel("user-1", "lot-1", "s")).not.toContain("user-1");
-  });
-
-  it("hashes to a non-negative integer", () => {
-    expect(hashText("anything")).toBeGreaterThanOrEqual(0);
-    expect(Number.isInteger(hashText("anything"))).toBe(true);
-  });
-});
-
 describe("getLotBidHistory", () => {
   it("masks other bidders, shows 'You', skips voided bids and counts valid ones", async () => {
     const t = createTestContext();
@@ -132,7 +105,7 @@ describe("getLotBidHistory", () => {
     expect(asAlice.bids.map((bid) => bid.amount)).toEqual([130, 110]);
     expect(asAlice.bids.map((bid) => bid.isMine)).toEqual([false, true]);
     expect(asAlice.bids[1]?.label).toBe("You");
-    expect(asAlice.bids[0]?.label).toMatch(/^Bidder \d••\d\d$/);
+    expect(asAlice.bids[0]?.label).toBe("Bidder 2");
     expect(JSON.stringify(asAlice)).not.toContain(BOB);
     expect(JSON.stringify(asAlice)).not.toContain(ALICE);
   });

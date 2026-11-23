@@ -497,17 +497,35 @@ describe("toLotDetail", () => {
       rate: undefined,
     });
     fees.active = [
-      { feeType: "percentage", appliesTo: "buyer", value: 8 },
-      { feeType: "percentage", appliesTo: "both", value: 2 },
-      { feeType: "percentage", appliesTo: "seller", value: 5 },
+      { feeType: "percentage", appliesTo: "buyer", value: 0.08 },
+      { feeType: "percentage", appliesTo: "both", value: 0.02 },
+      { feeType: "percentage", appliesTo: "seller", value: 0.05 },
       { feeType: "fixed", appliesTo: "buyer", value: 99 },
+      { feeType: "fixed", appliesTo: "both", value: 1 },
+      { feeType: "fixed", appliesTo: "seller", value: 500 },
     ];
     mockCtx = setupMockCtx(null, true);
 
     const result = await toLotDetail(mockCtx, createMockLot());
     fees.active = [];
 
-    expect(result.buyerPremiumFraction).toBe(0.1);
+    expect(result.buyerPremiumFraction).toBeCloseTo(0.1, 10);
+    expect(result.buyerFixedFees).toBe(100);
+  });
+
+  it("uses the snapshot rate and the platform default for the other sources", async () => {
+    mockCtx = setupMockCtx(null, true);
+    const snapshot = await toLotDetail(mockCtx, createMockLot());
+    expect(snapshot.buyerPremiumFraction).toBe(0.12);
+    expect(snapshot.buyerFixedFees).toBe(0);
+
+    const buyerPremium = await import("../lib/buyerPremium");
+    vi.mocked(buyerPremium.resolveBuyerPremium).mockResolvedValueOnce({
+      source: "platformDefault",
+      rate: 0.1,
+    });
+    const fallback = await toLotDetail(mockCtx, createMockLot());
+    expect(fallback.buyerPremiumFraction).toBe(0.1);
   });
 
   it("treats a seller stored under the auth user id as the seller", async () => {
@@ -589,6 +607,7 @@ describe("toLotDetail", () => {
         return profilesQuery;
       }),
       unique: vi.fn().mockResolvedValue(createMockSellerProfile()),
+      collect: vi.fn().mockResolvedValue([]),
     };
     (mockCtx.db.query as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
       profilesQuery

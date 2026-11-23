@@ -14,49 +14,35 @@ export const LOT_BID_HISTORY_LIMIT = 20;
 /** Bids read to find the caller's own highest bid on one lot. */
 const MY_BIDS_READ_CAP = 200;
 
-/**
- * Hash used to mask bidder ids. Not a security boundary on its own: the salt
- * (`BIDDER_LABEL_SALT`) is server-side only, so labels cannot be matched back
- * to a user id by anyone who lacks it.
- *
- * @param text - The text to hash
- * @returns A non-negative 53-bit integer
- */
-export function hashText(text: string): number {
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c6ce57;
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    h1 = Math.imul(h1 ^ code, 2654435761);
-    h2 = Math.imul(h2 ^ code, 1597334677);
-  }
-  h1 =
-    Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^
-    Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 =
-    Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^
-    Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
-}
+/** Bids read (oldest first) to number a lot's bidders in first-bid order. */
+const BIDDER_ORDINAL_READ_CAP = 500;
 
 /**
- * The masked label of a bidder on one lot: "Bidder 7••41". Stable for a given
- * bidder and lot, different across lots, and not reversible to the user id.
+ * Numbers a lot's bidders in the order they first bid: "Bidder 1", "Bidder 2".
+ * Per-lot, stable as bids arrive, collision-free, and carries nothing derived
+ * from the user id, so it cannot be matched back to anyone. Bidders beyond the
+ * read cap are labelled "Bidder".
  *
- * @param bidderId - The bidder's user id
+ * @param ctx - Query context
  * @param lotId - The lot
- * @param salt - Server-side salt
- * @returns The label
+ * @returns Map of bidder id to label
  */
-export function maskedBidderLabel(
-  bidderId: string,
-  lotId: string,
-  salt: string
-): string {
-  const digits = String(
-    hashText(`${salt}:${lotId}:${bidderId}`) % 1000
-  ).padStart(3, "0");
-  return `Bidder ${digits[0]}••${digits.slice(1)}`;
+async function bidderLabels(
+  ctx: QueryCtx,
+  lotId: Id<"lots">
+): Promise<Map<string, string>> {
+  const rows = await ctx.db
+    .query("bids")
+    .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+    .order("asc")
+    .take(BIDDER_ORDINAL_READ_CAP);
+  const labels = new Map<string, string>();
+  for (const bid of rows) {
+    if (!labels.has(bid.bidderId)) {
+      labels.set(bid.bidderId, `Bidder ${String(labels.size + 1)}`);
+    }
+  }
+  return labels;
 }
 
 /** Validator for one row of the public bid history. */
@@ -98,7 +84,7 @@ export async function getLotBidHistoryHandler(
 
   const authUser = await getAuthUser(ctx);
   const myId = authUser ? resolveUserId(authUser) : null;
-  const salt = process.env.BIDDER_LABEL_SALT ?? "agribid-bidder-label";
+  const labels = await bidderLabels(ctx, lot._id);
 
   const rows = await ctx.db
     .query("bids")
@@ -116,7 +102,7 @@ export async function getLotBidHistoryHandler(
         _id: bid._id,
         amount: bid.amount,
         timestamp: bid.timestamp,
-        label: isMine ? "You" : maskedBidderLabel(bid.bidderId, lot._id, salt),
+        label: isMine ? "You" : (labels.get(bid.bidderId) ?? "Bidder"),
         isMine,
       };
     }),

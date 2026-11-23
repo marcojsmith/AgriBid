@@ -401,6 +401,8 @@ export const LotDetailValidator = v.object({
   bidCount: v.number(),
   /** Buyer's premium for this lot as a fraction (0.12 = 12%). */
   buyerPremiumFraction: v.number(),
+  /** Active fixed buyer fees in rand (charged at settlement, before VAT). */
+  buyerFixedFees: v.number(),
   isSeller: v.boolean(),
   isWinner: v.boolean(),
   durationDays: v.optional(v.number()),
@@ -442,23 +444,36 @@ export const LotDetailValidator = v.object({
 });
 
 /**
- * The buyer premium (as a fraction) that settlement charges when it comes from
- * the active buyer percentage fee rows: their sum. Falls back to the platform
- * default when no such row is active.
+ * The buyer fees settlement charges from the active fee rows. `platformFees.value`
+ * is already a fraction for percentage rows (settlement does `price * value`),
+ * so the premium is the plain sum of the active buyer percentage rows.
  *
  * @param ctx - Query context
- * @returns The premium as a fraction (0.12 = 12%)
+ * @returns The percentage-row premium (undefined when no such row is active)
+ *   and the sum of the active fixed buyer fees in rand
  */
-async function activeBuyerPremiumFraction(ctx: QueryCtx): Promise<number> {
+async function activeBuyerFees(
+  ctx: QueryCtx
+): Promise<{ rowsFraction: number | undefined; fixedFees: number }> {
   const fees = await ctx.db
     .query("platformFees")
     .withIndex("by_active", (q) => q.eq("isActive", true))
     .collect();
-  const rows = fees.filter(isBuyerPercentageFee);
-  if (rows.length === 0) {
-    return percentToFraction(await getBuyerPremiumPct(ctx));
-  }
-  return percentToFraction(rows.reduce((sum, fee) => sum + fee.value, 0));
+  const percentRows = fees.filter(isBuyerPercentageFee);
+  const fixedFees = fees
+    .filter(
+      (fee) =>
+        fee.feeType === "fixed" &&
+        (fee.appliesTo === "buyer" || fee.appliesTo === "both")
+    )
+    .reduce((sum, fee) => sum + fee.value, 0);
+  return {
+    rowsFraction:
+      percentRows.length > 0
+        ? percentRows.reduce((sum, fee) => sum + fee.value, 0)
+        : undefined,
+    fixedFees,
+  };
 }
 
 /**
@@ -495,8 +510,11 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
   const isWinner = lot.winnerId != null && viewerIds.includes(lot.winnerId);
   const canSeeReserve = isSeller || viewer?.profile?.role === "admin";
   const premium = await resolveBuyerPremium(ctx, lot);
+  const buyerFees = await activeBuyerFees(ctx);
   const buyerPremiumFraction =
-    premium.rate ?? (await activeBuyerPremiumFraction(ctx));
+    premium.rate ??
+    buyerFees.rowsFraction ??
+    percentToFraction(await getBuyerPremiumPct(ctx));
   const sellerVat = resolveLotSellerVat(lot, sellerProfile);
   const coldStartVideoUrl = lot.coldStartVideo
     ? ((await ctx.storage.getUrl(lot.coldStartVideo)) ?? undefined)
@@ -521,6 +539,7 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     reserveState: reserveStateOf(lot, bidCount),
     bidCount,
     buyerPremiumFraction,
+    buyerFixedFees: buyerFees.fixedFees,
     isSeller,
     isWinner,
     durationDays: lot.durationDays,

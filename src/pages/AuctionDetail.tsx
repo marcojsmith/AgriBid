@@ -336,6 +336,7 @@ function LotPage({ id }: { id: string | undefined }) {
   const breakdown = confirmBreakdown({
     bid: bid.amount,
     premiumFraction: lot.buyerPremiumFraction,
+    fixedFees: lot.buyerFixedFees,
     vatRatePct,
     seller: lot.sellerVatKind,
   });
@@ -416,6 +417,7 @@ function LotPage({ id }: { id: string | undefined }) {
             bid: minimum,
             seller: lot.sellerVatKind,
             premiumPct: premium,
+            fixedFees: lot.buyerFixedFees,
             vatRatePct,
             onFeesClick: () => {
               setFeesOpen(true);
@@ -446,6 +448,7 @@ function LotPage({ id }: { id: string | undefined }) {
           bid={lot.startingPrice}
           seller={lot.sellerVatKind}
           premiumPct={premium}
+          fixedFees={lot.buyerFixedFees}
           vatRatePct={vatRatePct}
           onFeesClick={() => {
             setFeesOpen(true);
@@ -715,6 +718,7 @@ function LotPage({ id }: { id: string | undefined }) {
         open={feesOpen}
         onOpenChange={setFeesOpen}
         premiumPct={premium}
+        fixedFees={lot.buyerFixedFees}
         vatRatePct={vatRatePct}
         deposit={settings.deposit}
         exampleBid={minimum}

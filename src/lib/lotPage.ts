@@ -188,6 +188,7 @@ export interface ConfirmBreakdown {
  * @param input - The bid and the lot's fee facts
  * @param input.bid - The bid in rand
  * @param input.premiumFraction - The lot's buyer premium as a fraction
+ * @param input.fixedFees - Fixed buyer fees in rand, charged before VAT
  * @param input.vatRatePct - The VAT rate as a percentage
  * @param input.seller - The seller's VAT kind
  * @returns The rows and the total
@@ -195,23 +196,30 @@ export interface ConfirmBreakdown {
 export function confirmBreakdown(input: {
   bid: number;
   premiumFraction: number;
+  fixedFees?: number;
   vatRatePct: number;
   seller: SellerVatKind;
 }): ConfirmBreakdown {
+  const fixed = input.fixedFees ?? 0;
   const { bid, premium, vat, total } = calculateBuyerTotal({
     bid: input.bid,
-    premium: premiumFromRate(input.bid, input.premiumFraction),
+    premium: premiumFromRate(input.bid, input.premiumFraction) + fixed,
     vatRatePct: input.vatRatePct,
     vatBase: vatBaseForSeller(input.seller),
   });
+  const premiumOnly = Math.round(premiumFromRate(bid, input.premiumFraction));
+  const otherFees = premium - premiumOnly;
   const rate = String(Number(input.vatRatePct.toFixed(2)));
   return {
     rows: [
       { label: "Your bid", amount: bid },
       {
         label: `Buyer's premium ${String(premiumPct(input.premiumFraction))}%`,
-        amount: premium,
+        amount: premiumOnly,
       },
+      ...(otherFees > 0
+        ? [{ label: "Other buyer fees", amount: otherFees }]
+        : []),
       {
         label:
           input.seller === "private"

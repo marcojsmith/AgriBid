@@ -26,6 +26,8 @@ interface FeesRulesSheetProps {
   onOpenChange: (open: boolean) => void;
   /** Buyer's premium percentage. */
   premiumPct: number;
+  /** Fixed buyer fees in rand, charged before VAT. */
+  fixedFees?: number;
   /** VAT percentage. */
   vatRatePct?: number;
   /** Deposit settings; the deposit row and sentence are left out when off. */
@@ -55,6 +57,7 @@ function pct(n: number): string {
  * @param props.open - Whether the sheet is open
  * @param props.onOpenChange - Called when the sheet asks to open or close
  * @param props.premiumPct - Buyer's premium percentage
+ * @param props.fixedFees - Fixed buyer fees in rand, before VAT
  * @param props.vatRatePct - VAT percentage
  * @param props.deposit - Deposit settings
  * @param props.exampleBid - A bid to work through for a VAT-registered and a private seller
@@ -64,6 +67,7 @@ export function FeesRulesSheet({
   open,
   onOpenChange,
   premiumPct,
+  fixedFees = 0,
   vatRatePct = DEFAULT_VAT_RATE_PCT,
   deposit,
   exampleBid,
@@ -72,13 +76,16 @@ export function FeesRulesSheet({
     formatRand(
       calculateBuyerTotal({
         bid: exampleBid ?? 0,
-        premium: premiumFromRate(exampleBid ?? 0, premiumPct / 100),
+        premium: premiumFromRate(exampleBid ?? 0, premiumPct / 100) + fixedFees,
         vatRatePct,
         vatBase: vatBaseForSeller(seller),
       }).total
     );
   const rows: [string, ReactNode][] = [
     ["Buyer's premium", `${pct(premiumPct)}% of the bid`],
+    ...(fixedFees > 0
+      ? ([["Other buyer fees", formatRand(fixedFees)]] as [string, ReactNode][])
+      : []),
     [
       "VAT",
       `${pct(vatRatePct)}% on the premium. Also on the bid when the seller is VAT registered; each lot shows which`,

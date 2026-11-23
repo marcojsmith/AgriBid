@@ -40,6 +40,7 @@ interface BidPanelProps {
     bid: number;
     seller: SellerVatKind;
     premiumPct: number;
+    fixedFees?: number;
     vatRatePct: number;
     onFeesClick: () => void;
   };
@@ -198,6 +199,7 @@ export function BidPanel({
         bid={cost.bid}
         seller={cost.seller}
         premiumPct={cost.premiumPct}
+        fixedFees={cost.fixedFees}
         vatRatePct={cost.vatRatePct}
         onFeesClick={cost.onFeesClick}
       />

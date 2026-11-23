@@ -94,6 +94,22 @@ describe("buildSlides and meterPhotoIndex", () => {
 });
 
 describe("confirmBreakdown", () => {
+  it("adds fixed buyer fees before VAT, as their own row", () => {
+    const result = confirmBreakdown({
+      bid: 100_000,
+      premiumFraction: 0.1,
+      fixedFees: 500,
+      vatRatePct: 15,
+      seller: "vat",
+    });
+    expect(result.rows.map((r) => r.label)).toContain("Other buyer fees");
+    expect(
+      result.rows.find((r) => r.label === "Other buyer fees")?.amount
+    ).toBe(500);
+    // (100 000 + 10 000 + 500) * 1.15
+    expect(result.total).toBe(127_075);
+  });
+
   it("VAT seller: VAT on bid plus premium (R 400 000 -> R 515 200)", () => {
     const result = confirmBreakdown({
       bid: 400000,

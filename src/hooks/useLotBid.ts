@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
@@ -69,8 +69,11 @@ export function useLotBid({
   const [shownMinimum, setShownMinimum] = useState(minimum);
 
   const amount = typed ?? minimum;
+  const inFlight = useRef(false);
 
   const closeConfirm = useCallback(() => {
+    // Cancel returns the field to the live minimum.
+    setTyped(null);
     setConfirmOpen(false);
     setError(null);
   }, []);
@@ -98,6 +101,8 @@ export function useLotBid({
       setError({ kind: "closed", message: "Bidding on this lot has closed." });
       return;
     }
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -114,6 +119,7 @@ export function useLotBid({
         )
       );
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }, [amount, window, lotId, shownMinimum, placeBid]);

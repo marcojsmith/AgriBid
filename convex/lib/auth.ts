@@ -116,7 +116,7 @@ export function resolveUserId(authUser: AuthUser): string | null {
 export async function requireAuth(ctx: QueryCtx | MutationCtx) {
   const authUser = await getAuthUser(ctx);
   if (!authUser) {
-    throw new Error("Not authenticated");
+    throw new ConvexError("Not authenticated");
   }
   return authUser;
 }
