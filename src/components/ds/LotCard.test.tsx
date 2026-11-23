@@ -129,4 +129,11 @@ describe("LotCard", () => {
     expect(container.firstElementChild).toHaveClass("extra");
     expect(screen.queryByText(/watching/)).toBeNull();
   });
+
+  it("shows only the status, with no figure, when no price is given", () => {
+    render(<LotCard lot={LOT} state="not-sold" />);
+    expect(screen.getByText("Not sold")).toBeVisible();
+    expect(screen.queryByText("Highest bid")).toBeNull();
+    expect(screen.queryByText(/bids?$/)).toBeNull();
+  });
 });

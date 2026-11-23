@@ -37,8 +37,10 @@ interface LotCardProps {
   /**
    * The figure for the state: the opening bid (open), the current bid, what
    * it sold for, the highest bid (not sold) or the top bid (under consideration).
+   * Leave it out for a lot that closed with no bids: the card then shows only
+   * its status, never an opening price as a "highest bid".
    */
-  price: number;
+  price?: number;
   /** Number of watchers (open) or bids (every other state). */
   count?: number;
   /** Reserve state for open and current-bid lots. No reserve pill is shown when missing, so a page never claims a state it does not know. */
@@ -83,7 +85,7 @@ function groupDigits(n: number): string {
  * @param props - Component props
  * @param props.lot - The lot facts
  * @param props.state - open, current-bid, sold, not-sold or under-consideration
- * @param props.price - The figure for the state
+ * @param props.price - The figure for the state; left out for a lot that closed with no bids
  * @param props.count - Watchers (open) or bids (other states)
  * @param props.reserve - Reserve state for open and current-bid lots
  * @param props.closesIn - Relative close text, e.g. "2d 3h"
@@ -165,22 +167,24 @@ export function LotCard({
         ) : (
           <StatusPill size="card" outcome={state} />
         )}
-        <p className="mt-auto flex flex-col pt-2 leading-tight lg:mt-3 lg:flex-row lg:items-baseline lg:gap-3.5 lg:border-t lg:border-border lg:pt-3">
-          <span className="text-sm text-muted-foreground">
-            {PRICE_LABEL[state]}
-          </span>
-          <strong className="num text-lg font-bold lg:text-xl">
-            {formatRand(price)}
-          </strong>
-          {countText ? (
-            <span className="num mt-px flex items-center gap-[5px] text-sm text-muted-foreground lg:mt-0 lg:ml-auto">
-              {state === "open" ? (
-                <Eye aria-hidden="true" className="size-[15px]" />
-              ) : null}
-              {countText}
+        {price === undefined ? null : (
+          <p className="mt-auto flex flex-col pt-2 leading-tight lg:mt-3 lg:flex-row lg:items-baseline lg:gap-3.5 lg:border-t lg:border-border lg:pt-3">
+            <span className="text-sm text-muted-foreground">
+              {PRICE_LABEL[state]}
             </span>
-          ) : null}
-        </p>
+            <strong className="num text-lg font-bold lg:text-xl">
+              {formatRand(price)}
+            </strong>
+            {countText ? (
+              <span className="num mt-px flex items-center gap-[5px] text-sm text-muted-foreground lg:mt-0 lg:ml-auto">
+                {state === "open" ? (
+                  <Eye aria-hidden="true" className="size-[15px]" />
+                ) : null}
+                {countText}
+              </span>
+            ) : null}
+          </p>
+        )}
       </div>
     </article>
   );

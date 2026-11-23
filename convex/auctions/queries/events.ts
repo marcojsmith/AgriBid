@@ -61,6 +61,8 @@ export const AuctionDetailValidator = v.object({
     v.literal("closed")
   ),
   effectiveEndTime: v.number(),
+  /** This sale's own buyer's premium as a fraction (0.12 = 12%), when it sets one. */
+  defaultBuyerPremiumPct: v.optional(v.number()),
 });
 
 /** Raw auction container document shape consumed by {@link toAuction}. */
@@ -439,6 +441,7 @@ export const getPublishedAuctionHandler = async (
     startTime: auction.startTime,
     endTime: auction.endTime,
     status: auction.status,
+    defaultBuyerPremiumPct: auction.defaultBuyerPremiumPct,
     effectiveEndTime: visibleOpenLots.reduce(
       (end, lot) => Math.max(end, lot.extendedEndTime ?? 0),
       auction.endTime

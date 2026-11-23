@@ -155,8 +155,8 @@ function setup(over: Record<string, unknown> = {}) {
   };
 }
 
-function renderPage(path = "/auctions/a1") {
-  return render(
+function pageTree(path = "/auctions/a1") {
+  return (
     <HelmetProvider>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
@@ -166,6 +166,10 @@ function renderPage(path = "/auctions/a1") {
       </MemoryRouter>
     </HelmetProvider>
   );
+}
+
+function renderPage(path = "/auctions/a1") {
+  return render(pageTree(path));
 }
 
 /**
@@ -292,6 +296,35 @@ describe("AuctionContainerDetail", () => {
   it("starts from the ?q= search the header sent", () => {
     renderPage("/auctions/a1?q=case");
     expect(lastLotsArgs()).toMatchObject({ search: "case" });
+  });
+
+  it("uses the sale's own premium (a fraction) over the platform setting", () => {
+    setup({
+      getPublishedAuction: { ...liveAuction, defaultBuyerPremiumPct: 0.1 },
+    });
+    renderPage();
+    expect(screen.getAllByText(/^10% premium \+ VAT/).length).toBeGreaterThan(
+      0
+    );
+    // 12% platform premium would read 12%.
+    expect(screen.queryByText(/^12% premium \+ VAT/)).toBeNull();
+  });
+
+  it("uses the platform premium when the sale has none", () => {
+    renderPage();
+    expect(screen.getAllByText(/^12% premium \+ VAT/).length).toBeGreaterThan(
+      0
+    );
+  });
+
+  it("keeps the previous lots on screen while the next page loads", () => {
+    const view = renderPage();
+    expect(screen.getByText("Lot 3")).toBeVisible();
+    // The next result is not loaded yet.
+    h.results.getEventLots = undefined;
+    view.rerender(pageTree());
+    expect(screen.getByText("Lot 3")).toBeVisible();
+    expect(screen.queryByText("Loading lots")).toBeNull();
   });
 
   it("shows more lots 24 at a time", () => {

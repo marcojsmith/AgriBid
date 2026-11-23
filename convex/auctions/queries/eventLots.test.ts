@@ -104,6 +104,19 @@ describe("event page queries", () => {
       expect(header).not.toHaveProperty("lots");
     });
 
+    it("returns the sale's own buyer's premium (a fraction) when it has one", async () => {
+      const own = await insertAuction(t, { defaultBuyerPremiumPct: 0.1 });
+      const plain = await insertAuction(t);
+      expect(
+        (await t.query(api.auctions.getPublishedAuction, { auctionId: own }))
+          ?.defaultBuyerPremiumPct
+      ).toBe(0.1);
+      expect(
+        (await t.query(api.auctions.getPublishedAuction, { auctionId: plain }))
+          ?.defaultBuyerPremiumPct
+      ).toBeUndefined();
+    });
+
     it("ignores soft-close extensions of hidden lots", async () => {
       const sale = await insertAuction(t);
       await insertLot(t, sale, {

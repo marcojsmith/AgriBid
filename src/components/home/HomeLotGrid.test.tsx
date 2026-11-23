@@ -119,4 +119,19 @@ describe("HomeLotGrid", () => {
       screen.queryByRole("button", { name: /watch/i })
     ).not.toBeInTheDocument();
   });
+
+  it("shows Not sold with no price or bid count for a lot that closed with no bids", () => {
+    renderGrid([
+      lot({
+        status: "unsold",
+        bids: 0,
+        startingPrice: 60_000,
+        currentPrice: 60_000,
+      }),
+    ]);
+    expect(screen.getByText("Not sold")).toBeVisible();
+    expect(screen.queryByText("Highest bid")).toBeNull();
+    expect(screen.queryByText("R 60 000")).toBeNull();
+    expect(screen.queryByText(/bids?$/)).toBeNull();
+  });
 });

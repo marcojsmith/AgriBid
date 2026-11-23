@@ -48,6 +48,17 @@ function reserveOf(state: HomeGridLot["reserveState"]): ReserveState {
 }
 
 /**
+ * Whether a lot closed without a single bid: it shows "Not sold" with no
+ * figure, because its price is only the opening price.
+ *
+ * @param lot - The lot
+ * @returns True for an unsold lot with no bids
+ */
+function noBidsClosed(lot: HomeGridLot): boolean {
+  return lot.status === "unsold" && lot.bids === 0;
+}
+
+/**
  * The card state of a lot: its outcome when final, else open or current bid.
  *
  * @param lot - The lot
@@ -109,8 +120,20 @@ export function HomeLotGrid({
                 town: lot.location,
               }}
               state={state}
-              price={state === "open" ? lot.startingPrice : lot.currentPrice}
-              count={state === "open" ? lot.watchers : lot.bids}
+              price={
+                noBidsClosed(lot)
+                  ? undefined
+                  : state === "open"
+                    ? lot.startingPrice
+                    : lot.currentPrice
+              }
+              count={
+                noBidsClosed(lot)
+                  ? undefined
+                  : state === "open"
+                    ? lot.watchers
+                    : lot.bids
+              }
               reserve={isOpen ? reserveOf(lot.reserveState) : undefined}
               closesIn={
                 showCloses && isOpen && remaining > 0

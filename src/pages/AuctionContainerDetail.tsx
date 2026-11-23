@@ -146,7 +146,7 @@ function EventPage({ id }: { id: string | undefined }) {
   const filterKey = JSON.stringify([applied, searchText]);
   const pageCount = pages.key === filterKey ? pages.count : 1;
   const limit = pageCount * PAGE_SIZE;
-  const lotsResult = useQuery(
+  const latestLots = useQuery(
     api.auctions.getEventLots,
     auctionId && auction
       ? {
@@ -166,6 +166,14 @@ function EventPage({ id }: { id: string | undefined }) {
         }
       : "skip"
   );
+
+  // Keep the previous list on screen while the next one loads, so a sort,
+  // filter or "Show more" does not flash a loading state or lose the scroll.
+  const [keptLots, setKeptLots] = useState(latestLots);
+  if (latestLots !== undefined && latestLots !== keptLots) {
+    setKeptLots(latestLots);
+  }
+  const lotsResult = latestLots ?? keptLots;
 
   const watchedIds = useQuery(
     api.watchlist.getWatchedLotIds,
@@ -200,7 +208,11 @@ function EventPage({ id }: { id: string | undefined }) {
   const bucket = getEventBucket(auction, now);
   const closed = bucket === "closed";
   const upcoming = bucket === "upcoming";
-  const premiumPct = settings.buyerPremiumPct;
+  // The sale's own premium is stored as a fraction, the setting as a percent.
+  const premiumPct =
+    auction.defaultBuyerPremiumPct !== undefined
+      ? Number((auction.defaultBuyerPremiumPct * 100).toFixed(4))
+      : settings.buyerPremiumPct;
   const waHref = whatsappLink(branding?.businessInfo?.whatsapp);
   const canonical = buildCanonical(`/auctions/${auction._id}`);
   const pageTitle = buildTitle(auction.title);
