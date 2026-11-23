@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { normalizeAuctionImages } from "@/lib/auction-utils";
 import { formatCurrency } from "@/lib/currency";
-import type { LotSummary } from "@/types/auction";
+import type { AdminLotSummary } from "@/types/auction";
 
 import { ConditionItem } from "./ConditionItem";
 
@@ -26,7 +26,7 @@ export function ModerationCard({
   onReject,
   onView,
 }: {
-  auction: LotSummary;
+  auction: AdminLotSummary;
   onApprove: () => void;
   onReject: () => void;
   onView: () => void;

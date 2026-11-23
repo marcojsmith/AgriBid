@@ -54,7 +54,7 @@ describe("NotificationListener", () => {
       _id: "a1",
       title: "Tractor",
       status: "sold",
-      winnerId: mockUserId,
+      isWinner: true,
       currentPrice: 50000,
     };
 
@@ -77,8 +77,8 @@ describe("NotificationListener", () => {
       _id: "a2",
       title: "Plow",
       status: "sold",
-      sellerId: mockUserId,
-      winnerId: "otherUser",
+      isSeller: true,
+      isWinner: false,
       currentPrice: 10000,
     };
 
@@ -101,7 +101,7 @@ describe("NotificationListener", () => {
       _id: "a3",
       title: "Broken Tool",
       status: "unsold",
-      sellerId: mockUserId,
+      isSeller: true,
     };
 
     vi.mocked(useQuery).mockImplementation((...args: unknown[]) => {
@@ -123,7 +123,7 @@ describe("NotificationListener", () => {
       _id: "a1",
       title: "Tractor",
       status: "sold",
-      winnerId: mockUserId,
+      isWinner: true,
       currentPrice: 50000,
     };
 

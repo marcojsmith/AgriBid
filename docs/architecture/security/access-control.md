@@ -169,6 +169,10 @@ export const getProfile = query({
 
 ---
 
+## Public lot data
+
+Public queries never return `reservePrice`, `sellerId`, `winnerId`, emails or bidder ids. They return the server-computed `reserveState` (`none | applies | met | not_met`) and the caller-relative booleans `isSeller` / `isWinner` instead. `toLotSummaries` and `toLotDetail` enforce this; only seller-only and admin-only queries (`getMyListings`, the admin lot queues) may use `toOwnerLotSummaries`, after an ownership or `requireAdmin` check. `getLotBids` returns `bidderId` to the seller and admins only. `convex/auctions/queries/publicLeaks.test.ts` covers every public lot query; add new ones there.
+
 ## Frontend Route Protection
 
 ### RoleProtectedRoute Component
@@ -394,11 +398,11 @@ The following mutations are classified as destructive and have hardened access c
 
 These operations require one of the following:
 
-| Path | Requirement | Use Case |
-| ---- | ------------ | -------- |
-| Admin | Authenticated admin role | Production admin actions |
-| Secret | Valid `SEED_SECRET` environment variable | CI/CD pipelines, CLI invocations |
-| Dev | `NODE_ENV=development` AND `ALLOW_DEV_SEED=true` | Local development only |
+| Path   | Requirement                                      | Use Case                         |
+| ------ | ------------------------------------------------ | -------------------------------- |
+| Admin  | Authenticated admin role                         | Production admin actions         |
+| Secret | Valid `SEED_SECRET` environment variable         | CI/CD pipelines, CLI invocations |
+| Dev    | `NODE_ENV=development` AND `ALLOW_DEV_SEED=true` | Local development only           |
 
 **Important:** Preview deployments (`VERCEL_ENV=preview`) are NOT trusted. Admin authentication or `SEED_SECRET` is required in every non-local environment.
 

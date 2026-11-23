@@ -623,7 +623,9 @@ describe("CategoryManager", () => {
 
       expect(screen.getByRole("alertdialog")).toBeInTheDocument();
       expect(screen.getByText(/Deactivate category/i)).toBeInTheDocument();
-      expect(screen.getByText(/are you sure you want to deactivate/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/are you sure you want to deactivate/i)
+      ).toBeInTheDocument();
     });
 
     it("should cancel deactivation without calling mutation when Cancel is clicked", async () => {

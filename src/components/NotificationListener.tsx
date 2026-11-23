@@ -54,15 +54,8 @@ export const NotificationListener = () => {
         (auction.status === "sold" || auction.status === "unsold") &&
         !settledAuctionsRef.current.has(auctionId)
       ) {
-        const currentUserId = session.user.id;
-        const isWinner =
-          !!currentUserId &&
-          !!auction.winnerId &&
-          auction.winnerId === currentUserId;
-        const isSeller =
-          !!currentUserId &&
-          !!auction.sellerId &&
-          auction.sellerId === currentUserId;
+        // The server computes these for the caller; ids are never sent.
+        const { isWinner, isSeller } = auction;
 
         if (auction.status === "sold") {
           if (isWinner) {

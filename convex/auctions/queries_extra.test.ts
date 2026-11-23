@@ -33,6 +33,12 @@ vi.mock("./helpers", () => {
         lots.map((a) => ({ _id: a._id, title: a.title, status: a.status }))
       )
     ),
+    toOwnerLotSummaries: vi.fn((_ctx: unknown, lots: Doc<"lots">[]) =>
+      Promise.resolve(
+        lots.map((a) => ({ _id: a._id, title: a.title, status: a.status }))
+      )
+    ),
+    OwnerLotSummaryValidator: v.any(),
     LotSummaryValidator: v.object({
       _id: v.string(),
       title: v.string(),
@@ -203,6 +209,7 @@ describe("Queries Extra Coverage", () => {
     });
     vi.mocked(auth.getAuthenticatedProfile).mockResolvedValue({
       profile: { role: "admin" },
+      authUser: { _id: "auth_admin" },
     } as unknown as Awaited<ReturnType<typeof auth.getAuthenticatedProfile>>);
     vi.mocked(queryMock.unique).mockResolvedValue(null);
 

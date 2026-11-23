@@ -38,7 +38,13 @@ vi.mock("./helpers", () => ({
   toLotDetail: vi.fn((_ctx, a) =>
     Promise.resolve({ ...a, categoryName: "Unknown" })
   ),
+  toOwnerLotSummaries: vi.fn((_ctx, lots) =>
+    Promise.resolve(
+      lots.map((a: { _id: unknown }) => ({ ...a, categoryName: "Unknown" }))
+    )
+  ),
   LotSummaryValidator: v.any(),
+  OwnerLotSummaryValidator: v.any(),
   LotDetailValidator: v.any(),
   BidValidator: v.any(),
 }));

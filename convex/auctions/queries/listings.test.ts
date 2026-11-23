@@ -8,7 +8,7 @@ import {
 import { getAuthenticatedUserId } from "./shared";
 import type * as sharedModule from "./shared";
 import { countQuery } from "../../admin_utils";
-import { toLotSummaries } from "../helpers";
+import { toOwnerLotSummaries } from "../helpers";
 import type * as helpersModule from "../helpers";
 import type { QueryCtx } from "../../_generated/server";
 
@@ -31,7 +31,7 @@ vi.mock("../helpers", async (importOriginal) => {
   return {
     ...actual,
     toLotSummary: vi.fn(),
-    toLotSummaries: vi.fn(),
+    toOwnerLotSummaries: vi.fn(),
   };
 });
 
@@ -122,10 +122,10 @@ describe("listings queries", () => {
   });
 
   describe("getMyListingsHandler", () => {
-    it("maps the page through toLotSummaries and returns the count", async () => {
+    it("maps the page through toOwnerLotSummaries and returns the count", async () => {
       vi.mocked(getAuthenticatedUserId).mockResolvedValue("seller1");
       vi.mocked(countQuery).mockResolvedValue(1);
-      vi.mocked(toLotSummaries).mockResolvedValue([
+      vi.mocked(toOwnerLotSummaries).mockResolvedValue([
         {
           _id: "l1",
           title: "Mapped lot",
@@ -144,7 +144,7 @@ describe("listings queries", () => {
       expect(result.totalCount).toBe(1);
       expect(result.page).toHaveLength(1);
       expect(result.page[0]).toMatchObject({ _id: "l1", title: "Mapped lot" });
-      expect(toLotSummaries).toHaveBeenCalledWith(expect.anything(), [
+      expect(toOwnerLotSummaries).toHaveBeenCalledWith(expect.anything(), [
         { _id: "l1" },
       ]);
     });
@@ -165,7 +165,7 @@ describe("listings queries", () => {
     it("scopes the page and the total count to the seller index", async () => {
       vi.mocked(getAuthenticatedUserId).mockResolvedValue("seller1");
       vi.mocked(countQuery).mockResolvedValue(1);
-      vi.mocked(toLotSummaries).mockResolvedValue([] as never);
+      vi.mocked(toOwnerLotSummaries).mockResolvedValue([] as never);
       const chain = makeQueryChain();
 
       await getMyListingsHandler(makeCtx(chain), { paginationOpts });
