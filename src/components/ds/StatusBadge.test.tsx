@@ -21,6 +21,19 @@ describe("StatusBadge", () => {
     expect(screen.getByText("Opens Sat 22 Nov, 10:00")).toBeInTheDocument();
   });
 
+  it("renders the relative opening time and the closed state", () => {
+    const { rerender } = render(
+      <StatusBadge
+        status={{ kind: "opens", startTime: 1, relative: "3d 4h" }}
+      />
+    );
+    expect(screen.getByText("Opens in 3d 4h")).toBeInTheDocument();
+    rerender(<StatusBadge status={{ kind: "closed" }} />);
+    expect(
+      screen.getByText("Closed").closest("[data-slot=status-badge]")
+    ).toHaveAttribute("data-tone", "passed");
+  });
+
   it("uses the soon tone for closing soon and urgent inside the last 10 minutes", () => {
     const { rerender } = render(
       <StatusBadge status={{ kind: "closing-soon", urgent: false }} />

@@ -427,16 +427,16 @@ describe("Auction event queries", () => {
       expect(result).toBeNull();
     });
 
-    it("returns the auction with its lots without requiring admin", async () => {
+    it("returns the public header without requiring admin", async () => {
       vi.mocked(imageCache.resolveUrlCached).mockResolvedValue(undefined);
       mockCtx.db.get.mockResolvedValue(auctionRow);
       const lots = [
-        { _id: "l1" as Id<"lots">, status: "assigned", images: {} },
-        { _id: "l2" as Id<"lots">, status: "sold", images: {} },
+        { _id: "l1" as Id<"lots">, status: "assigned", extendedEndTime: 9e12 },
+        { _id: "l2" as Id<"lots">, status: "assigned" },
       ];
       const lotsQuery = {
         withIndex: vi.fn().mockReturnThis(),
-        collect: vi.fn().mockResolvedValue(lots),
+        take: vi.fn().mockResolvedValue(lots),
       };
       mockCtx.db.query.mockReturnValue(lotsQuery);
 
@@ -446,7 +446,8 @@ describe("Auction event queries", () => {
       );
 
       expect(auth.requireAdmin).not.toHaveBeenCalled();
-      expect(result?.lots.map((lot) => lot._id)).toEqual(["l1", "l2"]);
+      expect(result?.effectiveEndTime).toBe(9e12);
+      expect(result).not.toHaveProperty("lots");
     });
   });
 

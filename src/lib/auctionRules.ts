@@ -19,3 +19,7 @@ export function softCloseRule(): string {
   const minutes = String(SOFT_CLOSE_MINUTES);
   return `Bids in the last ${minutes} minutes add ${minutes} minutes`;
 }
+
+/** Shown when a lot is watched. */
+export const WATCHING_MESSAGE =
+  "Watching. We'll notify you 1 hour before close and if you're outbid.";

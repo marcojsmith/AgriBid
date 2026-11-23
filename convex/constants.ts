@@ -262,3 +262,18 @@ export const HOME_LOTS_MAX_LIMIT = 24;
 
 // Grid size when the caller gives none.
 export const HOME_LOTS_DEFAULT_LIMIT = 6;
+
+// Auction event page (`getEventLots`, `getEventFacets`).
+// Lots read per public status (assigned, sold, unsold) of one sale; a larger
+// sale is flagged `capped`. At most 3 x (cap + 1) docs per call.
+export const EVENT_LOTS_READ_PER_STATUS = 100;
+
+// Largest page served ("Show 24 more" grows the limit; each returned lot costs
+// an image resolve and two counter reads). Equal to the read cap.
+export const EVENT_LOTS_MAX_LIMIT = 100;
+
+// Page size when the caller gives none.
+export const EVENT_LOTS_DEFAULT_LIMIT = 24;
+
+// Longest search text accepted by `getEventLots`.
+export const EVENT_LOTS_MAX_SEARCH_LENGTH = 60;

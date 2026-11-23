@@ -1,4 +1,4 @@
-import { LotCard } from "@/components/ds/LotCard";
+import { LotCard, type LotCardState } from "@/components/ds/LotCard";
 import type { ReserveState } from "@/components/ds/ReservePill";
 import { formatRemaining } from "@/lib/countdown";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,11 @@ export interface HomeGridLot {
   bids: number;
   effectiveEndTime: number;
   leadImageUrl?: string;
+  /**
+   * `assigned` (or missing) is open for bidding. `sold`, `unsold` and
+   * `under_consideration` are final outcomes, shown with the closed card.
+   */
+  status?: "assigned" | "sold" | "unsold" | "under_consideration";
 }
 
 interface HomeLotGridProps {
@@ -40,6 +45,19 @@ interface HomeLotGridProps {
  */
 function reserveOf(state: HomeGridLot["reserveState"]): ReserveState {
   return state === "not_met" ? "not-met" : state;
+}
+
+/**
+ * The card state of a lot: its outcome when final, else open or current bid.
+ *
+ * @param lot - The lot
+ * @returns The `LotCard` state
+ */
+function stateOf(lot: HomeGridLot): LotCardState {
+  if (lot.status === "sold") return "sold";
+  if (lot.status === "unsold") return "not-sold";
+  if (lot.status === "under_consideration") return "under-consideration";
+  return lot.bids > 0 ? "current-bid" : "open";
 }
 
 /**
@@ -74,7 +92,8 @@ export function HomeLotGrid({
       )}
     >
       {lots.map((lot) => {
-        const hasBids = lot.bids > 0;
+        const state = stateOf(lot);
+        const isOpen = state === "open" || state === "current-bid";
         const remaining = lot.effectiveEndTime - now;
         return (
           <li key={lot._id} className="flex">
@@ -89,12 +108,12 @@ export function HomeLotGrid({
                 hours: lot.operatingHours,
                 town: lot.location,
               }}
-              state={hasBids ? "current-bid" : "open"}
-              price={hasBids ? lot.currentPrice : lot.startingPrice}
-              count={hasBids ? lot.bids : lot.watchers}
-              reserve={reserveOf(lot.reserveState)}
+              state={state}
+              price={state === "open" ? lot.startingPrice : lot.currentPrice}
+              count={state === "open" ? lot.watchers : lot.bids}
+              reserve={isOpen ? reserveOf(lot.reserveState) : undefined}
               closesIn={
-                showCloses && remaining > 0
+                showCloses && isOpen && remaining > 0
                   ? formatRemaining(remaining)
                   : undefined
               }

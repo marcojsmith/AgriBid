@@ -1,7 +1,7 @@
 // app/src/components/header/SearchBar.tsx
 import { Search } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ interface SearchBarProps {
 /**
  * Render a search form with an input and leading search icon.
  *
- * Navigates to the root path including the entered query as the `q` query parameter when submitted.
+ * Navigates to the root path (or, on a sale page, that sale) including the entered query as the `q` query parameter when submitted.
  * When a non-empty query is submitted the input is cleared and the optional `onSearch` callback is invoked.
  *
  * @param props - Component props
@@ -35,11 +35,14 @@ export function SearchBar({
 }: SearchBarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // On a sale page the header search filters that sale's lots.
+  const target = /^\/auctions\/[^/]+$/.test(pathname) ? pathname : "/";
 
   const handleSearch = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      void navigate(`/?q=${encodeURIComponent(searchQuery.trim())}`);
+      void navigate(`${target}?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
       onSearch?.();
     }

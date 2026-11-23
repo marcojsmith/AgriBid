@@ -53,4 +53,28 @@ describe("FeesRulesSheet", () => {
     );
     expect(screen.queryByRole("dialog")).toBeNull();
   });
+
+  it("works an example through for both seller kinds when given a bid", () => {
+    render(
+      <FeesRulesSheet
+        open
+        onOpenChange={() => undefined}
+        premiumPct={12}
+        exampleBid={400_000}
+      />
+    );
+    expect(screen.getByText("Example")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /VAT-registered seller → pay R 515.200\. Private seller → pay R 455.200/
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the example out without a bid", () => {
+    render(
+      <FeesRulesSheet open onOpenChange={() => undefined} premiumPct={12} />
+    );
+    expect(screen.queryByText("Example")).not.toBeInTheDocument();
+  });
 });

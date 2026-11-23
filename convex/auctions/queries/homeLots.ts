@@ -15,7 +15,7 @@ import {
 import type { Doc, Id } from "../../_generated/dataModel";
 
 /** Reserve state of a lot, computed on the server (the reserve amount is never sent). */
-const reserveStateValidator = v.union(
+export const reserveStateValidator = v.union(
   v.literal("none"),
   v.literal("applies"),
   v.literal("met"),
@@ -98,7 +98,10 @@ interface Candidate {
  * @param args - The filters.
  * @returns True when every given filter matches.
  */
-function passes(lot: Doc<"lots">, args: HomeLotsArgs): boolean {
+export function passes(
+  lot: Doc<"lots">,
+  args: Pick<HomeLotsArgs, "categoryId" | "make" | "minPrice" | "maxPrice">
+): boolean {
   if (args.categoryId !== undefined && lot.categoryId !== args.categoryId) {
     return false;
   }
@@ -113,12 +116,29 @@ function passes(lot: Doc<"lots">, args: HomeLotsArgs): boolean {
 }
 
 /**
+ * The reserve state of a lot, computed on the server so the reserve amount is
+ * never sent: `none` without a reserve, `applies` until the first bid, then
+ * `met` or `not_met`.
+ *
+ * @param lot - The lot.
+ * @param bids - Its bid count.
+ * @returns The reserve state.
+ */
+export function reserveStateOf(lot: Doc<"lots">, bids: number) {
+  if (lot.reservePrice <= 0) return "none" as const;
+  if (bids === 0) return "applies" as const;
+  return lot.currentPrice >= lot.reservePrice
+    ? ("met" as const)
+    : ("not_met" as const);
+}
+
+/**
  * Counts values and returns them largest first (ties alphabetical).
  *
  * @param values - The values to count.
  * @returns `[value, count]` pairs.
  */
-function tally(values: readonly string[]): [string, number][] {
+export function tally(values: readonly string[]): [string, number][] {
   const counts = new Map<string, number>();
   for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
   return [...counts.entries()].sort(
@@ -269,14 +289,7 @@ export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
         getWatcherCount(ctx, lot._id),
         getBidCount(ctx, lot._id),
       ]);
-      const reserveState =
-        lot.reservePrice <= 0
-          ? ("none" as const)
-          : bids === 0
-            ? ("applies" as const)
-            : lot.currentPrice >= lot.reservePrice
-              ? ("met" as const)
-              : ("not_met" as const);
+      const reserveState = reserveStateOf(lot, bids);
       return {
         _id: lot._id,
         title: lot.title,

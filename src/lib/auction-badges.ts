@@ -51,7 +51,13 @@ export const URGENT_MS = 10 * 60 * 1000;
 export type DisplayStatus =
   | { kind: "live" }
   | { kind: "closing-soon"; urgent: boolean }
-  | { kind: "opens"; startTime: number }
+  | {
+      kind: "opens";
+      startTime: number;
+      /** When given, the label is "Opens in {relative}" instead of the date. */
+      relative?: string;
+    }
+  | { kind: "closed" }
   | { kind: "sold" }
   | { kind: "passed" }
   | { kind: "under-consideration" };

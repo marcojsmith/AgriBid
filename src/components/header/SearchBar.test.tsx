@@ -1,11 +1,12 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { SearchBar } from "./SearchBar";
 
 vi.mock("react-router-dom", () => ({
   useNavigate: vi.fn(),
+  useLocation: vi.fn(),
 }));
 
 describe("SearchBar", () => {
@@ -14,6 +15,24 @@ describe("SearchBar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useNavigate).mockReturnValue(mockNavigate);
+    vi.mocked(useLocation).mockReturnValue({ pathname: "/" } as ReturnType<
+      typeof useLocation
+    >);
+  });
+
+  it("searches within a sale page instead of the whole site", () => {
+    vi.mocked(useLocation).mockReturnValue({
+      pathname: "/auctions/abc123",
+    } as ReturnType<typeof useLocation>);
+    render(<SearchBar />);
+    const input = screen.getByPlaceholderText(
+      /Search make, model or category/i
+    );
+    fireEvent.change(input, { target: { value: "Case" } });
+    const form = input.closest("form");
+    if (!form) throw new Error("Expected a form");
+    fireEvent.submit(form);
+    expect(mockNavigate).toHaveBeenCalledWith("/auctions/abc123?q=Case");
   });
 
   it("renders correctly", () => {

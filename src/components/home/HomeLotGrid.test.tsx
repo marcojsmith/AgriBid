@@ -96,4 +96,27 @@ describe("HomeLotGrid", () => {
     fireEvent.click(heart);
     expect(onToggleWatch).toHaveBeenCalledWith("l1");
   });
+
+  it("shows final outcomes with the sold price and bids, and no heart or reserve", () => {
+    renderGrid([
+      lot({ _id: "s", status: "sold", bids: 9, currentPrice: 52_000 }),
+      lot({ _id: "n", status: "unsold", bids: 4, currentPrice: 24_000 }),
+      lot({
+        _id: "c",
+        status: "under_consideration",
+        bids: 14,
+        currentPrice: 138_000,
+      }),
+    ]);
+    expect(screen.getByText("Sold for")).toBeVisible();
+    expect(screen.getByText("R 52 000")).toBeVisible();
+    expect(screen.getByText("9 bids")).toBeVisible();
+    expect(screen.getByText("Highest bid")).toBeVisible();
+    expect(screen.getByText("Top bid")).toBeVisible();
+    expect(screen.getByText("Under consideration")).toBeVisible();
+    expect(screen.queryByText("Reserve applies")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /watch/i })
+    ).not.toBeInTheDocument();
+  });
 });

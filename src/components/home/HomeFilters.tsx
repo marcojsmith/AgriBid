@@ -35,8 +35,12 @@ interface HomeFiltersProps {
   onCategory: (key: string | null) => void;
   onMake: (key: string | null) => void;
   onPrice: (price: PriceFilter) => void;
-  /** Submits the search box (navigates to the lot results). */
-  onSearch: (query: string) => void;
+  /** Submits the search box (Home navigates to the lot results). Unused when `onSearchChange` is given. */
+  onSearch?: (query: string) => void;
+  /** The search text, when the page owns it (the event page filters its own lots live). */
+  searchValue?: string;
+  /** Called on every keystroke; makes the search box live and controlled by `searchValue`. */
+  onSearchChange?: (query: string) => void;
   className?: string;
 }
 
@@ -104,6 +108,8 @@ function Chip({
  * @param props.onMake - Called with a key, or null to clear
  * @param props.onPrice - Called with the new range
  * @param props.onSearch - Called with the search text on submit
+ * @param props.searchValue - The search text, when the page owns it
+ * @param props.onSearchChange - Called on every keystroke for a live search
  * @param props.className - Extra classes merged onto the root element
  * @returns The filter block
  */
@@ -120,9 +126,14 @@ export function HomeFilters({
   onMake,
   onPrice,
   onSearch,
+  searchValue,
+  onSearchChange,
   className,
 }: HomeFiltersProps) {
-  const [query, setQuery] = useState("");
+  const [localQuery, setLocalQuery] = useState("");
+  const live = onSearchChange !== undefined;
+  const query = live ? (searchValue ?? "") : localQuery;
+  const setQuery = live ? onSearchChange : setLocalQuery;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [minText, setMinText] = useState("");
   const [maxText, setMaxText] = useState("");
@@ -135,7 +146,7 @@ export function HomeFilters({
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
     const text = query.trim();
-    if (text) onSearch(text);
+    if (!live && text) onSearch?.(text);
   };
 
   const parse = (text: string): number | undefined => {

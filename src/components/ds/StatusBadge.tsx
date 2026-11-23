@@ -67,9 +67,14 @@ function describeStatus(status: DisplayStatus): {
     case "opens":
       return {
         tone: "soon",
-        label: `Opens ${formatSastDate(status.startTime)}`,
+        label:
+          status.relative === undefined
+            ? `Opens ${formatSastDate(status.startTime)}`
+            : `Opens in ${status.relative}`,
         icon: <Clock aria-hidden="true" />,
       };
+    case "closed":
+      return { tone: "passed", label: "Closed", icon: null };
     case "sold":
       return {
         tone: "sold",
