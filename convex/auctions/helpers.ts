@@ -2,15 +2,36 @@ import { v } from "convex/values";
 
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+import { getBuyerPremiumPct } from "../admin/platformSettings";
 import { resolveUrlCached } from "../image_cache";
-import { getWatcherCount } from "../lib/lotCounters";
+import { getAuthWithProfile } from "../lib/auth";
+import {
+  isBuyerPercentageFee,
+  percentToFraction,
+  resolveBuyerPremium,
+} from "../lib/buyerPremium";
+import { getBidCount, getWatcherCount } from "../lib/lotCounters";
+import { reserveStateOf } from "../lib/reserve";
 import { provinceValidator } from "../lib/provinces";
+import { resolveLotSellerVat } from "../lib/sellerVat";
 import {
   driveValidator,
   imageAnglesValidator,
+  photoAngleValidator,
+  PHOTO_ANGLES,
   SELLER_TYPE_LABELS,
+  type PhotoAngle,
 } from "../lib/lotSpecs";
-import { resolveLotSellerVat } from "../lib/sellerVat";
+
+/**
+ * Narrows a string to a photo angle.
+ *
+ * @param value - The stored angle
+ * @returns True when it is a known angle
+ */
+function isPhotoAngle(value: string): value is PhotoAngle {
+  return (PHOTO_ANGLES as readonly string[]).includes(value);
+}
 
 export interface RawImages {
   front?: string;
@@ -115,6 +136,52 @@ export async function resolveImageUrls(
       )
     ).filter((url: string | undefined): url is string => !!url),
   };
+}
+
+/** One photo of the lot page gallery, with its shot-list angle when known. */
+export const LotPhotoValidator = v.object({
+  url: v.string(),
+  angle: v.optional(photoAngleValidator),
+});
+
+/**
+ * Resolves a lot's photos in gallery order (front, engine, cabin, rear, then
+ * the additional photos), each with its angle caption. The angle map is keyed
+ * by storage reference, so the angle is looked up before the reference is
+ * turned into a URL.
+ *
+ * @param storage - Convex storage context
+ * @param images - The lot's stored images (object form or legacy array)
+ * @param angles - Map of image reference to angle
+ * @returns Photos whose URL resolved, in order
+ */
+export async function resolveLotPhotos(
+  storage: QueryCtx["storage"],
+  images: unknown,
+  angles: Record<string, string> | undefined
+) {
+  const refs: string[] = [];
+  if (Array.isArray(images)) {
+    refs.push(...images);
+  } else if (images && typeof images === "object") {
+    const o = images as RawImages;
+    refs.push(o.front ?? "", o.engine ?? "", o.cabin ?? "", o.rear ?? "");
+    refs.push(...(o.additional ?? []));
+  }
+  const valid = refs.filter(
+    (r): r is string => typeof r === "string" && r !== ""
+  );
+  const urls = await Promise.all(
+    valid.map((r) => resolveUrlCached(storage, r))
+  );
+  const photos: { url: string; angle?: PhotoAngle }[] = [];
+  valid.forEach((ref, i) => {
+    const url = urls[i];
+    if (!url) return;
+    const angle = angles?.[ref];
+    photos.push(angle && isPhotoAngle(angle) ? { url, angle } : { url });
+  });
+  return photos;
 }
 
 /**
@@ -323,7 +390,21 @@ export const LotDetailValidator = v.object({
   categoryName: v.string(),
   description: v.optional(v.string()),
   startingPrice: v.number(),
-  reservePrice: v.number(),
+  /** Only for the seller and admins; buyers see `reserveState`. */
+  reservePrice: v.optional(v.number()),
+  reserveState: v.union(
+    v.literal("none"),
+    v.literal("applies"),
+    v.literal("met"),
+    v.literal("not_met")
+  ),
+  bidCount: v.number(),
+  /** Buyer's premium for this lot as a fraction (0.12 = 12%). */
+  buyerPremiumFraction: v.number(),
+  /** Active fixed buyer fees in rand (charged at settlement, before VAT). */
+  buyerFixedFees: v.number(),
+  isSeller: v.boolean(),
+  isWinner: v.boolean(),
   durationDays: v.optional(v.number()),
   images: v.object({
     front: v.optional(v.string()),
@@ -333,8 +414,6 @@ export const LotDetailValidator = v.object({
     additional: v.array(v.string()),
   }),
   conditionChecklist: v.optional(ConditionChecklistValidator),
-  sellerId: v.string(),
-  sellerEmail: v.optional(v.string()),
   status: v.string(),
   currentPrice: v.number(),
   minIncrement: v.number(),
@@ -349,7 +428,6 @@ export const LotDetailValidator = v.object({
   ),
   extendedEndTime: v.optional(v.number()),
   isExtended: v.optional(v.boolean()),
-  winnerId: v.optional(v.union(v.string(), v.null())),
   seedId: v.optional(v.string()),
   conditionReportUrl: v.optional(v.string()),
   powerKw: v.optional(v.number()),
@@ -359,23 +437,58 @@ export const LotDetailValidator = v.object({
   rearTyrePct: v.optional(v.number()),
   serialNumber: v.optional(v.string()),
   imageAngles: v.optional(imageAnglesValidator),
+  photos: v.array(LotPhotoValidator),
   coldStartVideoUrl: v.optional(v.string()),
   sellerVatKind: v.union(v.literal("vat"), v.literal("private")),
   sellerTypeLabel: v.optional(v.string()),
 });
 
 /**
+ * The buyer fees settlement charges from the active fee rows. `platformFees.value`
+ * is already a fraction for percentage rows (settlement does `price * value`),
+ * so the premium is the plain sum of the active buyer percentage rows.
+ *
+ * @param ctx - Query context
+ * @returns The percentage-row premium (undefined when no such row is active)
+ *   and the sum of the active fixed buyer fees in rand
+ */
+async function activeBuyerFees(
+  ctx: QueryCtx
+): Promise<{ rowsFraction: number | undefined; fixedFees: number }> {
+  const fees = await ctx.db
+    .query("platformFees")
+    .withIndex("by_active", (q) => q.eq("isActive", true))
+    .collect();
+  const percentRows = fees.filter(isBuyerPercentageFee);
+  const fixedFees = fees
+    .filter(
+      (fee) =>
+        fee.feeType === "fixed" &&
+        (fee.appliesTo === "buyer" || fee.appliesTo === "both")
+    )
+    .reduce((sum, fee) => sum + fee.value, 0);
+  return {
+    rowsFraction:
+      percentRows.length > 0
+        ? percentRows.reduce((sum, fee) => sum + fee.value, 0)
+        : undefined,
+    fixedFees,
+  };
+}
+
+/**
  * Create a full lot object with image references resolved to accessible URLs.
- * The returned object includes a sellerEmail string (resolved from the seller lookup)
- * and the parent auction's window, in addition to the described images transformation.
+ * Seller and winner ids are never returned: the caller gets `isSeller` and
+ * `isWinner` booleans, and `reservePrice` only when they are the seller or an
+ * admin (everyone else gets `reserveState`). The parent auction's window is
+ * included alongside the resolved image URLs.
  *
  * @param ctx - Query context providing storage used to resolve image references
  * @param lot - Lot document to convert
  * @returns The same lot object with resolved images, seller details, and parent auction window.
- * sellerEmail may be undefined if no seller is found.
  */
 export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
-  const [sellerProfile, category, identity, auction, watcherCount] =
+  const [sellerProfile, category, viewer, auction, watcherCount, bidCount] =
     await Promise.all([
       ctx.db
         .query("profiles")
@@ -384,13 +497,24 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
       lot.categoryId
         ? ctx.db.get("equipmentCategories", lot.categoryId)
         : Promise.resolve(null),
-      ctx.auth.getUserIdentity(),
+      getAuthWithProfile(ctx),
       lot.auctionId
         ? ctx.db.get("auctions", lot.auctionId)
         : Promise.resolve(null),
       getWatcherCount(ctx, lot._id),
+      getBidCount(ctx, lot._id),
     ]);
-  const isAuthenticated = identity !== null;
+  // Ids are stored under either the profile user id or the auth user id.
+  const viewerIds = viewer ? [viewer.userId, viewer.authUser._id] : [];
+  const isSeller = viewerIds.includes(lot.sellerId);
+  const isWinner = lot.winnerId != null && viewerIds.includes(lot.winnerId);
+  const canSeeReserve = isSeller || viewer?.profile?.role === "admin";
+  const premium = await resolveBuyerPremium(ctx, lot);
+  const buyerFees = await activeBuyerFees(ctx);
+  const buyerPremiumFraction =
+    premium.rate ??
+    buyerFees.rowsFraction ??
+    percentToFraction(await getBuyerPremiumPct(ctx));
   const sellerVat = resolveLotSellerVat(lot, sellerProfile);
   const coldStartVideoUrl = lot.coldStartVideo
     ? ((await ctx.storage.getUrl(lot.coldStartVideo)) ?? undefined)
@@ -411,7 +535,13 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
     categoryName: category?.name || "Unknown",
     startingPrice: lot.startingPrice,
-    reservePrice: lot.reservePrice,
+    reservePrice: canSeeReserve ? lot.reservePrice : undefined,
+    reserveState: reserveStateOf(lot, bidCount),
+    bidCount,
+    buyerPremiumFraction,
+    buyerFixedFees: buyerFees.fixedFees,
+    isSeller,
+    isWinner,
     durationDays: lot.durationDays,
     currentPrice: lot.currentPrice,
     minIncrement: lot.minIncrement,
@@ -424,11 +554,6 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     auctionStatus: auction?.status,
     extendedEndTime: lot.extendedEndTime,
     status: lot.status,
-    sellerId: lot.sellerId,
-    sellerEmail: isAuthenticated
-      ? (sellerProfile?.email ?? undefined)
-      : undefined,
-    winnerId: lot.winnerId,
     isExtended: lot.isExtended,
     seedId: lot.seedId,
     conditionReportUrl: lot.conditionReportUrl,
@@ -446,5 +571,6 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
       ? SELLER_TYPE_LABELS[sellerVat.sellerType]
       : undefined,
     images: await resolveImageUrls(ctx.storage, lot.images),
+    photos: await resolveLotPhotos(ctx.storage, lot.images, lot.imageAngles),
   };
 }

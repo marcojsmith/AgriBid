@@ -15,6 +15,8 @@ interface CostBoxProps {
   seller?: SellerVatKind;
   /** Buyer's premium as a percentage (12 = 12%). Default 12. */
   premiumPct?: number;
+  /** Fixed buyer fees in rand, charged before VAT. Default 0. */
+  fixedFees?: number;
   /** VAT rate as a percentage. Default 15. */
   vatRatePct?: number;
   /** Names the lot the example is for, shown as "e.g. {example}". */
@@ -42,6 +44,7 @@ const pct = (n: number): string => String(Number(n.toFixed(2)));
  * @param props.bid - The bid to work out
  * @param props.seller - Seller kind: vat, private or any
  * @param props.premiumPct - Buyer's premium percentage
+ * @param props.fixedFees - Fixed buyer fees in rand, before VAT
  * @param props.vatRatePct - VAT percentage
  * @param props.example - Names the example lot
  * @param props.onDark - Colours for the dark green band
@@ -54,6 +57,7 @@ export function CostBox({
   bid = 400_000,
   seller = "vat",
   premiumPct = 12,
+  fixedFees = 0,
   vatRatePct = DEFAULT_VAT_RATE_PCT,
   example,
   onDark = false,
@@ -63,7 +67,7 @@ export function CostBox({
 }: CostBoxProps) {
   const { bid: shownBid, total } = calculateBuyerTotal({
     bid,
-    premium: premiumFromRate(bid, premiumPct / 100),
+    premium: premiumFromRate(bid, premiumPct / 100) + fixedFees,
     vatRatePct,
     vatBase: vatBaseForSeller(seller),
   });

@@ -116,7 +116,7 @@ export function resolveUserId(authUser: AuthUser): string | null {
 export async function requireAuth(ctx: QueryCtx | MutationCtx) {
   const authUser = await getAuthUser(ctx);
   if (!authUser) {
-    throw new Error("Not authenticated");
+    throw new ConvexError("Not authenticated");
   }
   return authUser;
 }
@@ -263,7 +263,8 @@ export async function requireProfile(ctx: QueryCtx | MutationCtx) {
 export async function requireVerified(ctx: QueryCtx | MutationCtx) {
   const { profile, userId } = await requireProfile(ctx);
   if (!profile.isVerified) {
-    throw new UnauthorizedError(VERIFIED_REQUIRED_MESSAGE);
+    // ConvexError so the message survives redaction in production.
+    throw new ConvexError(VERIFIED_REQUIRED_MESSAGE);
   }
   return { profile, userId };
 }

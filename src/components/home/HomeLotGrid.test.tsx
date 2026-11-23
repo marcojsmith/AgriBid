@@ -37,6 +37,27 @@ const renderGrid = (
   );
 
 describe("HomeLotGrid", () => {
+  it("strip layout swipes on phones with the next card peeking and fills four columns from lg", () => {
+    renderGrid([lot(), lot({ _id: "l2" })], { layout: "strip" });
+    const list = screen.getByRole("list");
+    expect(list).toHaveClass(
+      "flex",
+      "overflow-x-auto",
+      "snap-x",
+      "lg:grid-cols-4"
+    );
+    expect(list).not.toHaveClass("grid-cols-2");
+    expect(screen.getAllByRole("listitem")[0]).toHaveClass(
+      "w-[46%]",
+      "snap-start"
+    );
+  });
+
+  it("grid layout stays two columns on phones", () => {
+    renderGrid([lot()]);
+    expect(screen.getByRole("list")).toHaveClass("grid-cols-2");
+  });
+
   it("shows the lot chip, specs, opening bid and watchers for a lot with no bids", () => {
     renderGrid([lot()]);
     expect(screen.getByText("Lot 3")).toBeVisible();

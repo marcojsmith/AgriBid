@@ -7,6 +7,15 @@ import { CostBox } from "./CostBox";
 const R = (digits: string) => `R ${digits}`;
 
 describe("CostBox", () => {
+  it("includes fixed buyer fees before VAT", () => {
+    render(
+      <CostBox seller="vat" bid={100_000} premiumPct={10} fixedFees={500} />
+    );
+    expect(
+      screen.getByText(`Bid ${R("100 000")} → pay ${R("127 075")}`)
+    ).toBeInTheDocument();
+  });
+
   it("works the total for a VAT-registered seller (VAT on bid + premium)", () => {
     render(<CostBox seller="vat" feesHref="/fees" />);
     expect(

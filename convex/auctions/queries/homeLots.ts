@@ -6,6 +6,7 @@ import { compareLotsInSale, pickLeadImageRef } from "./events";
 import { resolveUrlCached } from "../../image_cache";
 import { getBidCount, getWatcherCount } from "../../lib/lotCounters";
 import { provinceValidator } from "../../lib/provinces";
+import { reserveStateOf } from "../../lib/reserve";
 import {
   HOME_LOTS_DEFAULT_LIMIT,
   HOME_LOTS_MAX_AUCTIONS,
@@ -115,22 +116,7 @@ export function passes(
   return true;
 }
 
-/**
- * The reserve state of a lot, computed on the server so the reserve amount is
- * never sent: `none` without a reserve, `applies` until the first bid, then
- * `met` or `not_met`.
- *
- * @param lot - The lot.
- * @param bids - Its bid count.
- * @returns The reserve state.
- */
-export function reserveStateOf(lot: Doc<"lots">, bids: number) {
-  if (lot.reservePrice <= 0) return "none" as const;
-  if (bids === 0) return "applies" as const;
-  return lot.currentPrice >= lot.reservePrice
-    ? ("met" as const)
-    : ("not_met" as const);
-}
+export { reserveStateOf };
 
 /**
  * Counts values and returns them largest first (ties alphabetical).

@@ -1,5 +1,5 @@
 // app/convex/auctions/proxy_bidding.ts
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { query } from "../_generated/server";
 import { getAuthUser } from "../lib/auth";
@@ -171,13 +171,13 @@ async function validateBid(
   // 1. Basic Price Validation
   if (!mostRecentBid) {
     if (bidAmount < lot.currentPrice) {
-      throw new Error(
+      throw new ConvexError(
         `First bid must be at least R${lot.currentPrice.toString()}`
       );
     }
   } else {
     if (bidAmount < lot.currentPrice + minIncrement) {
-      throw new Error(
+      throw new ConvexError(
         `Bid amount must be at least R${(lot.currentPrice + minIncrement).toString()}`
       );
     }
@@ -185,7 +185,7 @@ async function validateBid(
 
   // 2. Proxy Validation
   if (maxBid !== undefined && maxBid < bidAmount) {
-    throw new Error(
+    throw new ConvexError(
       "Proxy maximum bid must be at least the current bid amount."
     );
   }

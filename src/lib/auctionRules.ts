@@ -23,3 +23,12 @@ export function softCloseRule(): string {
 /** Shown when a lot is watched. */
 export const WATCHING_MESSAGE =
   "Watching. We'll notify you 1 hour before close and if you're outbid.";
+
+/**
+ * Shown when a lot page's heart is tapped. It claims only what exists today:
+ * the lot is saved to the watchlist. Outbid and closing-soon notifications are
+ * not sent yet (design D9), so `WATCHING_MESSAGE` must not be used here until
+ * they are.
+ */
+export const WATCHING_SAVED_MESSAGE =
+  "Watching. Find this lot in your watchlist.";
