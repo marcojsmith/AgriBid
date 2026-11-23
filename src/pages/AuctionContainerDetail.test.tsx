@@ -310,6 +310,18 @@ describe("AuctionContainerDetail", () => {
     expect(screen.queryByText(/^12% premium \+ VAT/)).toBeNull();
   });
 
+  it("keeps the cost box example when a filter changes the first lot", () => {
+    setup({ getMostEngagedLots: [] });
+    const view = renderPage();
+    expect(screen.getAllByText("e.g. New Holland T6070")).toHaveLength(2);
+    h.results.getEventLots = {
+      matched: 1,
+      lots: [lot({ make: "Ford", model: "5000", currentPrice: 42_000 })],
+    };
+    view.rerender(pageTree());
+    expect(screen.getAllByText("e.g. New Holland T6070")).toHaveLength(2);
+  });
+
   it("uses the platform premium when the sale has none", () => {
     renderPage();
     expect(screen.getAllByText(/^12% premium \+ VAT/).length).toBeGreaterThan(

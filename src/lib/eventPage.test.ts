@@ -14,7 +14,7 @@ describe("closedSummary", () => {
         soldTotal: 0,
         underConsideration: 0,
       })
-    ).toBe("0 of 1 lots sold");
+    ).toBe("0 of 1 lot sold");
   });
 
   it("words the totals", () => {

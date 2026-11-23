@@ -16,7 +16,7 @@ export interface ClosedTotals {
  * @returns The sentence, without a full stop
  */
 export function closedSummary(totals: ClosedTotals): string {
-  const lots = `${String(totals.sold)} of ${String(totals.total)} lots sold`;
+  const lots = `${String(totals.sold)} of ${totals.total === 1 ? "1 lot" : `${String(totals.total)} lots`} sold`;
   const base =
     totals.sold > 0 ? `${lots} · ${formatRand(totals.soldTotal)}` : lots;
   return totals.underConsideration > 0

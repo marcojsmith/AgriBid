@@ -170,6 +170,10 @@ function EventPage({ id }: { id: string | undefined }) {
   // Keep the previous list on screen while the next one loads, so a sort,
   // filter or "Show more" does not flash a loading state or lose the scroll.
   const [keptLots, setKeptLots] = useState(latestLots);
+  const [pinnedExample, setPinnedExample] = useState<{
+    title: string;
+    bid: number;
+  } | null>(null);
   if (latestLots !== undefined && latestLots !== keptLots) {
     setKeptLots(latestLots);
   }
@@ -220,7 +224,7 @@ function EventPage({ id }: { id: string | undefined }) {
 
   const featuredRow = featuredRows?.[0];
   const firstLot = lotsResult?.lots[0];
-  const example = featuredRow
+  const candidate = featuredRow
     ? {
         title: `${String(featuredRow.lot.year)} ${featuredRow.lot.make} ${featuredRow.lot.model}`,
         bid:
@@ -235,6 +239,11 @@ function EventPage({ id }: { id: string | undefined }) {
             firstLot.bids > 0 ? firstLot.currentPrice : firstLot.startingPrice,
         }
       : null;
+  // Pin the cost box example: a sort or filter must not change it.
+  if (pinnedExample === null && candidate !== null) {
+    setPinnedExample(candidate);
+  }
+  const example = featuredRow ? candidate : pinnedExample;
 
   const outcomes = facets?.outcomes;
   const outcomeOptions = outcomes
