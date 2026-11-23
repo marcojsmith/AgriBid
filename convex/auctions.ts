@@ -46,6 +46,7 @@ export {
 
 // Re-export the Home "Closing soon" lot strip query
 export { getClosingSoonLots } from "./auctions/queries/closingSoon";
+export { getHomeLots } from "./auctions/queries/homeLots";
 
 // Re-export mutations from the new modular structure
 export {

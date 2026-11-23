@@ -236,6 +236,17 @@
   }
 }
 
+/* The default Button is 48px (design system). The admin area is dense tables
+   and toolbars, so its default buttons keep the older 36px (44px on phones). */
+[data-admin-area] [data-slot="button"][data-size="default"] {
+  height: 2.75rem;
+}
+@media (min-width: 768px) {
+  [data-admin-area] [data-slot="button"][data-size="default"] {
+    height: 2.25rem;
+  }
+}
+
 /* Money, counts and times: fixed-width digits so values don't jitter. */
 @utility num {
   font-variant-numeric: tabular-nums;

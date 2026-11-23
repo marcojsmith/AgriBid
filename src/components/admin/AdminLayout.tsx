@@ -150,7 +150,10 @@ function AdminLayoutContent({
   }, [isMobileNavOpen]);
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] bg-muted/30">
+    <div
+      data-admin-area=""
+      className="flex min-h-[calc(100vh-64px)] bg-muted/30"
+    >
       {/* Sidebar — desktop */}
       <aside className="hidden lg:flex w-64 border-r bg-background flex-col sticky top-16 h-[calc(100vh-64px)] shrink-0">
         <div className="p-6">

@@ -19,6 +19,10 @@ import { Header } from "./Header";
 
 // Whether the mocked Convex auth boundary treats the visitor as signed in.
 const auth = vi.hoisted(() => ({ signedIn: true }));
+// The business details the mocked branding context returns.
+const brand = vi.hoisted(() => ({
+  businessInfo: undefined as { telephone: string | null } | undefined,
+}));
 
 // Mock convex/react
 vi.mock("convex/react", () => ({
@@ -68,7 +72,10 @@ vi.mock("@/components/NotificationDropdown", () => ({
 }));
 
 vi.mock("@/hooks/useBranding", () => ({
-  useBranding: () => ({ appName: "AgriBid" }),
+  useBranding: () => ({
+    appName: "AgriBid",
+    businessInfo: brand.businessInfo,
+  }),
 }));
 
 describe("Header", () => {
@@ -77,6 +84,7 @@ describe("Header", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     auth.signedIn = true;
+    brand.businessInfo = undefined;
     (useClerk as Mock).mockReturnValue({ signOut: mockSignOut });
     (useQuery as Mock).mockReturnValue({
       profile: {
@@ -189,41 +197,80 @@ describe("Header", () => {
     expect(screen.queryByText(/Login/i)).toBeNull();
   });
 
-  it("signed out: shows only Sign in", () => {
+  it("signed out: shows Sign in and Register to bid", () => {
     auth.signedIn = false;
     renderHeader();
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/login"
     );
+    expect(
+      screen.getByRole("link", { name: "Register to bid" })
+    ).toHaveAttribute("href", "/login");
     expect(screen.queryByRole("link", { name: "My bids" })).toBeNull();
     expect(screen.queryByTestId("user-dropdown")).toBeNull();
   });
 
-  it("keeps the desktop search field and hides the phone field until the icon is pressed", () => {
+  it("shows a Sell link for the phone layout", () => {
+    renderHeader();
+    expect(screen.getByRole("link", { name: "Sell" })).toHaveAttribute(
+      "href",
+      "/sell"
+    );
+  });
+
+  it("shows the call icon only when a phone number is set", () => {
+    renderHeader();
+    expect(screen.queryByRole("link", { name: /^Call / })).toBeNull();
+  });
+
+  it("links the call icon to the configured phone number", () => {
+    brand.businessInfo = { telephone: "083 7 000 000" };
+    renderHeader();
+    expect(
+      screen.getByRole("link", { name: "Call 083 7 000 000" })
+    ).toHaveAttribute("href", "tel:0837000000");
+  });
+
+  it("keeps the desktop search field and hides the menu until the button is pressed", () => {
     renderHeader();
     expect(screen.getByTestId("search-search-desktop")).toBeInTheDocument();
     expect(screen.queryByTestId("search-search-mobile")).toBeNull();
 
-    const toggle = screen.getByRole("button", { name: "Search" });
+    const toggle = screen.getByRole("button", { name: "Open menu" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggle);
 
     expect(screen.getByTestId("search-search-mobile")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Close search" })
-    ).toHaveAttribute("aria-expanded", "true");
+    const menu = screen.getByRole("navigation", { name: "Menu" });
+    expect(within(menu).getByRole("link", { name: "Support" })).toHaveAttribute(
+      "href",
+      "/support"
+    );
+    expect(screen.getByRole("button", { name: "Close menu" })).toHaveAttribute(
+      "aria-expanded",
+      "true"
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: "Close search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close menu" }));
     expect(screen.queryByTestId("search-search-mobile")).toBeNull();
   });
 
-  it("closes the phone search after a search is submitted", () => {
+  it("closes the menu after a search is submitted or a link is followed", () => {
     renderHeader();
-    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
     fireEvent.click(
       within(screen.getByTestId("search-search-mobile")).getByText("Run search")
     );
     expect(screen.queryByTestId("search-search-mobile")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Menu" })).getByRole(
+        "link",
+        { name: "Support" }
+      )
+    );
+    expect(screen.queryByRole("navigation", { name: "Menu" })).toBeNull();
   });
 });

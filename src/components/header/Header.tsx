@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Authenticated, Unauthenticated } from "convex/react";
-import { Search, X } from "lucide-react";
+import { Menu, Phone, X } from "lucide-react";
 import { toast } from "sonner";
 import { useClerk } from "@clerk/clerk-react";
 
@@ -10,6 +10,7 @@ import { useBranding } from "@/hooks/useBranding";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { telLink } from "@/lib/homeSales";
 import { NotificationDropdown } from "@/components/NotificationDropdown";
 
 import { SearchBar } from "./SearchBar";
@@ -23,12 +24,13 @@ const NAV_LINKS: readonly { name: string; href: string }[] = [
 ];
 
 /**
- * Main application header component.
+ * Main application header component (design system Header).
  *
- * Renders the site navigation, search and the account controls. Signed out it
- * shows "Sign in"; signed in it shows the notification bell, a "My bids" link
- * and the account menu (avatar). Below `md` the search field is hidden behind
- * a search icon that opens a full-width field under the header.
+ * Phone: logo, a call icon (when a phone number is set), "Sell", the account
+ * control and a menu button that opens the navigation and search. Desktop: the
+ * navigation, search, the phone number and the account controls. Signed out it
+ * shows "Sign in" and, from `md`, a filled "Register to bid"; signed in it
+ * shows the notification bell, a "My bids" link and the account menu (avatar).
  *
  * Reads the signed-in user's profile from `UserProfileContext`, which the
  * layout provides, instead of subscribing to `users.getMyProfile` again.
@@ -46,7 +48,9 @@ export const Header = () => {
   const kycStatus = userData?.profile?.kycStatus;
 
   const location = useLocation();
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const telephone = branding?.businessInfo?.telephone?.trim() ?? "";
+  const tel = telLink(telephone);
 
   const handleSignOut = async () => {
     try {
@@ -98,23 +102,22 @@ export const Header = () => {
         />
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            aria-label={searchOpen ? "Close search" : "Search"}
-            aria-expanded={searchOpen}
-            aria-controls="mobile-search"
-            onClick={() => {
-              setSearchOpen((open) => !open);
-            }}
+          {tel ? (
+            <a
+              href={tel}
+              aria-label={`Call ${telephone}`}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-sm text-sm font-medium hover:text-primary lg:px-2"
+            >
+              <Phone aria-hidden="true" className="size-5" />
+              <span className="num hidden lg:inline">{telephone}</span>
+            </a>
+          ) : null}
+          <Link
+            to="/sell"
+            className="inline-flex min-h-11 items-center rounded-sm px-2 text-sm font-semibold hover:text-primary lg:hidden"
           >
-            {searchOpen ? (
-              <X aria-hidden="true" />
-            ) : (
-              <Search aria-hidden="true" />
-            )}
-          </Button>
+            Sell
+          </Link>
 
           <Authenticated>
             <NotificationDropdown />
@@ -136,26 +139,62 @@ export const Header = () => {
           </Authenticated>
 
           <Unauthenticated>
-            <Button size="sm" variant="outline" asChild>
-              <Link to="/login">Sign in</Link>
+            <Link
+              to="/login"
+              className="inline-flex min-h-11 items-center rounded-sm px-2 text-sm font-semibold hover:text-primary"
+            >
+              Sign in
+            </Link>
+            <Button asChild className="hidden h-10 md:inline-flex">
+              <Link to="/login">Register to bid</Link>
             </Button>
           </Unauthenticated>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            onClick={() => {
+              setMenuOpen((open) => !open);
+            }}
+          >
+            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          </Button>
         </div>
       </div>
 
       <div
-        id="mobile-search"
-        hidden={!searchOpen}
-        className="md:hidden border-t px-4 py-2"
+        id="mobile-menu"
+        hidden={!menuOpen}
+        className="lg:hidden border-t px-4 py-2"
       >
-        {searchOpen ? (
-          <SearchBar
-            id="search-mobile"
-            autoFocus
-            onSearch={() => {
-              setSearchOpen(false);
-            }}
-          />
+        {menuOpen ? (
+          <div className="space-y-2">
+            <SearchBar
+              id="search-mobile"
+              className="md:hidden"
+              onSearch={() => {
+                setMenuOpen(false);
+              }}
+            />
+            <nav aria-label="Menu" className="flex flex-col">
+              {NAV_LINKS.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.href}
+                  onClick={() => {
+                    setMenuOpen(false);
+                  }}
+                  className="inline-flex min-h-11 items-center rounded-sm text-base font-medium"
+                >
+                  {link.name}
+                </Link>
+              ))}
+            </nav>
+          </div>
         ) : null}
       </div>
     </header>

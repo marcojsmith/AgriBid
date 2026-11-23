@@ -5,6 +5,9 @@ import indexCss from "@/index.css?raw";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Banner } from "@/components/ds/Banner";
+import { BeforeYouBid } from "@/components/ds/BeforeYouBid";
+import { FeesRulesSheet } from "@/components/ds/FeesRulesSheet";
+import { HomeFilters } from "@/components/home/HomeFilters";
 import { BottomSheet } from "@/components/ds/BottomSheet";
 import { ConditionReport } from "@/components/ds/ConditionReport";
 import { CostBox } from "@/components/ds/CostBox";
@@ -137,6 +140,7 @@ export default function DesignSystem() {
   );
   const [view, setView] = useState("live");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [feesOpen, setFeesOpen] = useState(false);
   const [watching, setWatching] = useState(false);
   const [filters, setFilters] = useState<ActiveFilter[]>([
     { key: "cat", label: "Tractors" },
@@ -514,6 +518,59 @@ export default function DesignSystem() {
           The sticky bar shows below 768px only (resize to see it).
         </p>
       </section>
+
+      <section aria-labelledby="ds-frame" className="space-y-4">
+        <SectionHeader id="ds-frame" title="Page frame and Home blocks" />
+        <p className="text-sm text-muted-foreground">
+          The Header and Footer are the real ones: this page sits between them.
+          Phone: logo, call icon (when a phone is set), Sell, Sign in, menu.
+          Desktop: navigation, search, phone number, Sign in and Register to
+          bid. The Footer shows each company detail only when an admin has set
+          it.
+        </p>
+        <HomeFilters
+          total={85}
+          categories={[
+            { key: "tractors", label: "Tractors", count: 48 },
+            { key: "implements", label: "Implements", count: 22 },
+          ]}
+          makes={[
+            { key: "Massey Ferguson", label: "Massey Ferguson", count: 14 },
+            { key: "Ford", label: "Ford", count: 8 },
+          ]}
+          priceRange={{ min: 20000, max: 2000000 }}
+          category={null}
+          make={null}
+          price={{}}
+          onCategory={() => undefined}
+          onMake={() => undefined}
+          onPrice={() => undefined}
+          onSearch={() => undefined}
+        />
+        <Button
+          variant="outline"
+          onClick={() => {
+            setFeesOpen(true);
+          }}
+        >
+          Open Fees &amp; rules
+        </Button>
+        <BeforeYouBid
+          transportHref="/support"
+          finance={{
+            name: "Lee-Anne Vermeulen",
+            company: null,
+            phone: "083 277 0178",
+          }}
+        />
+      </section>
+
+      <FeesRulesSheet
+        open={feesOpen}
+        onOpenChange={setFeesOpen}
+        premiumPct={12}
+        deposit={{ enabled: true, amount: 5000, refundDays: 3 }}
+      />
 
       <BottomSheet
         open={sheetOpen}

@@ -283,3 +283,18 @@ export const MAX_PROFILE_REPORTS_PER_WINDOW = 10;
  */
 export const KYC_RATE_LIMIT_WINDOW_MS = MS_PER_DAY;
 export const MAX_KYC_SUBMISSIONS_PER_WINDOW = 3;
+
+// Home lot grid (`getHomeLots`).
+// Sales read per call; extra ids in the args are ignored.
+export const HOME_LOTS_MAX_AUCTIONS = 4;
+
+// `assigned` lots read per sale (facet counts and the grid are computed over
+// these; a larger sale is flagged `capped`).
+export const HOME_LOTS_READ_PER_AUCTION = 200;
+
+// Largest grid served (each returned lot costs an image resolve and two
+// counter reads).
+export const HOME_LOTS_MAX_LIMIT = 24;
+
+// Grid size when the caller gives none.
+export const HOME_LOTS_DEFAULT_LIMIT = 6;

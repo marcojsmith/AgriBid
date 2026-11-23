@@ -24,7 +24,7 @@ vi.mock("convex/_generated/api", () => ({
 
 /** Business details as `admin.getBusinessInfo` returns them. */
 const businessInfo: BusinessInfo = {
-  businessName: "AgriBid",
+  businessName: "AgriBid (Pty) Ltd",
   businessDescription: null,
   streetAddress: "1 Main Road",
   addressLocality: "Centurion",
@@ -43,6 +43,7 @@ const businessInfo: BusinessInfo = {
 /** Every company field unset, as a fresh install has it. */
 const emptyInfo: BusinessInfo = {
   ...businessInfo,
+  businessName: null,
   streetAddress: null,
   addressLocality: null,
   addressCountry: null,
@@ -69,78 +70,48 @@ describe("Footer", () => {
       </BrowserRouter>
     );
 
-  it("renders the address and phone from the branding context", () => {
+  it("renders the brand, company name and address from the branding context", () => {
     renderFooter();
-
-    const addressLink = screen.getByRole("link", {
-      name: "1 Main Road, Centurion, ZA, 0157",
-    });
-    expect(addressLink).toHaveAttribute(
+    expect(screen.getByText("AgriBid (Pty) Ltd")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "1 Main Road, Centurion, ZA, 0157" })
+    ).toHaveAttribute(
       "href",
       expect.stringContaining("1%20Main%20Road%2C%20Centurion")
     );
-
-    const phoneLink = screen.getByRole("link", { name: "+27-11-000-0000" });
-    expect(phoneLink).toHaveAttribute("href", "tel:+27110000000");
   });
 
-  it("shows registration no., VAT no. and a WhatsApp link when set", () => {
+  it("links the phone number and shows the WhatsApp logo link", () => {
     renderFooter();
+    expect(
+      screen.getByRole("link", { name: "+27-11-000-0000" })
+    ).toHaveAttribute("href", "tel:+27110000000");
+    expect(screen.getByRole("link", { name: "WhatsApp us" })).toHaveAttribute(
+      "href",
+      "https://wa.me/27825550100"
+    );
+  });
 
+  it("shows registration and VAT numbers when set", () => {
+    renderFooter();
     expect(screen.getByText("Reg. no. 2019/123456/07")).toBeInTheDocument();
     expect(screen.getByText("VAT no. 4123456789")).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "WhatsApp +27 82 555 0100" })
-    ).toHaveAttribute("href", "https://wa.me/27825550100");
   });
 
-  it("hides each unset company row", () => {
+  it("hides every unset company detail", () => {
     vi.mocked(useBranding).mockReturnValue({
       appName: "AgriBid",
-      businessInfo: {
-        ...businessInfo,
-        registrationNo: null,
-        vatNo: "  ",
-        whatsapp: null,
-        telephone: null,
-      },
+      businessInfo: emptyInfo,
     });
     renderFooter();
-
     expect(screen.queryByText(/Reg\. no\./)).toBeNull();
     expect(screen.queryByText(/VAT no\./)).toBeNull();
-    expect(screen.queryByText(/WhatsApp/)).toBeNull();
-    expect(screen.queryByRole("link", { name: /000-0000/ })).toBeNull();
-    // The address is still set, so the column and its heading stay.
+    expect(screen.queryByRole("link", { name: "WhatsApp us" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /\+27/ })).toBeNull();
+    expect(screen.queryByText(/Main Road/)).toBeNull();
     expect(
-      screen.getByRole("heading", { name: "Company" })
+      screen.getByText("AgriBid", { selector: "div" })
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Main Road/ })).toBeInTheDocument();
-  });
-
-  it("removes the whole company column and heading when nothing is set", () => {
-    vi.mocked(useBranding).mockReturnValue({
-      appName: "AgriBid",
-      businessInfo: emptyInfo,
-    });
-    renderFooter();
-
-    expect(screen.queryByText("Company")).toBeNull();
-    expect(screen.queryByText("Headquarters")).toBeNull();
-  });
-
-  it("never renders an empty heading", () => {
-    vi.mocked(useBranding).mockReturnValue({
-      appName: "AgriBid",
-      businessInfo: emptyInfo,
-    });
-    renderFooter();
-
-    for (const heading of screen.getAllByRole("heading")) {
-      expect(heading.textContent?.trim()).not.toBe("");
-      const list = heading.nextElementSibling;
-      expect(list?.querySelectorAll("li").length).toBeGreaterThan(0);
-    }
   });
 
   it("omits the company details while business info is unavailable", () => {
@@ -148,63 +119,45 @@ describe("Footer", () => {
       appName: "AgriBid",
       businessInfo: undefined,
     });
-
     renderFooter();
-
-    expect(screen.queryByText("Company")).toBeNull();
-    expect(screen.queryByRole("link", { name: /Main Road/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: /000-0000/ })).toBeNull();
+    expect(screen.queryByText(/Reg\. no\./)).toBeNull();
+    expect(screen.queryByRole("link", { name: "WhatsApp us" })).toBeNull();
   });
 
   it("falls back to AgriBid when branding is unavailable", () => {
     vi.mocked(useBranding).mockReturnValue(undefined);
     renderFooter();
-    expect(screen.getByText("AgriBid")).toBeInTheDocument();
-  });
-
-  it("renders the brand, tagline and verification claim", () => {
-    renderFooter();
-    expect(screen.getByText("AgriBid")).toBeInTheDocument();
     expect(
-      screen.getByText(/online auction floor for farm machinery/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Every seller FICA-verified before listing")
+      screen.getByText("AgriBid", { selector: "div" })
     ).toBeInTheDocument();
   });
 
   it("links only to routes that exist", () => {
     renderFooter();
-    const nav = (name: string) => screen.getByRole("navigation", { name });
+    const nav = screen.getByRole("navigation", { name: "Footer" });
     expect(
-      within(nav("Buy")).getByRole("link", { name: "Live auctions" })
-    ).toHaveAttribute("href", "/auctions");
-    expect(
-      within(nav("Buy")).getByRole("link", { name: "Auction rules" })
-    ).toHaveAttribute("href", "/faq");
-    expect(
-      within(nav("Sell and help")).getByRole("link", { name: "List equipment" })
-    ).toHaveAttribute("href", "/sell");
-    expect(
-      within(nav("Sell and help")).getByRole("link", {
-        name: "Contact support",
-      })
-    ).toHaveAttribute("href", "/support");
-    for (const link of screen.getAllByRole("link")) {
-      expect(link.getAttribute("href")).not.toBe("#");
-    }
+      within(nav)
+        .getAllByRole("link")
+        .map((l) => [l.textContent, l.getAttribute("href")])
+    ).toEqual([
+      ["Fees & rules", "/faq"],
+      ["Sell equipment", "/sell"],
+      ["Help", "/support"],
+    ]);
   });
 
-  it("shows the copyright and no legal links while none are published", () => {
+  it("shows the copyright", () => {
     renderFooter();
-    const legal = screen.getByTestId("footer-legal");
-    expect(legal).toHaveTextContent(
-      `© ${String(new Date().getFullYear())} AgriBid`
-    );
-    expect(within(legal).queryAllByRole("link")).toHaveLength(0);
-    for (const page of ["Terms", "Privacy", "PAIA manual"]) {
-      expect(within(legal).queryByText(page)).toBeNull();
-    }
+    expect(
+      screen.getByText(`© ${String(new Date().getFullYear())} AgriBid`)
+    ).toBeInTheDocument();
+  });
+
+  it("shows no legal links while none are published", () => {
+    renderFooter();
+    expect(
+      within(screen.getByTestId("footer-legal")).queryAllByRole("link")
+    ).toHaveLength(0);
   });
 
   it("hides the legal links while the published list is loading", () => {
@@ -225,9 +178,6 @@ describe("Footer", () => {
       ["Terms", "/terms"],
       ["Privacy", "/privacy"],
     ]);
-    expect(
-      within(screen.getByTestId("footer-legal")).queryByText("PAIA manual")
-    ).toBeNull();
   });
 
   it("links all three pages when all are published", () => {

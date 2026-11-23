@@ -43,7 +43,7 @@ describe("Button", () => {
     expect(button).toHaveClass("text-btn-foreground");
   });
 
-  it.each(["default", "sm", "lg", "icon"] as const)(
+  it.each(["sm", "lg", "icon"] as const)(
     "keeps the %s size at least 44px tall below md",
     (size) => {
       render(<Button size={size}>Tap</Button>);
@@ -52,6 +52,14 @@ describe("Button", () => {
       expect(button.className).toMatch(/max-md:(h|size)-11(\s|$)/);
     }
   );
+
+  it("makes the default size 48px tall on every screen", () => {
+    render(<Button>Register to bid</Button>);
+
+    const button = screen.getByRole("button", { name: "Register to bid" });
+    expect(button).toHaveClass("h-12");
+    expect(button.className).not.toMatch(/max-md:h-/);
+  });
 
   it("offers a touch size that is always 44px tall", () => {
     render(<Button size="touch">Tap</Button>);
