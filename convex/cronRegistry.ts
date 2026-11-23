@@ -14,6 +14,7 @@ export type CronJobKey =
   | "cleanup_presence_records"
   | "sweep_orphaned_uploads"
   | "process_error_reports"
+  | "purge_lot_viewers"
   | "weekly_mock_data_reset";
 
 /** Static description of a toggleable background job. */
@@ -64,6 +65,14 @@ export const CRON_JOBS: readonly CronJobDefinition[] = [
     description:
       "Turns pending error reports into GitHub issues (also requires GitHub error reporting to be enabled).",
     schedule: "Daily at 02:00 UTC",
+    defaultEnabled: false,
+  },
+  {
+    key: "purge_lot_viewers",
+    label: "Purge lot viewer records",
+    description:
+      "Deletes the per-viewer lot view dedupe records older than 24 hours.",
+    schedule: "Every 24 hours",
     defaultEnabled: false,
   },
   {

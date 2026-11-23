@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { useQuery } from "convex/react";
 
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 import { useListingMedia } from "@/hooks/listing-wizard/useListingMedia";
@@ -7,6 +8,10 @@ import { useListingMedia } from "@/hooks/listing-wizard/useListingMedia";
 import { MediaGalleryStep } from "./MediaGalleryStep";
 import type { ListingFormData } from "../types";
 import type { ListingWizardContextType } from "../context/ListingWizardContextDef";
+
+vi.mock("convex/react", () => ({
+  useQuery: vi.fn(),
+}));
 
 vi.mock("@/hooks/listing-wizard/useListingWizard", () => ({
   useListingWizard: vi.fn(),
@@ -32,8 +37,12 @@ describe("MediaGalleryStep", () => {
     },
   };
 
+  const mockSetFormData = vi.fn();
+  const mockSetDraftSaved = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useQuery).mockReturnValue(undefined);
     vi.mocked(useListingWizard).mockReturnValue({
       formData: mockFormData as unknown as ListingFormData,
       previews: {},
@@ -162,6 +171,82 @@ describe("MediaGalleryStep", () => {
 
     render(<MediaGalleryStep />);
     expect(screen.getByAltText(/Additional 1/i)).toBeInTheDocument();
+  });
+
+  it("shows the minimum photos hint once settings load", () => {
+    vi.mocked(useQuery).mockReturnValue({ minPhotosPerLot: 8 });
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        images: { ...mockFormData.images, front: "id1", additional: ["a1"] },
+      } as unknown as ListingFormData,
+      previews: {},
+      isSubmitting: false,
+    } as unknown as ListingWizardContextType);
+    render(<MediaGalleryStep />);
+    expect(
+      screen.getByText("Minimum 8 photos to submit (2 added).")
+    ).toBeInTheDocument();
+  });
+
+  it("hides the minimum photos hint while settings load", () => {
+    render(<MediaGalleryStep />);
+    expect(screen.queryByText(/Minimum \d+ photos/)).not.toBeInTheDocument();
+  });
+
+  it("lets the seller caption an uploaded photo with an angle", () => {
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        images: { ...mockFormData.images, front: "id1", additional: ["a1"] },
+        imageAngles: { id1: "front", stale: "rear" },
+      } as unknown as ListingFormData,
+      previews: {},
+      isSubmitting: false,
+      setFormData: mockSetFormData,
+      setDraftSaved: mockSetDraftSaved,
+    } as unknown as ListingWizardContextType);
+    render(<MediaGalleryStep />);
+
+    expect(screen.getByLabelText("Angle for Front 45° View")).toHaveValue(
+      "front"
+    );
+    fireEvent.change(screen.getByLabelText("Angle for Additional 1"), {
+      target: { value: "tyres" },
+    });
+
+    expect(mockSetDraftSaved).toHaveBeenCalledWith(false);
+    const updater = mockSetFormData.mock.calls[0][0] as (
+      prev: ListingFormData
+    ) => ListingFormData;
+    expect(
+      updater({ imageAngles: { id1: "front" } } as unknown as ListingFormData)
+        .imageAngles
+    ).toEqual({ id1: "front", a1: "tyres" });
+  });
+
+  it("removes an angle when it is cleared", () => {
+    vi.mocked(useListingWizard).mockReturnValue({
+      formData: {
+        images: { ...mockFormData.images, front: "id1" },
+        imageAngles: { id1: "front" },
+      } as unknown as ListingFormData,
+      previews: {},
+      isSubmitting: false,
+      setFormData: mockSetFormData,
+      setDraftSaved: mockSetDraftSaved,
+    } as unknown as ListingWizardContextType);
+    render(<MediaGalleryStep />);
+
+    fireEvent.change(screen.getByLabelText("Angle for Front 45° View"), {
+      target: { value: "" },
+    });
+    const updater = mockSetFormData.mock.calls[0][0] as (
+      prev: ListingFormData
+    ) => ListingFormData;
+    expect(
+      updater({ imageAngles: { id1: "front" } } as unknown as ListingFormData)
+        .imageAngles
+    ).toEqual({});
+    expect(updater({} as unknown as ListingFormData).imageAngles).toEqual({});
   });
 
   it("renders check icon for fixed slot without preview URL", () => {

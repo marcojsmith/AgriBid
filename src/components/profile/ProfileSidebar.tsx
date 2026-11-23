@@ -18,7 +18,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  SELLER_TYPES,
+  SELLER_TYPE_LABELS,
+  parseSellerType,
+  type SellerType,
+} from "@/lib/lotSpecs";
 import {
   formatPrice,
   formatMemberSince,
@@ -54,7 +61,13 @@ interface ProfileSidebarProps {
   /** Whether the current user owns this profile */
   isOwner: boolean;
   /** Initial data for the edit form */
-  initialEditData?: { bio?: string; location?: string; companyName?: string };
+  initialEditData?: {
+    bio?: string;
+    location?: string;
+    companyName?: string;
+    vatRegistered?: boolean;
+    sellerType?: SellerType;
+  };
 }
 
 /**
@@ -77,11 +90,14 @@ export function ProfileSidebar({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({
+  const initialForm = () => ({
     bio: initialEditData?.bio ?? "",
     location: initialEditData?.location ?? "",
     companyName: initialEditData?.companyName ?? "",
+    vatRegistered: initialEditData?.vatRegistered,
+    sellerType: initialEditData?.sellerType,
   });
+  const [editForm, setEditForm] = useState(initialForm);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -91,6 +107,8 @@ export function ProfileSidebar({
         bio: editForm.bio || undefined,
         location: editForm.location || undefined,
         companyName: editForm.companyName || undefined,
+        vatRegistered: editForm.vatRegistered,
+        sellerType: editForm.sellerType,
       });
       setIsEditing(false);
     } catch (error) {
@@ -104,11 +122,7 @@ export function ProfileSidebar({
   };
 
   const handleCancelEdit = () => {
-    setEditForm({
-      bio: initialEditData?.bio ?? "",
-      location: initialEditData?.location ?? "",
-      companyName: initialEditData?.companyName ?? "",
-    });
+    setEditForm(initialForm());
     setIsEditing(false);
   };
 
@@ -134,11 +148,7 @@ export function ProfileSidebar({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setEditForm({
-                    bio: initialEditData?.bio ?? "",
-                    location: initialEditData?.location ?? "",
-                    companyName: initialEditData?.companyName ?? "",
-                  });
+                  setEditForm(initialForm());
                   setIsEditing(true);
                 }}
                 className="h-8 px-2 rounded-md font-bold text-xs"
@@ -228,6 +238,47 @@ export function ProfileSidebar({
                   placeholder="Your company name"
                   className="mt-1 rounded-md border font-bold text-sm"
                 />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <label
+                  htmlFor="profile-vat-registered"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  VAT registered
+                </label>
+                <Switch
+                  id="profile-vat-registered"
+                  checked={editForm.vatRegistered ?? false}
+                  onCheckedChange={(checked) => {
+                    setEditForm({ ...editForm, vatRegistered: checked });
+                  }}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="profile-seller-type"
+                  className="text-xs font-semibold text-muted-foreground"
+                >
+                  Seller type
+                </label>
+                <select
+                  id="profile-seller-type"
+                  value={editForm.sellerType ?? ""}
+                  onChange={(e) => {
+                    setEditForm({
+                      ...editForm,
+                      sellerType: parseSellerType(e.target.value),
+                    });
+                  }}
+                  className="border-input bg-background mt-1 h-9 w-full rounded-md border px-3 text-base md:text-sm"
+                >
+                  <option value="">Not set</option>
+                  {SELLER_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {SELLER_TYPE_LABELS[type]}
+                    </option>
+                  ))}
+                </select>
               </div>
               {saveError && (
                 <p className="text-sm text-destructive mt-2">{saveError}</p>

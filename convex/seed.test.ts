@@ -267,7 +267,7 @@ describe("Seed Coverage", () => {
       await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
 
       expect(mockDb.rows("auctions").length).toBe(7);
-      expect(mockDb.rows("lots").length).toBe(22);
+      expect(mockDb.rows("lots").length).toBe(29);
       expect(mockDb.rows("bids").length).toBeGreaterThan(0);
       expect(mockDb.rows("reviews").length).toBe(3);
       expect(mockDb.rows("platformFees").length).toBe(2);
@@ -320,6 +320,163 @@ describe("Seed Coverage", () => {
         settings.filter((s) => String(s.key).startsWith("business."))
       ).toEqual([]);
       expect(settings.find((s) => s.key === "vat_rate_pct")?.value).toBe(15);
+    });
+
+    it("weeklyReset (production showcase) never invents finance contact details", async () => {
+      seedExistingProfiles();
+
+      await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
+
+      const settings = mockDb.rows("settings");
+      expect(
+        settings.filter((s) => String(s.key).startsWith("finance_contact_"))
+      ).toEqual([]);
+      // Built-in defaults are still seeded, identical to the app fallbacks.
+      expect(settings.find((s) => s.key === "buyer_premium_pct")?.value).toBe(
+        12
+      );
+      expect(settings.find((s) => s.key === "min_photos_per_lot")?.value).toBe(
+        8
+      );
+    });
+
+    it("seeds real webuytractors lots with specs and angle captions, T6070 as lot 3", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const lots = mockDb.rows("lots");
+      const sale = mockDb
+        .rows("auctions")
+        .find((a) => a.title === "Year-End Tractor Sale");
+      const live = lots.filter((l) => l.auctionId === sale?._id);
+      expect(live).toHaveLength(12);
+
+      const t6070 = live.find((l) => l.lotNumber === 3);
+      expect(t6070).toMatchObject({
+        title: "New Holland T6070",
+        year: 2016,
+        operatingHours: 4850,
+        location: "Malmesbury, Western Cape",
+        province: "western_cape",
+        drive: "4wd",
+        powerKw: 104,
+        resolvedBuyerPremiumPct: 0.12,
+      });
+      // Only one real photo exists for the T6070: captioned, not padded.
+      expect(Object.values(t6070?.imageAngles as object)).toEqual(["front"]);
+
+      const mf455 = live.find((l) => l.seedId === "mf-455-xtra-4x4");
+      const angles = mf455?.imageAngles as Record<string, string>;
+      expect(Object.values(angles)).toEqual([
+        "front",
+        "rear",
+        "left_side",
+        "right_side",
+        "cab_interior",
+        "hour_meter",
+        "engine_bay",
+        "tyres",
+      ]);
+
+      for (const lot of live) {
+        const images = lot.images as {
+          front: string;
+          engine?: string;
+          cabin?: string;
+          additional: string[];
+        };
+        const refs = [
+          images.front,
+          images.engine,
+          images.cabin,
+          ...images.additional,
+        ].filter((ref): ref is string => ref !== undefined);
+        expect(refs.every((ref) => ref.startsWith("https://"))).toBe(true);
+        // Every caption keys one of the lot's own photos.
+        expect(
+          Object.keys(lot.imageAngles as object).every((key) =>
+            refs.includes(key)
+          )
+        ).toBe(true);
+        expect(typeof lot.powerKw).toBe("number");
+        expect(typeof lot.serialNumber).toBe("string");
+      }
+    });
+
+    it("seeds a VAT mix: private farmer, farming business and dealers", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const profiles = mockDb.rows("profiles");
+      const byUser = (userId: string) =>
+        profiles.find((p) => p.userId === userId);
+      expect(byUser("mock-seller-4")).toMatchObject({
+        sellerType: "private_farmer",
+        vatRegistered: false,
+      });
+      expect(byUser("clerk-mock-seller")).toMatchObject({
+        sellerType: "farming_business",
+        vatRegistered: true,
+      });
+      expect(byUser("mock-seller-2")).toMatchObject({
+        sellerType: "dealer",
+        vatRegistered: true,
+      });
+    });
+
+    it("keeps a seller type already set on the Clerk-synced seller", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      const { sellerId } = seedExistingProfiles();
+      mockDb.db.patch("profiles", sellerId, {
+        sellerType: "private_farmer",
+        vatRegistered: false,
+      });
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      expect(
+        mockDb.rows("profiles").find((p) => p._id === sellerId)
+      ).toMatchObject({ sellerType: "private_farmer", vatRegistered: false });
+    });
+
+    it("seeds platform settings and the DEMO finance contact without overwriting admin values", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+      mockDb.db.insert("settings", {
+        key: "finance_contact_name",
+        value: "Real Person",
+        updatedAt: 1,
+      });
+      mockDb.db.insert("settings", {
+        key: "buyer_premium_pct",
+        value: 9,
+        updatedAt: 1,
+      });
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const settings = mockDb.rows("settings");
+      const row = (key: string) => settings.find((s) => s.key === key);
+      expect(row("finance_contact_name")?.value).toBe("Real Person");
+      expect(row("finance_contact_company")?.value).toBe("com-fin");
+      expect(row("finance_contact_phone")?.value).toBe("083 277 0178");
+      expect(String(row("finance_contact_company")?.description)).toContain(
+        "DEMO"
+      );
+      expect(row("buyer_premium_pct")?.value).toBe(9);
+      expect(row("deposit_enabled")?.value).toBe(true);
+      expect(row("deposit_amount")?.value).toBe(5000);
+      expect(row("deposit_refund_days")?.value).toBe(3);
+      expect(row("seller_commission_pct")?.value).toBe(8);
+      expect(row("seller_listing_fee")?.value).toBe(0);
+      expect(row("seller_payout_days")?.value).toBe(7);
+      expect(row("min_photos_per_lot")?.value).toBe(8);
+      expect(new Set(settings.map((s) => s.key)).size).toBe(settings.length);
     });
 
     it("does not duplicate synthetic records when run twice without clearing", async () => {
@@ -390,6 +547,12 @@ describe("Seed Coverage", () => {
         status: "assigned",
         images: { additional: ["stale-image"] },
         conditionReportUrl: "stale-report",
+        coldStartVideo: "stale-video",
+      });
+      mockDb.db.insert("lotViewers", {
+        lotId: "stale-lot",
+        viewerKey: "s:stale-session",
+        lastViewedAt: 1,
       });
 
       await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {
@@ -399,11 +562,59 @@ describe("Seed Coverage", () => {
       // Storage blobs referenced by the cleared rows are swept first.
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("stale-banner");
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("stale-report");
+      expect(mockCtx.storage.delete).toHaveBeenCalledWith("stale-video");
+      expect(mockDb.rows("lotViewers")).toEqual([]);
 
       // Tables listed for clearing end up repopulated by the seed itself.
       expect(mockDb.rows("equipmentCategories").length).toBeGreaterThan(0);
       expect(mockDb.rows("auctions").length).toBe(7);
-      expect(mockDb.rows("lots").length).toBe(22);
+      expect(mockDb.rows("lots").length).toBe(29);
+    });
+
+    it("seeds platform percentage fees as fractions within the fee validator range", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const fees = mockDb.rows("platformFees");
+      const valueOf = (appliesTo: string) =>
+        fees.find((f) => f.appliesTo === appliesTo)?.value;
+      expect(valueOf("buyer")).toBe(0.12);
+      expect(valueOf("seller")).toBe(0.05);
+      for (const fee of fees) {
+        expect(fee.value).toBeGreaterThan(0);
+        expect(fee.value).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it("backfills only the missing VAT field on the primary seller and extra sellers", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      const { sellerId } = seedExistingProfiles();
+      mockDb.db.patch("profiles", sellerId, {
+        sellerType: "private",
+      });
+      mockDb.db.insert("profiles", {
+        userId: "mock-seller-2",
+        email: "mock-seller-2@farm.com",
+        name: "Seller Two",
+        role: "seller",
+        vatRegistered: false,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const profiles = mockDb.rows("profiles");
+      const primary = profiles.find((p) => p._id === sellerId);
+      // Admin-set seller type is kept; only the unset VAT flag is filled.
+      expect(primary?.sellerType).toBe("private");
+      expect(primary?.vatRegistered).toBe(true);
+      const second = profiles.find((p) => p.userId === "mock-seller-2");
+      // The existing VAT flag is kept; only the unset seller type is filled.
+      expect(second?.vatRegistered).toBe(false);
+      expect(second?.sellerType).toBeDefined();
     });
 
     it("promotes synced profiles that have the wrong role", async () => {
@@ -465,6 +676,19 @@ describe("Seed Coverage", () => {
       ).toBe(true);
     });
 
+    it("clears lot viewer dedupe rows and per-lot view counters", async () => {
+      seedExistingProfiles();
+      mockDb.db.insert("lotViewers", {
+        lotId: "gone",
+        viewerKey: "u:someone",
+        lastViewedAt: 1,
+      });
+
+      await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
+
+      expect(mockDb.rows("lotViewers")).toEqual([]);
+    });
+
     it("sweeps KYC document blobs when deleting non-admin profiles", async () => {
       seedExistingProfiles();
 
@@ -482,7 +706,7 @@ describe("Seed Coverage", () => {
       await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
 
       expect(mockDb.rows("auctions").length).toBe(7);
-      expect(mockDb.rows("lots").length).toBe(22);
+      expect(mockDb.rows("lots").length).toBe(29);
       expect(mockDb.rows("bids").length).toBeGreaterThan(0);
       expect(mockDb.rows("proxy_bids").length).toBe(2);
       expect(mockDb.rows("reviews").length).toBe(3);
@@ -661,6 +885,24 @@ describe("Seed Coverage", () => {
         expect(vi.mocked(adminUtils.logAudit)).toHaveBeenCalled();
       });
 
+      it("clears lot viewer rows and view counters with the lots", async () => {
+        process.env.NODE_ENV = "production";
+        delete process.env.ALLOW_DEV_SEED;
+        vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+        mockDb.db.insert("lotViewers", {
+          lotId: "gone",
+          viewerKey: "s:abcdefgh",
+          lastViewedAt: 1,
+        });
+        mockDb.db.insert("counters", { name: "views:gone", total: 3 });
+        mockDb.db.insert("counters", { name: "anonviews:gone:1", total: 3 });
+
+        await handlerOf(clearAuctions)(mockCtx as unknown as MutationCtx, {});
+
+        expect(mockDb.rows("lotViewers")).toEqual([]);
+        expect(mockDb.rows("counters")).toEqual([]);
+      });
+
       it("denies non-admin", async () => {
         process.env.NODE_ENV = "development";
         delete process.env.ALLOW_DEV_SEED;
@@ -714,6 +956,11 @@ describe("Seed Coverage", () => {
         delete process.env.SEED_SECRET;
         vi.mocked(auth.getCallerRole).mockResolvedValue(null);
         seedExistingProfiles();
+        mockDb.db.insert("lotViewers", {
+          lotId: "gone",
+          viewerKey: "u:someone",
+          lastViewedAt: 1,
+        });
 
         const deleted = await handlerOf(clearAllData)(
           mockCtx as unknown as MutationCtx,
@@ -721,6 +968,7 @@ describe("Seed Coverage", () => {
         );
 
         expect(typeof deleted).toBe("number");
+        expect(mockDb.rows("lotViewers")).toEqual([]);
         expect(mockDb.rows("profiles").length).toBe(0);
         expect(mockDb.rows("auctions").length).toBe(0);
         expect(mockDb.rows("lots").length).toBe(0);

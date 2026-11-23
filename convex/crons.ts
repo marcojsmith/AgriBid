@@ -45,6 +45,15 @@ crons.interval(
 );
 
 /**
+ * Daily job to purge lot-viewer dedupe records older than 24 hours.
+ */
+crons.interval(
+  "purge lot viewers",
+  { hours: 24 },
+  internal.cronJobs.purgeLotViewers
+);
+
+/**
  * Daily job to process error reports and create GitHub issues.
  * Runs at 2 AM UTC to avoid peak hours.
  */

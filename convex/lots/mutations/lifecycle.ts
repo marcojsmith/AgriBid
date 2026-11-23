@@ -6,6 +6,7 @@ import { logActivity } from "../../userActivity";
 import {
   adjustLotStatusCounters,
   assertLotOwnership,
+  assertMinPhotos,
   validateLotBeforeSubmit,
 } from "./helpers";
 import type { Id } from "../../_generated/dataModel";
@@ -41,6 +42,7 @@ export const submitLotForReviewHandler = async (
   if (!lot.province) {
     throw new ConvexError("Province is required");
   }
+  await assertMinPhotos(ctx, lot.images);
 
   await ctx.db.patch("lots", args.lotId, { status: "pending_review" });
   await adjustLotStatusCounters(ctx, "draft", "pending_review");

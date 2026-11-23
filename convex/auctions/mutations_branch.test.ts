@@ -16,6 +16,10 @@ import type { Id } from "../_generated/dataModel";
 import { logAudit } from "../admin_utils";
 
 // Mocking necessary modules
+vi.mock("../admin/platformSettings", () => ({
+  getMinPhotosPerLot: vi.fn().mockResolvedValue(1),
+}));
+
 vi.mock("../lib/lotCounters", () => ({
   removeLotWatchData: vi.fn().mockResolvedValue(undefined),
 }));

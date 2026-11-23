@@ -978,4 +978,48 @@ describe("AdminLots", () => {
     });
     errSpy.mockRestore();
   });
+
+  it("lets an admin edit a lot's specs", async () => {
+    adminUpdateLotMock.mockResolvedValue({ success: true });
+    renderComponent();
+
+    openDropdown(getRowActionButton(getRowByText("John Deere Tractor")));
+    fireEvent.click(await screen.findByText("Edit Specs"));
+
+    fireEvent.change(await screen.findByLabelText("Power (kW)"), {
+      target: { value: "250" },
+    });
+    fireEvent.change(screen.getByLabelText("Drive"), {
+      target: { value: "4wd" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(adminUpdateLotMock).toHaveBeenCalledWith({
+        lotId: "auction1",
+        updates: { powerKw: 250, drive: "4wd" },
+      });
+    });
+    expect(toast.success).toHaveBeenCalledWith("Lot specs updated");
+  });
+
+  it("shows the error when updating specs fails", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {
+      // intentional no-op: suppress expected failure logging
+    });
+    adminUpdateLotMock.mockRejectedValue(new Error("Power out of range"));
+    renderComponent();
+
+    openDropdown(getRowActionButton(getRowByText("John Deere Tractor")));
+    fireEvent.click(await screen.findByText("Edit Specs"));
+    fireEvent.change(await screen.findByLabelText("Serial number"), {
+      target: { value: "SN1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Power out of range");
+    });
+    errSpy.mockRestore();
+  });
 });

@@ -74,6 +74,10 @@ export const deleteDraftHandler = async (
     await safeDelete(ctx, lot.conditionReportUrl, "condition report");
   }
 
+  if (lot.coldStartVideo) {
+    await safeDelete(ctx, lot.coldStartVideo, "cold start video");
+  }
+
   await removeLotWatchData(ctx, args.lotId);
   await ctx.db.delete("lots", args.lotId);
   await updateCounter(ctx, "lots", "draft", -1);

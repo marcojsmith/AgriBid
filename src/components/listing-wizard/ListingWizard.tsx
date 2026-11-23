@@ -9,11 +9,12 @@ import type { Id } from "convex/_generated/dataModel";
 import { useAuthRedirect } from "@/hooks/useAuthRedirect";
 import { useListingForm } from "@/hooks/listing-wizard/useListingForm";
 import { normalizeListingImages } from "@/lib/normalize-images";
+import { buildSpecArgs, pickImageAngles } from "@/lib/lotSpecs";
 import { useErrorHandler } from "@/hooks/useErrorHandler";
 import { Button } from "@/components/ui/button";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
-import type { ListingFormData } from "./types";
+import type { ListingFormData, ListingImages } from "./types";
 import { ListingWizardProvider } from "./context/ListingWizardContext";
 import { StepIndicator } from "./StepIndicator";
 import { WizardNavigation } from "./WizardNavigation";
@@ -24,6 +25,29 @@ import { ConditionChecklistStep } from "./steps/ConditionChecklistStep";
 import { MediaGalleryStep } from "./steps/MediaGalleryStep";
 import { PricingDurationStep } from "./steps/PricingDurationStep";
 import { ReviewSubmitStep } from "./steps/ReviewSubmitStep";
+
+/**
+ * Builds the optional spec and photo-angle arguments for createLot / saveDraft.
+ * Angles are limited to images that are still on the listing.
+ *
+ * @param formData - Current wizard form data
+ * @param images - The normalized listing images being submitted
+ * @returns Only the spec fields that have a value
+ */
+function buildSpecPayload(formData: ListingFormData, images: ListingImages) {
+  const refs = [
+    images.front,
+    images.engine,
+    images.cabin,
+    images.rear,
+    ...images.additional,
+  ].filter((ref): ref is string => typeof ref === "string" && ref.length > 0);
+  const imageAngles = pickImageAngles(formData.imageAngles, refs);
+  return {
+    ...buildSpecArgs(formData),
+    ...(imageAngles && { imageAngles }),
+  };
+}
 
 /**
  * Inner component that renders the listing wizard content and handles form submission.
@@ -127,6 +151,7 @@ const ListingWizardContent = () => {
             notes: formData.conditionChecklist.notes,
           },
           startTime: formData.startTime,
+          ...buildSpecPayload(formData, images),
         });
       }
 
@@ -217,6 +242,7 @@ const ListingWizardContent = () => {
           notes: formData.conditionChecklist.notes,
         },
         startTime: formData.startTime,
+        ...buildSpecPayload(formData, images),
       };
 
       const finalLotId = editingLotId ?? formData.lotId;

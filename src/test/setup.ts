@@ -18,6 +18,21 @@ Object.defineProperty(window, "matchMedia", {
   })),
 });
 
+// jsdom has no ResizeObserver; Radix primitives (e.g. Switch inside a form) need one.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe(): void {
+      // no-op stub
+    }
+    unobserve(): void {
+      // no-op stub
+    }
+    disconnect(): void {
+      // no-op stub
+    }
+  };
+}
+
 /**
  * Creates a mock query result object for testing Convex queries.
  * @param results - Array of results to return

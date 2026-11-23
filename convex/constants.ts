@@ -37,6 +37,59 @@ export const DEMO_MODE_ENABLED_DEFAULT = false;
 // South African standard rate. Keep in sync with `src/lib/vat.ts`.
 export const DEFAULT_VAT_RATE_PCT = 15;
 
+/**
+ * Platform settings defaults (see convex/admin/platformSettings.ts). Each is the
+ * fallback used when no admin has stored a value.
+ */
+// Buyer's premium as a PERCENT (0-100). Lots snapshot it as a fraction (0.12).
+export const DEFAULT_BUYER_PREMIUM_PCT = 12;
+export const DEFAULT_DEPOSIT_ENABLED = true;
+// Registration deposit in rand (integer 0-1,000,000).
+export const DEFAULT_DEPOSIT_AMOUNT = 5000;
+export const MAX_DEPOSIT_AMOUNT = 1_000_000;
+// Days to refund a deposit (integer 1-30).
+export const DEFAULT_DEPOSIT_REFUND_DAYS = 3;
+export const MAX_DEPOSIT_REFUND_DAYS = 30;
+// Seller commission percent (display only, not wired into settlement).
+export const DEFAULT_SELLER_COMMISSION_PCT = 8;
+// Seller listing fee in rand.
+export const DEFAULT_SELLER_LISTING_FEE = 0;
+// Days until a seller is paid out (integer 1-60).
+export const DEFAULT_SELLER_PAYOUT_DAYS = 7;
+export const MAX_SELLER_PAYOUT_DAYS = 60;
+export const DEFAULT_PUSH_REMINDERS_ENABLED = false;
+// Maximum number of additional images allowed for a lot (declared here so the
+// min-photos maximum below can derive from it).
+export const MAX_ADDITIONAL_IMAGES = 6;
+// Minimum photos required per lot (integer 1-MAX_MIN_PHOTOS_PER_LOT).
+export const DEFAULT_MIN_PHOTOS_PER_LOT = 8;
+// Four angle slots (front/engine/cabin/rear) plus the additional images.
+export const MAX_MIN_PHOTOS_PER_LOT = 4 + MAX_ADDITIONAL_IMAGES;
+export const MAX_FINANCE_CONTACT_FIELD_LENGTH = 100;
+
+/**
+ * Lot engagement (convex/engagement.ts).
+ */
+// A viewer counts once per lot within this window.
+export const LOT_VIEW_DEDUPE_MS = 30 * MS_PER_MINUTE;
+// Max counted views per viewer per hour.
+export const LOT_VIEW_RATE_LIMIT_PER_HOUR = 60;
+export const LOT_VIEW_RATE_LIMIT_WINDOW_MS = MS_PER_HOUR;
+// lotViewers rows older than this are purged.
+export const LOT_VIEWER_RETENTION_MS = MS_PER_DAY;
+// Rows deleted per purge run.
+export const LOT_VIEWER_PURGE_BATCH = 500;
+// Counted anonymous (signed-out) views per lot per hour.
+export const LOT_ANON_VIEW_CAP_PER_HOUR = 200;
+// Watchlist / lotViewers rows deleted per call when removing a lot's data.
+export const LOT_DATA_DELETE_BATCH = 500;
+// Lots considered when ranking most-engaged lots.
+export const ENGAGEMENT_CANDIDATE_CAP = 100;
+// Bids counted per lot when ranking.
+export const ENGAGEMENT_BID_COUNT_CAP = 200;
+export const ENGAGEMENT_MAX_LIMIT = 3;
+export const ENGAGEMENT_DEFAULT_LIMIT = 1;
+
 // Default presence heartbeat interval in ms. Must stay in sync with the
 // client-side fallback in src/components/PresenceListener.tsx.
 export const PRESENCE_HEARTBEAT_INTERVAL_MS_DEFAULT = 60 * MS_PER_SECOND;
@@ -51,9 +104,6 @@ export const PRESENCE_HEARTBEAT_INTERVAL_MS_MAX = 5 * MS_PER_MINUTE;
 export const AUCTION_MIN_DURATION_DAYS = 1;
 export const AUCTION_MAX_DURATION_DAYS = 365;
 export const AUCTION_DEFAULT_DURATION_DAYS = 7;
-
-// Maximum number of additional images allowed for an auction.
-export const MAX_ADDITIONAL_IMAGES = 6;
 
 // Threshold for switching between small and large bid increments.
 export const PRICE_THRESHOLD_FOR_INCREMENT = 10000;

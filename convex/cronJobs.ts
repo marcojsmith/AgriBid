@@ -16,6 +16,7 @@ import {
 } from "./auctions/internal";
 import { CRON_JOBS, cronSettingKey, findCronJob } from "./cronRegistry";
 import type { CronJobKey } from "./cronRegistry";
+import { purgeLotViewersHandler } from "./engagement";
 import { requireAdmin } from "./lib/auth";
 import { runOrphanSweep } from "./storageCleanup";
 
@@ -193,6 +194,25 @@ export const cleanupPresenceRecords = internalMutation({
     }
     await ctx.runMutation(internal.presence.cleanup, {});
     return null;
+  },
+});
+
+/**
+ * Cron wrapper: purge stale lot-viewer dedupe rows unless the job is disabled.
+ */
+export const purgeLotViewers = internalMutation({
+  args: {},
+  returns: v.object({ deleted: v.number(), hasMore: v.boolean() }),
+  handler: async (ctx) => {
+    if (!(await isCronJobEnabled(ctx, "purge_lot_viewers"))) {
+      return { deleted: 0, hasMore: false };
+    }
+    const result = await purgeLotViewersHandler(ctx);
+    if (result.hasMore) {
+      // Keep draining the backlog; the rescheduled run re-checks the gate.
+      await ctx.scheduler.runAfter(0, internal.cronJobs.purgeLotViewers, {});
+    }
+    return result;
   },
 });
 

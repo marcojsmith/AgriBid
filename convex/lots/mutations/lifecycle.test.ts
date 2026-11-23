@@ -36,6 +36,12 @@ const { logActivity } = vi.hoisted(() => ({
   logActivity: vi.fn().mockResolvedValue(undefined),
 }));
 
+const { getMinPhotosPerLot } = vi.hoisted(() => ({
+  getMinPhotosPerLot: vi.fn().mockResolvedValue(1),
+}));
+
+vi.mock("../../admin/platformSettings", () => ({ getMinPhotosPerLot }));
+
 vi.mock("../../userActivity", () => ({ logActivity }));
 
 const { updateCounter } = vi.hoisted(() => ({

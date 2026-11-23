@@ -154,6 +154,105 @@ describe("cronJobs", () => {
     expect(
       await t.action(internal.cronJobs.processErrorReports, {})
     ).toBeNull();
+    expect(await t.mutation(internal.cronJobs.purgeLotViewers, {})).toEqual({
+      deleted: 0,
+      hasMore: false,
+    });
+  });
+
+  it("purgeLotViewers wrapper purges stale rows only once enabled", async () => {
+    const t = await setup();
+    await t.run(async (ctx) => {
+      const id = await ctx.db.insert("lots", {
+        title: "L",
+        make: "m",
+        model: "m",
+        year: 2020,
+        operatingHours: 1,
+        location: "x",
+        reservePrice: 1,
+        startingPrice: 1,
+        currentPrice: 1,
+        minIncrement: 1,
+        sellerId: "s",
+        status: "assigned",
+        images: [],
+      });
+      await ctx.db.insert("lotViewers", {
+        lotId: id,
+        viewerKey: "k",
+        lastViewedAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+      });
+    });
+    const count = () =>
+      t.run(async (ctx) => (await ctx.db.query("lotViewers").collect()).length);
+
+    await t.mutation(internal.cronJobs.purgeLotViewers, {});
+    expect(await count()).toBe(1);
+
+    await t.mutation(internal.cronJobs.setAllCronJobsEnabled, {
+      enabled: true,
+    });
+    expect(await t.mutation(internal.cronJobs.purgeLotViewers, {})).toEqual({
+      deleted: 1,
+      hasMore: false,
+    });
+    expect(await count()).toBe(0);
+  });
+
+  it("purgeLotViewers reschedules itself while a backlog remains", async () => {
+    const t = await setup();
+    await t.mutation(internal.cronJobs.setAllCronJobsEnabled, {
+      enabled: true,
+    });
+    await t.run(async (ctx) => {
+      const id = await ctx.db.insert("lots", {
+        title: "L",
+        make: "m",
+        model: "m",
+        year: 2020,
+        operatingHours: 1,
+        location: "x",
+        reservePrice: 1,
+        startingPrice: 1,
+        currentPrice: 1,
+        minIncrement: 1,
+        sellerId: "s",
+        status: "assigned",
+        images: [],
+      });
+      const old = Date.now() - 2 * 24 * 60 * 60 * 1000;
+      for (let i = 0; i < 501; i++) {
+        await ctx.db.insert("lotViewers", {
+          lotId: id,
+          viewerKey: `s:k${String(i)}`,
+          lastViewedAt: old,
+        });
+      }
+    });
+
+    expect(await t.mutation(internal.cronJobs.purgeLotViewers, {})).toEqual({
+      deleted: 500,
+      hasMore: true,
+    });
+    const scheduled = await t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect()
+    );
+    expect(scheduled.map((job) => job.name)).toEqual([
+      "cronJobs:purgeLotViewers",
+    ]);
+  });
+
+  it("purgeLotViewers does not reschedule when the backlog is drained", async () => {
+    const t = await setup();
+    await t.mutation(internal.cronJobs.setAllCronJobsEnabled, {
+      enabled: true,
+    });
+    await t.mutation(internal.cronJobs.purgeLotViewers, {});
+    const scheduled = await t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect()
+    );
+    expect(scheduled).toEqual([]);
   });
 
   it("sweepOrphanedUploads deletes nothing while disabled and sweeps once enabled", async () => {

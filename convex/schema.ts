@@ -3,6 +3,11 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 import {
+  driveValidator,
+  imageAnglesValidator,
+  sellerTypeValidator,
+} from "./lib/lotSpecs";
+import {
   provinceValidator,
   sellerResponseTimeValidator,
 } from "./lib/provinces";
@@ -99,6 +104,16 @@ export default defineSchema({
       }),
       v.array(v.string()) // legacy format
     ),
+    // Machine specs (all optional; existing lots are grandfathered).
+    powerKw: v.optional(v.number()),
+    drive: v.optional(driveValidator),
+    transmission: v.optional(v.string()),
+    frontTyrePct: v.optional(v.number()), // tread remaining, 0-100
+    rearTyrePct: v.optional(v.number()), // tread remaining, 0-100
+    serialNumber: v.optional(v.string()),
+    coldStartVideo: v.optional(v.id("_storage")),
+    // Fixed-shot-list angle per photo, keyed by the photo's storage id / URL.
+    imageAngles: v.optional(imageAnglesValidator),
     description: v.optional(v.string()),
     conditionReportUrl: v.optional(v.id("_storage")), // PDF storage ID
     isExtended: v.optional(v.boolean()),
@@ -259,6 +274,10 @@ export default defineSchema({
     phoneNumber: v.optional(v.string()), // Encrypted PII
     companyName: v.optional(v.string()),
     location: v.optional(v.string()),
+    // Seller VAT status and type (seller- or admin-set). Unset = unknown, which
+    // buyers' estimates treat as VAT-registered (worst case).
+    vatRegistered: v.optional(v.boolean()),
+    sellerType: v.optional(sellerTypeValidator),
     // Admin-set: how quickly this seller usually replies (public copy).
     sellerResponseTime: v.optional(sellerResponseTimeValidator),
     emailVerified: v.optional(v.boolean()),
@@ -394,6 +413,18 @@ export default defineSchema({
     .index("by_user_lot", ["userId", "lotId"])
     .index("by_lot", ["lotId"]),
 
+  // Dedupe + rate-limit rows for the public lot view counter. One row per
+  // (lot, viewer) pair; `viewerKey` is the signed-in user id or a client
+  // session id. Purged daily (see cronJobs.purgeLotViewers).
+  lotViewers: defineTable({
+    lotId: v.id("lots"),
+    viewerKey: v.string(),
+    lastViewedAt: v.number(),
+  })
+    .index("by_lotId_and_viewerKey", ["lotId", "viewerKey"])
+    .index("by_viewerKey_and_lastViewedAt", ["viewerKey", "lastViewedAt"])
+    .index("by_lastViewedAt", ["lastViewedAt"]),
+
   presence: defineTable({
     userId: v.string(),
     updatedAt: v.number(),
@@ -433,7 +464,9 @@ export default defineSchema({
 
   counters: defineTable({
     // e.g., "auctions", "profiles", "support", "announcements",
-    // "lotNumber:<auctionId>" (last lot number issued) or "watchers:<lotId>" (`total`).
+    // "lotNumber:<auctionId>" (last lot number issued), "watchers:<lotId>" (`total`),
+    // "views:<lotId>" (`total`) or "anonviews:<lotId>" (`active` = hour bucket,
+    // `total` = anonymous views counted in it).
     name: v.string(),
     total: v.number(),
     active: v.optional(v.number()),

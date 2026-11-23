@@ -3,6 +3,8 @@ import { ConvexError } from "convex/values";
 import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import { updateCounter } from "../../admin_utils";
+import { getMinPhotosPerLot } from "../../admin/platformSettings";
+import { collectImageRefs } from "../../lib/lotSpecs";
 import {
   MAX_AUCTION_TITLE_LENGTH,
   MAX_AUCTION_DESCRIPTION_LENGTH,
@@ -129,6 +131,38 @@ export function validateLotBeforeSubmit(lot: LotValidationInput): void {
 
   if (!hasImages) {
     throw new ConvexError("At least one image is required before submitting");
+  }
+}
+
+/**
+ * Counts the photos on a lot (front/engine/cabin/rear slots plus additional
+ * images, or the length of a legacy image array).
+ * @param images - The lot's images.
+ * @returns The number of photos.
+ */
+export function countLotPhotos(
+  images: LotValidationInput["images"] | undefined
+): number {
+  return new Set(collectImageRefs(images)).size;
+}
+
+/**
+ * Enforces the platform's minimum photo count. Call only when a lot is
+ * submitted for review; drafts and existing lots are not checked.
+ * @param ctx - Mutation context.
+ * @param images - The lot's images.
+ * @throws ConvexError when the lot has fewer photos than required.
+ */
+export async function assertMinPhotos(
+  ctx: MutationCtx,
+  images: LotValidationInput["images"] | undefined
+): Promise<void> {
+  const required = await getMinPhotosPerLot(ctx);
+  const count = countLotPhotos(images);
+  if (count < required) {
+    throw new ConvexError(
+      `At least ${required.toString()} photos are required (you have ${count.toString()})`
+    );
   }
 }
 

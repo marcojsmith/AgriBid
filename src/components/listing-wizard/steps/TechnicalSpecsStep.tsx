@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useListingWizard } from "@/hooks/listing-wizard/useListingWizard";
 
 import { EQUIPMENT_METADATA_LIMIT } from "../../../../convex/constants";
+import { LotSpecsSection } from "../LotSpecsSection";
 
 /**
  * Technical specifications step component for the listing wizard.
@@ -175,6 +176,8 @@ export const TechnicalSpecsStep = () => {
           </p>
         </div>
       )}
+
+      <LotSpecsSection />
     </div>
   );
 };

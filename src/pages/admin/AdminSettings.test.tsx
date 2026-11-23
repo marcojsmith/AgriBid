@@ -28,6 +28,10 @@ vi.mock("@/components/admin/VatRateCard", () => ({
   VatRateCard: () => <div data-testid="vat-rate-card" />,
 }));
 
+vi.mock("@/components/admin/PlatformSettingsCards", () => ({
+  PlatformSettingsCards: () => <div data-testid="platform-settings-cards" />,
+}));
+
 // Mocking Convex hooks
 vi.mock("convex/react", () => ({
   useQuery: vi.fn(),
@@ -104,6 +108,12 @@ describe("AdminSettings Page", () => {
     (useQuery as Mock).mockReturnValue(mockAdminStats);
     renderPage();
     expect(screen.getByTestId("vat-rate-card")).toBeInTheDocument();
+  });
+
+  it("renders the platform settings sections", () => {
+    (useQuery as Mock).mockReturnValue(mockAdminStats);
+    renderPage();
+    expect(screen.getByTestId("platform-settings-cards")).toBeInTheDocument();
   });
 
   it("navigates to equipment catalog when Equipment Metadata card is clicked", () => {

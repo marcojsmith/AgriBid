@@ -1,10 +1,16 @@
-import { v, ConvexError } from "convex/values";
+import { v, ConvexError, type ObjectType } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
 import { safeDelete } from "../../lib/storage";
 import { provinceValidator, type Province } from "../../lib/provinces";
 import { logAudit } from "../../admin_utils";
+import {
+  assertImageAnglesMatchImages,
+  assertValidColdStartVideo,
+  assertValidLotSpecs,
+  lotSpecFields,
+} from "../../lib/lotSpecs";
 import {
   MAX_ADDITIONAL_IMAGES,
   PRICE_THRESHOLD_FOR_INCREMENT,
@@ -259,7 +265,7 @@ export const adminUpdateLotHandler = async (
       reservePrice?: number;
       status?: AdminLotStatus;
       currentPrice?: number;
-    };
+    } & ObjectType<typeof lotSpecFields>;
   }
 ) => {
   await requireAdmin(ctx);
@@ -270,6 +276,10 @@ export const adminUpdateLotHandler = async (
 
   const lot = await ctx.db.get("lots", args.lotId);
   if (!lot) throw new ConvexError("Lot not found");
+
+  assertValidLotSpecs(args.updates);
+  assertImageAnglesMatchImages(args.updates.imageAngles, lot.images);
+  await assertValidColdStartVideo(ctx, args.updates.coldStartVideo);
 
   const oldStatus = lot.status;
   const newStatus = args.updates.status;
@@ -340,6 +350,7 @@ export const adminUpdateLot = mutation({
       reservePrice: v.optional(v.number()),
       status: v.optional(ADMIN_LOT_STATUS_UNION),
       currentPrice: v.optional(v.number()),
+      ...lotSpecFields,
     }),
   },
   returns: v.object({ success: v.boolean() }),
