@@ -137,8 +137,11 @@ export const Layout = ({ children }: LayoutProps) => {
   const syncUserRef = useRef(syncUser);
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith("/admin");
-  // Home lays out its own full-width sections (the hero bleeds to the edges).
-  const isFullBleed = isAdminPage || location.pathname === "/";
+  // Home and a sale page paint their own full-width dark band.
+  const isFullBleed =
+    isAdminPage ||
+    location.pathname === "/" ||
+    /^\/auctions\/[^/]+$/.test(location.pathname);
 
   const seoSettings = useQuery(api.admin.getSeoSettings);
 

@@ -14,7 +14,7 @@ describe("FeesRulesSheet", () => {
       />
     );
     expect(screen.getByRole("dialog", { name: "Fees & rules" })).toBeVisible();
-    expect(screen.getByText("12% of the bid, plus VAT")).toBeInTheDocument();
+    expect(screen.getByText("12% of the bid")).toBeInTheDocument();
     expect(screen.getByText(/15% on the premium/)).toBeInTheDocument();
     expect(
       screen.getByText(/refunded within 3 working days if you don't buy/)
@@ -39,7 +39,7 @@ describe("FeesRulesSheet", () => {
     );
     expect(screen.queryByText("Registration deposit")).toBeNull();
     expect(screen.queryByText(/deposit counts/)).toBeNull();
-    expect(screen.getByText("10.5% of the bid, plus VAT")).toBeInTheDocument();
+    expect(screen.getByText("10.5% of the bid")).toBeInTheDocument();
     expect(screen.getByText(/^16% on the premium/)).toBeInTheDocument();
   });
 
@@ -52,5 +52,29 @@ describe("FeesRulesSheet", () => {
       />
     );
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("works an example through for both seller kinds when given a bid", () => {
+    render(
+      <FeesRulesSheet
+        open
+        onOpenChange={() => undefined}
+        premiumPct={12}
+        exampleBid={400_000}
+      />
+    );
+    expect(screen.getByText("Example")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /VAT-registered seller → pay R 515.200\. Private seller → pay R 455.200/
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the example out without a bid", () => {
+    render(
+      <FeesRulesSheet open onOpenChange={() => undefined} premiumPct={12} />
+    );
+    expect(screen.queryByText("Example")).not.toBeInTheDocument();
   });
 });

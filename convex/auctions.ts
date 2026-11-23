@@ -45,6 +45,7 @@ export {
 } from "./auctions/queries/events";
 
 export { getHomeLots, getHomeFacets } from "./auctions/queries/homeLots";
+export { getEventLots, getEventFacets } from "./auctions/queries/eventLots";
 
 // Re-export mutations from the new modular structure
 export {

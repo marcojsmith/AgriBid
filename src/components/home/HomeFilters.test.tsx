@@ -131,4 +131,30 @@ describe("HomeFilters", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(onPrice).toHaveBeenCalledWith({});
   });
+
+  it("filters live on every keystroke when the page owns the search text", () => {
+    const onSearchChange = vi.fn();
+    const onSearch = vi.fn();
+    render(
+      <HomeFilters
+        {...base}
+        onSearch={onSearch}
+        searchValue="jx"
+        onSearchChange={onSearchChange}
+      />
+    );
+    const box = screen.getByRole("searchbox", { name: "Search make or model" });
+    expect(box).toHaveValue("jx");
+    fireEvent.change(box, { target: { value: "jx4" } });
+    expect(onSearchChange).toHaveBeenLastCalledWith("jx4");
+    fireEvent.submit(box);
+    expect(onSearch).not.toHaveBeenCalled();
+  });
+
+  it("treats a missing searchValue as empty in live mode", () => {
+    render(<HomeFilters {...base} onSearchChange={() => undefined} />);
+    expect(
+      screen.getByRole("searchbox", { name: "Search make or model" })
+    ).toHaveValue("");
+  });
 });

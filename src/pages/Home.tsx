@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { useBranding } from "@/hooks/useBranding";
 import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
+import { WATCHING_MESSAGE } from "@/lib/auctionRules";
 import { formatClosesIn } from "@/lib/countdown";
 import { URGENT_MS } from "@/lib/auction-badges";
 import { formatSastDate } from "@/lib/dates";
@@ -44,10 +45,6 @@ const GRID_SIZE = 6;
 
 /** The most sales the Home grid and filters read (matches the backend cap). */
 const MAX_OPEN_SALES = 4;
-
-/** Shown when a lot is watched. */
-const WATCHING_MESSAGE =
-  "Watching. We'll notify you 1 hour before close and if you're outbid.";
 
 /** The resolved image URLs of a lot. */
 interface LotImages {

@@ -7,7 +7,12 @@ import {
   softCloseRule,
 } from "@/lib/auctionRules";
 import { formatRand } from "@/lib/currency";
-import { DEFAULT_VAT_RATE_PCT } from "@/lib/vat";
+import {
+  DEFAULT_VAT_RATE_PCT,
+  calculateBuyerTotal,
+  premiumFromRate,
+  vatBaseForSeller,
+} from "@/lib/vat";
 
 /** The deposit settings, as `getPlatformSettings` returns them. */
 export interface DepositSettings {
@@ -25,6 +30,8 @@ interface FeesRulesSheetProps {
   vatRatePct?: number;
   /** Deposit settings; the deposit row and sentence are left out when off. */
   deposit?: DepositSettings;
+  /** A bid in rand to work through for both seller kinds (the "Example" row). Left out when missing. */
+  exampleBid?: number;
 }
 
 /**
@@ -50,6 +57,7 @@ function pct(n: number): string {
  * @param props.premiumPct - Buyer's premium percentage
  * @param props.vatRatePct - VAT percentage
  * @param props.deposit - Deposit settings
+ * @param props.exampleBid - A bid to work through for a VAT-registered and a private seller
  * @returns The sheet
  */
 export function FeesRulesSheet({
@@ -58,14 +66,30 @@ export function FeesRulesSheet({
   premiumPct,
   vatRatePct = DEFAULT_VAT_RATE_PCT,
   deposit,
+  exampleBid,
 }: FeesRulesSheetProps) {
+  const totalFor = (seller: "vat" | "private"): string =>
+    formatRand(
+      calculateBuyerTotal({
+        bid: exampleBid ?? 0,
+        premium: premiumFromRate(exampleBid ?? 0, premiumPct / 100),
+        vatRatePct,
+        vatBase: vatBaseForSeller(seller),
+      }).total
+    );
   const rows: [string, ReactNode][] = [
-    ["Buyer's premium", `${pct(premiumPct)}% of the bid, plus VAT`],
+    ["Buyer's premium", `${pct(premiumPct)}% of the bid`],
     [
       "VAT",
-      `${pct(vatRatePct)}% on the premium. On the bid too when the seller is VAT registered. Each lot shows which.`,
+      `${pct(vatRatePct)}% on the premium. Also on the bid when the seller is VAT registered; each lot shows which`,
     ],
   ];
+  if (exampleBid !== undefined) {
+    rows.push([
+      "Example",
+      `${formatRand(exampleBid)} bid, VAT-registered seller → pay ${totalFor("vat")}. Private seller → pay ${totalFor("private")}`,
+    ]);
+  }
   if (deposit?.enabled) {
     rows.push([
       "Registration deposit",
@@ -88,9 +112,12 @@ export function FeesRulesSheet({
     <BottomSheet open={open} onOpenChange={onOpenChange} title="Fees & rules">
       <dl className="divide-y divide-border">
         {rows.map(([term, text]) => (
-          <div key={term} className="py-2.5">
-            <dt className="text-sm font-semibold">{term}</dt>
-            <dd className="text-sm text-muted-foreground">{text}</dd>
+          <div
+            key={term}
+            className="grid grid-cols-[7.5rem_1fr] gap-x-4 py-3 text-[15px]"
+          >
+            <dt className="text-muted-foreground">{term}</dt>
+            <dd className="num font-medium">{text}</dd>
           </div>
         ))}
       </dl>

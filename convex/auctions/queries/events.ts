@@ -12,6 +12,7 @@ import {
   ADMIN_COLLECTION_CAP,
   AUCTION_SUMMARY_IMAGE_COUNT,
   AUCTION_SUMMARY_LOT_CAP,
+  EVENT_LOTS_READ_PER_STATUS,
   PUBLISHED_AUCTIONS_MAX_PAGE_SIZE,
   PUBLISHED_AUCTIONS_STATUS_CAP,
 } from "../../constants";
@@ -43,10 +44,25 @@ export const AuctionValidator = v.object({
 });
 
 /**
- * Auction container with its lots, used by the public container-detail page.
+ * Public header of one sale for the event page: only what buyers see, plus the
+ * end including soft-close extensions (the page derives live/upcoming/closed
+ * from it, since a cached query cannot track time). No creator or fee fields.
  */
-export const AuctionWithLotsValidator = AuctionValidator.extend({
-  lots: v.array(LotSummaryValidator),
+export const AuctionDetailValidator = v.object({
+  _id: v.id("auctions"),
+  title: v.string(),
+  description: v.optional(v.string()),
+  bannerImageUrl: v.optional(v.string()),
+  startTime: v.number(),
+  endTime: v.number(),
+  status: v.union(
+    v.literal("draft"),
+    v.literal("published"),
+    v.literal("closed")
+  ),
+  effectiveEndTime: v.number(),
+  /** This sale's own buyer's premium as a fraction (0.12 = 12%), when it sets one. */
+  defaultBuyerPremiumPct: v.optional(v.number()),
 });
 
 /** Raw auction container document shape consumed by {@link toAuction}. */
@@ -389,14 +405,15 @@ export const getPublishedAuctions = query({
 });
 
 /**
- * Returns a single published or closed auction container together with its
- * lots, for the public container-detail page. Draft containers are never
- * exposed publicly.
+ * Returns the public header of one published or closed sale for the event
+ * page, with `effectiveEndTime` (the latest soft-close extension of its open
+ * lots). The lots come from `getEventLots`. Reads at most
+ * {@link EVENT_LOTS_READ_PER_STATUS} open lots. Drafts are never exposed.
  *
  * @param ctx - Convex Query context.
  * @param args - Handler arguments.
  * @param args.auctionId - The auction container id.
- * @returns The auction with its lots, or null if missing or still a draft.
+ * @returns The header, or null if missing or still a draft.
  */
 export const getPublishedAuctionHandler = async (
   ctx: QueryCtx,
@@ -405,23 +422,36 @@ export const getPublishedAuctionHandler = async (
   const auction = await ctx.db.get("auctions", args.auctionId);
   if (!auction || auction.status === "draft") return null;
 
-  const [auctionView, lots] = await Promise.all([
-    toAuction(ctx, auction),
+  const [bannerImageUrl, openLots] = await Promise.all([
+    resolveUrlCached(ctx.storage, auction.bannerImage),
     ctx.db
       .query("lots")
-      .withIndex("by_auctionId", (q) => q.eq("auctionId", auction._id))
-      .collect(),
+      .withIndex("by_status_auctionId", (q) =>
+        q.eq("status", "assigned").eq("auctionId", auction._id)
+      )
+      .take(EVENT_LOTS_READ_PER_STATUS),
   ]);
+  const visibleOpenLots = openLots.filter((lot) => lot.hiddenByFlags !== true);
 
   return {
-    ...auctionView,
-    lots: await toLotSummaries(ctx, lots),
+    _id: auction._id,
+    title: auction.title,
+    description: auction.description,
+    bannerImageUrl,
+    startTime: auction.startTime,
+    endTime: auction.endTime,
+    status: auction.status,
+    defaultBuyerPremiumPct: auction.defaultBuyerPremiumPct,
+    effectiveEndTime: visibleOpenLots.reduce(
+      (end, lot) => Math.max(end, lot.extendedEndTime ?? 0),
+      auction.endTime
+    ),
   };
 };
 
 export const getPublishedAuction = query({
   args: { auctionId: v.id("auctions") },
-  returns: v.union(AuctionWithLotsValidator, v.null()),
+  returns: v.union(AuctionDetailValidator, v.null()),
   handler: getPublishedAuctionHandler,
 });
 

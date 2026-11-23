@@ -5,6 +5,7 @@ export * from "./queries/listings";
 export * from "./queries/admin";
 export * from "./queries/events";
 export * from "./queries/homeLots";
+export * from "./queries/eventLots";
 
 /**
  * Metadata for the auctions queries module.
