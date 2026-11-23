@@ -31,6 +31,11 @@ describe("HomeFilters", () => {
     expect(screen.getByRole("button", { name: "Ford 8" })).toBeVisible();
   });
 
+  it("shows a lower-bound total as All 85+", () => {
+    render(<HomeFilters {...base} totalCapped />);
+    expect(screen.getByRole("button", { name: "All 85+" })).toBeVisible();
+  });
+
   it("selects and deselects a category and a make", () => {
     const onCategory = vi.fn();
     const onMake = vi.fn();

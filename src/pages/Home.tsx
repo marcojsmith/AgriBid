@@ -30,7 +30,7 @@ import { useScrolledPast } from "@/hooks/useScrolledPast";
 import { formatClosesIn } from "@/lib/countdown";
 import { URGENT_MS } from "@/lib/auction-badges";
 import { formatSastDate } from "@/lib/dates";
-import { pickHomeSales, whatsappLink } from "@/lib/homeSales";
+import { formatLotCount, pickHomeSales, whatsappLink } from "@/lib/homeSales";
 import {
   buildTitle,
   buildCanonical,
@@ -159,6 +159,12 @@ export default function Home() {
       : "skip"
   );
 
+  // The chips' data is its own query so picking a chip re-runs only the grid.
+  const facets = useQuery(
+    api.auctions.getHomeFacets,
+    gridSaleIds.length > 0 ? { auctionIds: gridSaleIds } : "skip"
+  );
+
   const watchedIds = useQuery(
     api.watchlist.getWatchedLotIds,
     isAuthenticated ? {} : "skip"
@@ -208,7 +214,12 @@ export default function Home() {
       }
     : null;
 
-  const firstLot = home?.lots[0];
+  // A cached result cannot track time, so lots that have closed since the
+  // query ran are dropped here.
+  const gridLots = (home?.lots ?? []).filter(
+    (lot) => lot.effectiveEndTime > now
+  );
+  const firstLot = gridLots[0];
   const example = featured
     ? { title: featured.title, bid: featured.price }
     : firstLot
@@ -220,14 +231,15 @@ export default function Home() {
 
   const lotsHref =
     mode === "single" && hero ? `/auctions/${hero._id}` : "/auctions";
-  const totalLots = home?.total ?? hero?.lotCount ?? 0;
+  const totalLots = facets?.total ?? hero?.lotCount ?? 0;
+  const totalCapped = facets?.capped ?? false;
 
-  const categories = (home?.categories ?? []).map((c) => ({
+  const categories = (facets?.categories ?? []).map((c) => ({
     key: c.categoryId,
     label: c.name,
     count: c.count,
   }));
-  const makes = (home?.makes ?? []).map((m) => ({
+  const makes = (facets?.makes ?? []).map((m) => ({
     key: m.make,
     label: m.make,
     count: m.count,
@@ -269,19 +281,22 @@ export default function Home() {
       ) : (
         <>
           {mode === "multi" ? (
-            <SaleList
-              now={now}
-              className="py-1"
-              sales={open.map((sale) => ({
-                _id: sale._id,
-                title: sale.title,
-                startTime: sale.startTime,
-                effectiveEndTime: sale.effectiveEndTime,
-                lotCount: sale.lotCount,
-                bucket: sale.bucket,
-                imageUrl: sale.leadImageUrls[0],
-              }))}
-            />
+            <>
+              <h1 className="sr-only">Agricultural equipment auctions</h1>
+              <SaleList
+                now={now}
+                className="py-1"
+                sales={open.map((sale) => ({
+                  _id: sale._id,
+                  title: sale.title,
+                  startTime: sale.startTime,
+                  effectiveEndTime: sale.effectiveEndTime,
+                  lotCount: sale.lotCount,
+                  bucket: sale.bucket,
+                  imageUrl: sale.leadImageUrls[0],
+                }))}
+              />
+            </>
           ) : null}
 
           {settings && (mode === "single" || mode === "multi") ? (
@@ -308,6 +323,7 @@ export default function Home() {
               ctaRef={ctaRef}
               lotsHref={lotsHref}
               totalLots={totalLots}
+              totalCapped={totalCapped}
               onFeesClick={() => {
                 setFeesOpen(true);
               }}
@@ -334,16 +350,17 @@ export default function Home() {
             </section>
           ) : null}
 
-          {gridSaleIds.length > 0 && home ? (
+          {gridSaleIds.length > 0 && home && facets ? (
             <section
               aria-label="Lots"
               className="container mx-auto max-w-[1200px] px-4 py-5 md:py-8"
             >
               <HomeFilters
-                total={home.total}
+                total={facets.total}
+                totalCapped={facets.capped}
                 categories={categories}
                 makes={makes}
-                priceRange={home.priceRange}
+                priceRange={facets.priceRange}
                 category={category}
                 make={make}
                 price={price}
@@ -361,9 +378,9 @@ export default function Home() {
                 }}
                 className="mb-5"
               />
-              {home.lots.length > 0 ? (
+              {gridLots.length > 0 ? (
                 <HomeLotGrid
-                  lots={home.lots}
+                  lots={gridLots}
                   watchedIds={watchedSet}
                   onToggleWatch={(id) => {
                     void handleToggleWatch(id);
@@ -382,7 +399,7 @@ export default function Home() {
                 className="mt-6 w-full md:w-auto"
               >
                 <Link to={lotsHref}>
-                  View all {home.matched} lots
+                  View all {formatLotCount(facets.total, facets.capped)}
                   <ArrowRight aria-hidden="true" />
                 </Link>
               </Button>
@@ -421,6 +438,7 @@ export default function Home() {
             <StickyBar
               hidden={!showSticky}
               title={stickyTitle}
+              sub={mode === "multi" ? hero.title : undefined}
               urgent={stickyRemaining < URGENT_MS}
               whatsappHref={waHref}
               cta={isAuthenticated ? "My bids" : "Register to bid"}

@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 
 import { BottomSheet } from "@/components/ds/BottomSheet";
+import {
+  COLLECTION_WINDOW_DAYS,
+  PAYMENT_WINDOW_HOURS,
+  softCloseRule,
+} from "@/lib/auctionRules";
 import { formatRand } from "@/lib/currency";
 import { DEFAULT_VAT_RATE_PCT } from "@/lib/vat";
 
@@ -34,8 +39,10 @@ function pct(n: number): string {
 
 /**
  * The "Fees & rules" bottom sheet opened from the cost box: premium, VAT,
- * deposit, payment, collection, closing and reserve, each in one line. Every
- * figure comes from the platform settings.
+ * deposit, payment, collection, closing and reserve, each in one line. The
+ * premium, VAT and deposit come from the platform settings; the soft-close
+ * minutes come from the backend constant and the payment and collection
+ * windows from `lib/auctionRules` (no setting exists for them).
  *
  * @param props - Component props
  * @param props.open - Whether the sheet is open
@@ -68,10 +75,10 @@ export function FeesRulesSheet({
   rows.push(
     [
       "Payment",
-      `EFT within 48 hours.${deposit?.enabled ? " Your deposit counts towards payment" : ""}`,
+      `EFT within ${String(PAYMENT_WINDOW_HOURS)} hours.${deposit?.enabled ? " Your deposit counts towards payment" : ""}`,
     ],
-    ["Collection", "Within 7 days of payment"],
-    ["Closing", "Bids in the last 2 minutes add 2 minutes"],
+    ["Collection", `Within ${String(COLLECTION_WINDOW_DAYS)} days of payment`],
+    ["Closing", softCloseRule()],
     [
       "Reserve",
       "The seller's minimum price. If bidding ends below it, the seller decides whether to accept the top bid",

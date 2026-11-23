@@ -15,6 +15,7 @@ interface MockData {
   settings: unknown;
   featured: unknown[];
   home: unknown;
+  facets: unknown;
   watched: string[];
   signedIn: boolean;
   businessInfo: unknown;
@@ -29,6 +30,7 @@ const data = vi.hoisted<MockData>(() => ({
   settings: undefined,
   featured: [],
   home: undefined,
+  facets: undefined,
   watched: [],
   signedIn: false,
   businessInfo: undefined,
@@ -48,6 +50,7 @@ vi.mock("convex/react", () => ({
     if (ref === "settings") return data.settings;
     if (ref === "featured") return data.featured;
     if (ref === "homeLots") return data.home;
+    if (ref === "facets") return data.facets;
     if (ref === "watched") return data.watched;
     return undefined;
   },
@@ -57,7 +60,11 @@ vi.mock("convex/react", () => ({
 
 vi.mock("convex/_generated/api", () => ({
   api: {
-    auctions: { getPublishedAuctions: "pub", getHomeLots: "homeLots" },
+    auctions: {
+      getPublishedAuctions: "pub",
+      getHomeLots: "homeLots",
+      getHomeFacets: "facets",
+    },
     admin: { platformSettings: { getPlatformSettings: "settings" } },
     engagement: { getMostEngagedLots: "featured" },
     watchlist: { getWatchedLotIds: "watched", toggleWatchlist: "toggle" },
@@ -125,8 +132,7 @@ const lot = (id: string, over: Record<string, unknown> = {}) => ({
   lotNumber: 3,
   startingPrice: 400000,
   currentPrice: 400000,
-  hasReserve: true,
-  reserveMet: false,
+  reserveState: "applies",
   watchers: 8,
   bids: 0,
   effectiveEndTime: NOW + 51 * HOUR,
@@ -142,14 +148,14 @@ const settings = {
   minPhotosPerLot: 8,
 };
 
-const home = {
+const home = { matched: 85, lots: [lot("l1")] };
+
+const facets = {
   total: 85,
-  matched: 85,
   capped: false,
   categories: [{ categoryId: "c1", name: "Tractors", count: 48 }],
   makes: [{ make: "Ford", count: 8 }],
   priceRange: { min: 1000, max: 900000 },
-  lots: [lot("l1")],
 };
 
 const renderHome = () =>
@@ -183,6 +189,7 @@ describe("Home page", () => {
       },
     ];
     data.home = home;
+    data.facets = facets;
     data.watched = [];
     data.signedIn = false;
     data.businessInfo = { whatsapp: "+27 82 555 0100" };
@@ -218,7 +225,8 @@ describe("Home page", () => {
 
   it("hides the cost box when there is no lot at all", () => {
     data.featured = [];
-    data.home = { ...home, lots: [], total: 0, matched: 0 };
+    data.home = { matched: 0, lots: [] };
+    data.facets = { ...facets, total: 0 };
     renderHome();
     expect(screen.queryByText(/→ pay/)).toBeNull();
     expect(screen.getByText("No lots match these filters.")).toBeVisible();
@@ -236,7 +244,10 @@ describe("Home page", () => {
     ];
     renderHome();
     expect(screen.getByRole("list", { name: "Auctions" })).toBeVisible();
-    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    // The page keeps one h1 for screen readers.
+    expect(
+      screen.getByRole("heading", { level: 1, name: /auctions/i })
+    ).toHaveClass("sr-only");
     expect(
       screen.getAllByRole("link", { name: "View all 85 lots" })[0]
     ).toHaveAttribute("href", "/auctions");
@@ -390,6 +401,41 @@ describe("Home page", () => {
     expect(
       screen.getByRole("region", { name: "Register to bid" }).querySelector("b")
     ).toHaveClass("text-urgent-fg");
+  });
+
+  it("names the sale in the sticky bar when several sales are open", () => {
+    data.ctaGone = true;
+    data.sales = [
+      sale("a"),
+      sale("b", {
+        startTime: NOW + HOUR,
+        endTime: NOW + 9 * HOUR,
+        effectiveEndTime: NOW + 9 * HOUR,
+      }),
+    ];
+    renderHome();
+    expect(
+      document.querySelector('[data-slot="sticky-action-bar"]')
+    ).toHaveTextContent("Sale a");
+  });
+
+  it("shows a lower-bound count when the sales were capped", () => {
+    data.facets = { ...facets, total: 100, capped: true };
+    renderHome();
+    expect(screen.getByRole("button", { name: "All 100+" })).toBeVisible();
+    expect(
+      screen.getAllByRole("link", { name: "View all 100+ lots" })[0]
+    ).toBeVisible();
+  });
+
+  it("drops lots that have closed since the query ran", () => {
+    data.home = {
+      matched: 2,
+      lots: [lot("l1"), lot("l2", { make: "Old", effectiveEndTime: NOW - 1 })],
+    };
+    renderHome();
+    expect(screen.getByText("New Holland T6070")).toBeVisible();
+    expect(screen.queryByText("Old T6070")).toBeNull();
   });
 
   it("filters the grid by category, make and price and submits a search", () => {

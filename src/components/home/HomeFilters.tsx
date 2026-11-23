@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export interface FacetOption {
   key: string;
   label: string;
-  count: number;
+  count: number | string;
 }
 
 /** The price filter: either bound can be unset. */
@@ -23,6 +23,8 @@ export interface PriceFilter {
 interface HomeFiltersProps {
   /** Lots in the open sales, shown on the "All" chip. */
   total: number;
+  /** True when `total` is a lower bound, shown as "85+". */
+  totalCapped?: boolean;
   categories: readonly FacetOption[];
   makes: readonly FacetOption[];
   /** Lowest and highest current price, or null to hide the Price chip. */
@@ -57,7 +59,7 @@ function Chip({
   selected,
   onClick,
 }: {
-  option: { label: string; count?: number };
+  option: { label: string; count?: number | string };
   selected: boolean;
   onClick: () => void;
 }) {
@@ -91,6 +93,7 @@ function Chip({
  *
  * @param props - Component props
  * @param props.total - Lots in the open sales
+ * @param props.totalCapped - Whether the total is a lower bound
  * @param props.categories - Category chips
  * @param props.makes - Make chips
  * @param props.priceRange - Price bounds, or null to hide the Price chip
@@ -106,6 +109,7 @@ function Chip({
  */
 export function HomeFilters({
   total,
+  totalCapped = false,
   categories,
   makes,
   priceRange,
@@ -182,7 +186,10 @@ export function HomeFilters({
         className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] md:mx-0 md:px-0"
       >
         <Chip
-          option={{ label: "All", count: total }}
+          option={{
+            label: "All",
+            count: totalCapped ? `${String(total)}+` : total,
+          }}
           selected={category === null}
           onClick={() => {
             onCategory(null);

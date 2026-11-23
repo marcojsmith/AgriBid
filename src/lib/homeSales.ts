@@ -57,6 +57,18 @@ export function pickHomeSales<T extends HomeSaleWindow>(
 }
 
 /**
+ * Words a lot count: "1 lot", "85 lots", or "100+ lots" when the count is a
+ * lower bound because a sale held more lots than were read.
+ *
+ * @param count - The number of lots
+ * @param capped - Whether the count is only a lower bound
+ * @returns The text
+ */
+export function formatLotCount(count: number, capped = false): string {
+  return `${String(count)}${capped ? "+" : ""} ${count === 1 && !capped ? "lot" : "lots"}`;
+}
+
+/**
  * Builds a wa.me link from a phone number (digits only, country code
  * included).
  *

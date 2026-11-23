@@ -48,7 +48,10 @@ export const Header = () => {
   const kycStatus = userData?.profile?.kycStatus;
 
   const location = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  // The menu is open for the page it was opened on, so it closes by itself
+  // when the route changes.
+  const [menuPath, setMenuPath] = useState<string | null>(null);
+  const menuOpen = menuPath === location.pathname;
   const telephone = branding?.businessInfo?.telephone?.trim() ?? "";
   const tel = telLink(telephone);
 
@@ -158,7 +161,7 @@ export const Header = () => {
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             onClick={() => {
-              setMenuOpen((open) => !open);
+              setMenuPath(menuOpen ? null : location.pathname);
             }}
           >
             {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
@@ -177,7 +180,7 @@ export const Header = () => {
               id="search-mobile"
               className="md:hidden"
               onSearch={() => {
-                setMenuOpen(false);
+                setMenuPath(null);
               }}
             />
             <nav aria-label="Menu" className="flex flex-col">
@@ -186,7 +189,7 @@ export const Header = () => {
                   key={link.name}
                   to={link.href}
                   onClick={() => {
-                    setMenuOpen(false);
+                    setMenuPath(null);
                   }}
                   className="inline-flex min-h-11 items-center rounded-sm text-base font-medium"
                 >

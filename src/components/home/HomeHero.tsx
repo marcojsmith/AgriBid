@@ -9,9 +9,11 @@ import { PhotoFrame } from "@/components/ds/PhotoFrame";
 import { StatusBadge } from "@/components/ds/StatusBadge";
 import type { DepositSettings } from "@/components/ds/FeesRulesSheet";
 import { Button } from "@/components/ui/button";
+import { softCloseRule } from "@/lib/auctionRules";
 import { formatRand } from "@/lib/currency";
 import { formatClosesIn } from "@/lib/countdown";
 import { formatSastDate } from "@/lib/dates";
+import { formatLotCount } from "@/lib/homeSales";
 import { cn } from "@/lib/utils";
 
 /** The sale the hero describes. */
@@ -61,6 +63,8 @@ interface HomeHeroProps {
   lotsHref: string;
   /** Lots across the open sales, for "View all N lots". */
   totalLots: number;
+  /** True when the count is a lower bound (a sale was capped). */
+  totalCapped?: boolean;
   className?: string;
 }
 
@@ -86,6 +90,7 @@ interface HomeHeroProps {
  * @param props.onFeesClick - Opens the Fees & rules sheet
  * @param props.lotsHref - Where "View all N lots" goes
  * @param props.totalLots - Lots across the open sales
+ * @param props.totalCapped - Whether the count is a lower bound
  * @param props.className - Extra classes merged onto the root element
  * @returns The hero
  */
@@ -102,10 +107,11 @@ export function HomeHero({
   onFeesClick,
   lotsHref,
   totalLots,
+  totalCapped = false,
   className,
 }: HomeHeroProps) {
   const live = sale?.bucket === "live";
-  const lots = `${String(totalLots)} ${totalLots === 1 ? "lot" : "lots"}`;
+  const lots = formatLotCount(totalLots, totalCapped);
   const when = sale ? (live ? sale.effectiveEndTime : sale.startTime) : 0;
   return (
     <section
@@ -174,7 +180,7 @@ export function HomeHero({
             </p>
             {live ? (
               <p className="mt-0.5 text-sm text-hero-muted">
-                Bids in the last 2 minutes add 2 minutes.
+                {softCloseRule()}.
               </p>
             ) : null}
           </>

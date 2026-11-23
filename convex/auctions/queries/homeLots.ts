@@ -1,5 +1,5 @@
 // app/convex/auctions/queries/homeLots.ts
-import { v, type ObjectType } from "convex/values";
+import { ConvexError, v, type ObjectType } from "convex/values";
 
 import { query, type QueryCtx } from "./shared";
 import { compareLotsInSale, pickLeadImageRef } from "./events";
@@ -13,6 +13,14 @@ import {
   HOME_LOTS_READ_PER_AUCTION,
 } from "../../constants";
 import type { Doc, Id } from "../../_generated/dataModel";
+
+/** Reserve state of a lot, computed on the server (the reserve amount is never sent). */
+const reserveStateValidator = v.union(
+  v.literal("none"),
+  v.literal("applies"),
+  v.literal("met"),
+  v.literal("not_met")
+);
 
 /** Validator for one lot card on the Home grid. */
 export const HomeLotValidator = v.object({
@@ -28,10 +36,12 @@ export const HomeLotValidator = v.object({
   auctionId: v.id("auctions"),
   startingPrice: v.number(),
   currentPrice: v.number(),
-  /** True when the lot has a reserve (`reservePrice > 0`). */
-  hasReserve: v.boolean(),
-  /** True when `currentPrice >= reservePrice` (only meaningful with a reserve). */
-  reserveMet: v.boolean(),
+  /**
+   * `none` without a reserve; `applies` until the first bid (so the amount's
+   * position relative to the opening price is not leaked); then `met` or
+   * `not_met`.
+   */
+  reserveState: reserveStateValidator,
   watchers: v.number(),
   bids: v.number(),
   /** `extendedEndTime ?? auction.endTime`. */
@@ -39,12 +49,17 @@ export const HomeLotValidator = v.object({
   leadImageUrl: v.optional(v.string()),
 });
 
-/** Validator for the whole `getHomeLots` result. */
+/** Validator for the `getHomeLots` result. */
 export const HomeLotsResultValidator = v.object({
-  /** Buyer-visible lots read across the sales, before any filter. */
-  total: v.number(),
-  /** Lots left after the filters. */
+  /** Lots left after the filters (a lower bound when the sales were capped). */
   matched: v.number(),
+  lots: v.array(HomeLotValidator),
+});
+
+/** Validator for the `getHomeFacets` result. */
+export const HomeFacetsResultValidator = v.object({
+  /** Buyer-visible open lots read across the sales. */
+  total: v.number(),
   /** True when a sale held more lots than were read (counts are lower bounds). */
   capped: v.boolean(),
   categories: v.array(
@@ -55,9 +70,8 @@ export const HomeLotsResultValidator = v.object({
     })
   ),
   makes: v.array(v.object({ make: v.string(), count: v.number() })),
-  /** Lowest and highest current price of the unfiltered lots (null when none). */
+  /** Lowest and highest current price of the lots (null when none). */
   priceRange: v.union(v.null(), v.object({ min: v.number(), max: v.number() })),
-  lots: v.array(HomeLotValidator),
 });
 
 /** Arguments of `getHomeLots`. */
@@ -113,34 +127,28 @@ function tally(values: readonly string[]): [string, number][] {
 }
 
 /**
- * Home grid data: the lots of the given published sales plus the filter
- * facets (category and make counts, price range) for the chips.
+ * Reads the buyer-visible lots still open in the given published sales.
  *
- * Reads at most {@link HOME_LOTS_MAX_AUCTIONS} sales (`ctx.db.get`; draft and
- * closed sales are skipped) and, per sale, at most
- * {@link HOME_LOTS_READ_PER_AUCTION}+1 `assigned` lots through
- * `by_status_auctionId`. Hidden lots are dropped. Category and make counts and
- * the price range describe every lot read, so the chips keep their numbers while
- * a filter is active; `matched` and `lots` follow the filters. Lots are ordered
- * by their own close time, then lot number. Only the returned lots (at most
- * {@link HOME_LOTS_MAX_LIMIT}) cost an image resolve and two counter reads.
+ * At most {@link HOME_LOTS_MAX_AUCTIONS} ids are accepted (more throws; repeats
+ * are ignored). Per sale: one `get` (draft and closed sales are skipped) and one
+ * `by_status_auctionId` read of at most {@link HOME_LOTS_READ_PER_AUCTION}+1
+ * `assigned` lots. Hidden lots are dropped, and so are lots whose own close time
+ * has passed in a sale that has started (a sale stays live while one lot is
+ * soft-close extended, but its other lots are over).
  *
  * @param ctx - Query context.
- * @param args - Handler arguments.
- * @returns The grid lots and the facets.
+ * @param auctionIds - The sales to read.
+ * @returns The open lots with their close time, and whether any sale was capped.
  */
-export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
-  const limit = Math.max(
-    1,
-    Math.min(
-      Math.floor(args.limit ?? HOME_LOTS_DEFAULT_LIMIT) || 1,
-      HOME_LOTS_MAX_LIMIT
-    )
-  );
-  const ids = [...new Set(args.auctionIds)].slice(0, HOME_LOTS_MAX_AUCTIONS);
-
+async function loadOpenLots(ctx: QueryCtx, auctionIds: Id<"auctions">[]) {
+  if (auctionIds.length > HOME_LOTS_MAX_AUCTIONS) {
+    throw new ConvexError(
+      `At most ${String(HOME_LOTS_MAX_AUCTIONS)} auctions per request`
+    );
+  }
+  const now = Date.now();
   const perAuction = await Promise.all(
-    ids.map(async (auctionId) => {
+    [...new Set(auctionIds)].map(async (auctionId) => {
       const auction = await ctx.db.get("auctions", auctionId);
       if (auction?.status !== "published") {
         return { rows: [] as Candidate[], capped: false };
@@ -151,6 +159,7 @@ export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
           q.eq("status", "assigned").eq("auctionId", auctionId)
         )
         .take(HOME_LOTS_READ_PER_AUCTION + 1);
+      const started = auction.startTime <= now;
       return {
         capped: rows.length > HOME_LOTS_READ_PER_AUCTION,
         rows: rows
@@ -159,12 +168,33 @@ export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
           .map((lot) => ({
             lot,
             effectiveEndTime: lot.extendedEndTime ?? auction.endTime,
-          })),
+          }))
+          .filter(({ effectiveEndTime }) => !started || effectiveEndTime > now),
       };
     })
   );
-  const candidates = perAuction.flatMap((entry) => entry.rows);
-  const capped = perAuction.some((entry) => entry.capped);
+  return {
+    candidates: perAuction.flatMap((entry) => entry.rows),
+    capped: perAuction.some((entry) => entry.capped),
+  };
+}
+
+/**
+ * Filter chip data for Home: lot total, category and make counts and the price
+ * range of the open lots of the given sales. Separate from the grid so picking
+ * a chip re-runs only {@link getHomeLotsHandler}. See {@link loadOpenLots} for
+ * the reads and caps.
+ *
+ * @param ctx - Query context.
+ * @param args - Handler arguments.
+ * @param args.auctionIds - The sales to describe.
+ * @returns The facets.
+ */
+export const getHomeFacetsHandler = async (
+  ctx: QueryCtx,
+  args: { auctionIds: Id<"auctions">[] }
+) => {
+  const { candidates, capped } = await loadOpenLots(ctx, args.auctionIds);
 
   const categoryNames = new Map<Id<"equipmentCategories">, string>();
   const categoryIds = [
@@ -190,11 +220,39 @@ export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
     name: categoryNames.get(categoryId as Id<"equipmentCategories">) ?? "",
     count,
   }));
-  const makes = tally(candidates.map(({ lot }) => lot.make)).map(
-    ([make, count]) => ({ make, count })
-  );
   const prices = candidates.map(({ lot }) => lot.currentPrice);
+  return {
+    total: candidates.length,
+    capped,
+    categories,
+    makes: tally(candidates.map(({ lot }) => lot.make)).map(
+      ([make, count]) => ({ make, count })
+    ),
+    priceRange: prices.length
+      ? { min: Math.min(...prices), max: Math.max(...prices) }
+      : null,
+  };
+};
 
+/**
+ * The Home grid: the open lots of the given sales that pass the filters,
+ * ordered by their own close time then lot number, at most `limit` (clamped to
+ * 1..{@link HOME_LOTS_MAX_LIMIT}). Only the returned lots cost an image resolve
+ * and two counter reads. See {@link loadOpenLots} for the other reads.
+ *
+ * @param ctx - Query context.
+ * @param args - Handler arguments.
+ * @returns The number of matching lots and the grid lots.
+ */
+export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
+  const limit = Math.max(
+    1,
+    Math.min(
+      Math.floor(args.limit ?? HOME_LOTS_DEFAULT_LIMIT) || 1,
+      HOME_LOTS_MAX_LIMIT
+    )
+  );
+  const { candidates } = await loadOpenLots(ctx, args.auctionIds);
   const matched = candidates
     .filter(({ lot }) => passes(lot, args))
     .sort(
@@ -211,6 +269,14 @@ export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
         getWatcherCount(ctx, lot._id),
         getBidCount(ctx, lot._id),
       ]);
+      const reserveState =
+        lot.reservePrice <= 0
+          ? ("none" as const)
+          : bids === 0
+            ? ("applies" as const)
+            : lot.currentPrice >= lot.reservePrice
+              ? ("met" as const)
+              : ("not_met" as const);
       return {
         _id: lot._id,
         title: lot.title,
@@ -225,8 +291,7 @@ export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
         auctionId: lot.auctionId as Id<"auctions">,
         startingPrice: lot.startingPrice,
         currentPrice: lot.currentPrice,
-        hasReserve: lot.reservePrice > 0,
-        reserveMet: lot.currentPrice >= lot.reservePrice,
+        reserveState,
         watchers,
         bids,
         effectiveEndTime,
@@ -234,26 +299,23 @@ export const getHomeLotsHandler = async (ctx: QueryCtx, args: HomeLotsArgs) => {
       };
     })
   );
-
-  return {
-    total: candidates.length,
-    matched: matched.length,
-    capped,
-    categories,
-    makes,
-    priceRange: prices.length
-      ? { min: Math.min(...prices), max: Math.max(...prices) }
-      : null,
-    lots,
-  };
+  return { matched: matched.length, lots };
 };
 
 /**
- * Public query behind the Home lot grid and its filter chips. See
- * {@link getHomeLotsHandler} for the reads and caps.
+ * Public query behind the Home lot grid. See {@link getHomeLotsHandler}.
  */
 export const getHomeLots = query({
   args: homeLotsArgs,
   returns: HomeLotsResultValidator,
   handler: getHomeLotsHandler,
+});
+
+/**
+ * Public query behind the Home filter chips. See {@link getHomeFacetsHandler}.
+ */
+export const getHomeFacets = query({
+  args: { auctionIds: v.array(v.id("auctions")) },
+  returns: HomeFacetsResultValidator,
+  handler: getHomeFacetsHandler,
 });

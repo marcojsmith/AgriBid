@@ -14,8 +14,7 @@ const lot = (over: Partial<HomeGridLot> = {}): HomeGridLot => ({
   lotNumber: 3,
   startingPrice: 400_000,
   currentPrice: 400_000,
-  hasReserve: true,
-  reserveMet: false,
+  reserveState: "applies",
   watchers: 8,
   bids: 0,
   effectiveEndTime: NOW + 3 * 3_600_000,
@@ -54,8 +53,13 @@ describe("HomeLotGrid", () => {
 
   it("shows the current bid, bid count and reserve result once there are bids", () => {
     renderGrid([
-      lot({ bids: 3, currentPrice: 450_000, reserveMet: false }),
-      lot({ _id: "l2", bids: 2, currentPrice: 900_000, reserveMet: true }),
+      lot({ bids: 3, currentPrice: 450_000, reserveState: "not_met" }),
+      lot({
+        _id: "l2",
+        bids: 2,
+        currentPrice: 900_000,
+        reserveState: "met",
+      }),
     ]);
     expect(screen.getAllByText("Current bid")).toHaveLength(2);
     expect(screen.getByText("3 bids")).toBeVisible();
@@ -64,7 +68,7 @@ describe("HomeLotGrid", () => {
   });
 
   it("shows No reserve and falls back to a dash for a missing lot number", () => {
-    renderGrid([lot({ hasReserve: false, lotNumber: undefined })]);
+    renderGrid([lot({ reserveState: "none", lotNumber: undefined })]);
     expect(screen.getByText("No reserve")).toBeVisible();
     expect(screen.getByText("Lot –")).toBeVisible();
   });

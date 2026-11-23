@@ -4,7 +4,6 @@ export * from "./queries/bids";
 export * from "./queries/listings";
 export * from "./queries/admin";
 export * from "./queries/events";
-export * from "./queries/closingSoon";
 export * from "./queries/homeLots";
 
 /**

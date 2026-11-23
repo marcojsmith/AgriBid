@@ -256,6 +256,18 @@ describe("Header", () => {
     expect(screen.queryByTestId("search-search-mobile")).toBeNull();
   });
 
+  it("closes the menu when the route changes", () => {
+    renderHeader();
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("navigation", { name: "Menu" })).toBeVisible();
+    act(() => {
+      window.history.pushState({}, "", "/auctions");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(screen.queryByRole("navigation", { name: "Menu" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Open menu" })).toBeVisible();
+  });
+
   it("closes the menu after a search is submitted or a link is followed", () => {
     renderHeader();
     fireEvent.click(screen.getByRole("button", { name: "Open menu" }));

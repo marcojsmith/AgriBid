@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-import { pickHomeSales, telLink, whatsappLink } from "./homeSales";
+import {
+  formatLotCount,
+  pickHomeSales,
+  telLink,
+  whatsappLink,
+} from "./homeSales";
 
 const NOW = 1_000_000;
 const sale = (
@@ -78,6 +83,14 @@ describe("pickHomeSales", () => {
       NOW
     );
     expect(result.hero?.bucket).toBe("upcoming");
+  });
+});
+
+describe("formatLotCount", () => {
+  it("words one, many and capped counts", () => {
+    expect(formatLotCount(1)).toBe("1 lot");
+    expect(formatLotCount(85)).toBe("85 lots");
+    expect(formatLotCount(100, true)).toBe("100+ lots");
   });
 });
 

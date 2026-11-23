@@ -14,8 +14,8 @@ export interface HomeGridLot {
   lotNumber?: number;
   startingPrice: number;
   currentPrice: number;
-  hasReserve: boolean;
-  reserveMet: boolean;
+  /** Computed by the server: `applies` until the first bid. */
+  reserveState: "none" | "applies" | "met" | "not_met";
   watchers: number;
   bids: number;
   effectiveEndTime: number;
@@ -33,15 +33,13 @@ interface HomeLotGridProps {
 }
 
 /**
- * Reserve state of a lot: none, or applies before any bid, then met or not met.
+ * Maps the server's reserve state to the pill state.
  *
- * @param lot - The grid lot
+ * @param state - The reserve state from `getHomeLots`
  * @returns The pill state
  */
-function reserveOf(lot: HomeGridLot): ReserveState {
-  if (!lot.hasReserve) return "none";
-  if (lot.bids === 0) return "applies";
-  return lot.reserveMet ? "met" : "not-met";
+function reserveOf(state: HomeGridLot["reserveState"]): ReserveState {
+  return state === "not_met" ? "not-met" : state;
 }
 
 /**
@@ -94,7 +92,7 @@ export function HomeLotGrid({
               state={hasBids ? "current-bid" : "open"}
               price={hasBids ? lot.currentPrice : lot.startingPrice}
               count={hasBids ? lot.bids : lot.watchers}
-              reserve={reserveOf(lot)}
+              reserve={reserveOf(lot.reserveState)}
               closesIn={
                 showCloses && remaining > 0
                   ? formatRemaining(remaining)

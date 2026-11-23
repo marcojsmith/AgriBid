@@ -9,6 +9,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import {
+  COLLECTION_WINDOW_DAYS,
+  PAYMENT_WINDOW_HOURS,
+} from "@/lib/auctionRules";
 import { cn } from "@/lib/utils";
 
 /** The finance contact an admin sets, as `getPlatformSettings` returns it. */
@@ -121,7 +125,8 @@ export function BeforeYouBid({
         </h2>
         <ul className="lg:grid lg:grid-cols-3 lg:gap-x-10">
           <Row icon={MapPin} title="Viewing and collection">
-            Viewing where each lot stands. Call to book. Collect within 7 days.
+            Viewing where each lot stands. Call to book. Collect within{" "}
+            {String(COLLECTION_WINDOW_DAYS)} days.
           </Row>
           <Row
             icon={Truck}
@@ -144,7 +149,7 @@ export function BeforeYouBid({
             met. If bidding ends below it, the seller decides whether to accept.
           </Row>
           <Row icon={CreditCard} title="Payment">
-            EFT within 48 hours.
+            EFT within {String(PAYMENT_WINDOW_HOURS)} hours.
             {depositEnabled ? " Your deposit counts towards payment." : ""}
           </Row>
         </ul>

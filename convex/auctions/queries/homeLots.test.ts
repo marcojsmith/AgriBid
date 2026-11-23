@@ -107,7 +107,7 @@ async function insertCategory(
   );
 }
 
-describe("getHomeLots", () => {
+describe("getHomeLots and getHomeFacets", () => {
   let t: TestContext;
 
   beforeEach(() => {
@@ -120,16 +120,18 @@ describe("getHomeLots", () => {
     vi.useRealTimers();
   });
 
-  it("returns empty facets for no sales", async () => {
-    const result = await t.query(api.auctions.getHomeLots, { auctionIds: [] });
-    expect(result).toEqual({
+  it("returns nothing for no sales", async () => {
+    expect(await t.query(api.auctions.getHomeLots, { auctionIds: [] })).toEqual(
+      { matched: 0, lots: [] }
+    );
+    expect(
+      await t.query(api.auctions.getHomeFacets, { auctionIds: [] })
+    ).toEqual({
       total: 0,
-      matched: 0,
       capped: false,
       categories: [],
       makes: [],
       priceRange: null,
-      lots: [],
     });
   });
 
@@ -138,10 +140,10 @@ describe("getHomeLots", () => {
     const closed = await insertAuction(t, { status: "closed" });
     await insertLot(t, draft);
     await insertLot(t, closed);
-    const result = await t.query(api.auctions.getHomeLots, {
+    const facets = await t.query(api.auctions.getHomeFacets, {
       auctionIds: [draft, closed],
     });
-    expect(result.total).toBe(0);
+    expect(facets.total).toBe(0);
   });
 
   it("drops hidden and non-assigned lots", async () => {
@@ -153,7 +155,43 @@ describe("getHomeLots", () => {
       auctionIds: [sale],
     });
     expect(result.lots.map((lot) => lot._id)).toEqual([visible]);
-    expect(result.total).toBe(1);
+    const facets = await t.query(api.auctions.getHomeFacets, {
+      auctionIds: [sale],
+    });
+    expect(facets.total).toBe(1);
+  });
+
+  it("drops lots that already closed while the sale stays live for an extended lot", async () => {
+    const sale = await insertAuction(t, {
+      startTime: NOW - 3 * HOUR,
+      endTime: NOW - HOUR,
+    });
+    await insertLot(t, sale, { lotNumber: 1 });
+    const extended = await insertLot(t, sale, {
+      lotNumber: 2,
+      extendedEndTime: NOW + HOUR,
+    });
+    const result = await t.query(api.auctions.getHomeLots, {
+      auctionIds: [sale],
+    });
+    expect(result.lots.map((lot) => lot._id)).toEqual([extended]);
+    expect(result.matched).toBe(1);
+    const facets = await t.query(api.auctions.getHomeFacets, {
+      auctionIds: [sale],
+    });
+    expect(facets.total).toBe(1);
+  });
+
+  it("keeps every lot of an upcoming sale", async () => {
+    const upcoming = await insertAuction(t, {
+      startTime: NOW + HOUR,
+      endTime: NOW + 5 * HOUR,
+    });
+    await insertLot(t, upcoming);
+    const facets = await t.query(api.auctions.getHomeFacets, {
+      auctionIds: [upcoming],
+    });
+    expect(facets.total).toBe(1);
   });
 
   it("counts categories and makes, ignoring inactive categories", async () => {
@@ -163,19 +201,19 @@ describe("getHomeLots", () => {
     await insertLot(t, sale, { categoryId: tractors, make: "Ford" });
     await insertLot(t, sale, { categoryId: tractors, make: "Ford" });
     await insertLot(t, sale, { categoryId: old, make: "Landini" });
-    const result = await t.query(api.auctions.getHomeLots, {
+    const facets = await t.query(api.auctions.getHomeFacets, {
       auctionIds: [sale],
     });
-    expect(result.categories).toEqual([
+    expect(facets.categories).toEqual([
       { categoryId: tractors, name: "Tractors", count: 2 },
     ]);
-    expect(result.makes).toEqual([
+    expect(facets.makes).toEqual([
       { make: "Ford", count: 2 },
       { make: "Landini", count: 1 },
     ]);
   });
 
-  it("keeps facet counts while filters narrow the grid", async () => {
+  it("filters the grid by category, make and price while the facets keep their counts", async () => {
     const sale = await insertAuction(t);
     const tractors = await insertCategory(t, "Tractors");
     await insertLot(t, sale, {
@@ -189,8 +227,6 @@ describe("getHomeLots", () => {
       make: "Ford",
     });
     expect(byMake.matched).toBe(1);
-    expect(byMake.total).toBe(2);
-    expect(byMake.makes).toHaveLength(2);
     const byCategory = await t.query(api.auctions.getHomeLots, {
       auctionIds: [sale],
       categoryId: tractors,
@@ -202,22 +238,20 @@ describe("getHomeLots", () => {
       maxPrice: 1000,
     });
     expect(byPrice.lots.map((lot) => lot.make)).toEqual(["Landini"]);
-    expect(byPrice.priceRange).toEqual({ min: 100, max: 900 });
+    const facets = await t.query(api.auctions.getHomeFacets, {
+      auctionIds: [sale],
+    });
+    expect(facets.total).toBe(2);
+    expect(facets.makes).toHaveLength(2);
+    expect(facets.priceRange).toEqual({ min: 100, max: 900 });
   });
 
-  it("orders by close time then lot number and reads counters and reserve", async () => {
+  it("orders by close time then lot number and reads counters", async () => {
     const soon = await insertAuction(t, { endTime: NOW + HOUR });
     const later = await insertAuction(t, { endTime: NOW + 5 * HOUR });
     const laterLot = await insertLot(t, later, { lotNumber: 1 });
-    const second = await insertLot(t, soon, {
-      lotNumber: 2,
-      reservePrice: 0,
-    });
-    const first = await insertLot(t, soon, {
-      lotNumber: 1,
-      currentPrice: 2000,
-      reservePrice: 1500,
-    });
+    const second = await insertLot(t, soon, { lotNumber: 2 });
+    const first = await insertLot(t, soon, { lotNumber: 1 });
     await t.run(async (ctx) => {
       await ctx.db.insert("counters", {
         name: `watchers:${first}`,
@@ -234,10 +268,50 @@ describe("getHomeLots", () => {
       laterLot,
     ]);
     expect(result.lots[0].watchers).toBe(4);
-    expect(result.lots[0].hasReserve).toBe(true);
-    expect(result.lots[0].reserveMet).toBe(true);
-    expect(result.lots[1].hasReserve).toBe(false);
     expect(result.lots[2].effectiveEndTime).toBe(NOW + 5 * HOUR);
+  });
+
+  it("computes the reserve state on the server without leaking the amount", async () => {
+    const sale = await insertAuction(t);
+    const none = await insertLot(t, sale, { lotNumber: 1, reservePrice: 0 });
+    // Reserve at or below the opening price: still "applies" before a bid.
+    const applies = await insertLot(t, sale, {
+      lotNumber: 2,
+      reservePrice: 400,
+      currentPrice: 500,
+    });
+    const met = await insertLot(t, sale, {
+      lotNumber: 3,
+      reservePrice: 1000,
+      currentPrice: 1200,
+    });
+    const notMet = await insertLot(t, sale, {
+      lotNumber: 4,
+      reservePrice: 1000,
+      currentPrice: 800,
+    });
+    await t.run(async (ctx) => {
+      for (const lotId of [met, notMet]) {
+        await ctx.db.insert("counters", {
+          name: `bids:${lotId}`,
+          total: 2,
+          updatedAt: NOW,
+        });
+      }
+    });
+    const result = await t.query(api.auctions.getHomeLots, {
+      auctionIds: [sale],
+    });
+    const state = Object.fromEntries(
+      result.lots.map((lot) => [lot._id, lot.reserveState])
+    );
+    expect(state[none]).toBe("none");
+    expect(state[applies]).toBe("applies");
+    expect(state[met]).toBe("met");
+    expect(state[notMet]).toBe("not_met");
+    for (const lot of result.lots) {
+      expect(lot).not.toHaveProperty("reservePrice");
+    }
   });
 
   it("uses a lot's extended end time", async () => {
@@ -271,17 +345,28 @@ describe("getHomeLots", () => {
     expect(dflt.lots).toHaveLength(6);
   });
 
-  it("reads at most HOME_LOTS_MAX_AUCTIONS sales and ignores duplicates", async () => {
+  it("accepts up to HOME_LOTS_MAX_AUCTIONS sales, ignores repeats and rejects more", async () => {
     const ids: Id<"auctions">[] = [];
     for (let i = 0; i < HOME_LOTS_MAX_AUCTIONS + 1; i += 1) {
       const id = await insertAuction(t);
       await insertLot(t, id);
       ids.push(id);
     }
-    const result = await t.query(api.auctions.getHomeLots, {
-      auctionIds: [...ids, ids[0]],
+    const four = ids.slice(0, HOME_LOTS_MAX_AUCTIONS);
+    const facets = await t.query(api.auctions.getHomeFacets, {
+      auctionIds: four,
     });
-    expect(result.total).toBe(HOME_LOTS_MAX_AUCTIONS);
+    expect(facets.total).toBe(HOME_LOTS_MAX_AUCTIONS);
+    const repeated = await t.query(api.auctions.getHomeFacets, {
+      auctionIds: [ids[0], ids[0], ids[0]],
+    });
+    expect(repeated.total).toBe(1);
+    await expect(
+      t.query(api.auctions.getHomeLots, { auctionIds: ids })
+    ).rejects.toThrow(/At most 4 auctions/);
+    await expect(
+      t.query(api.auctions.getHomeFacets, { auctionIds: ids })
+    ).rejects.toThrow(/At most 4 auctions/);
   });
 
   it("caps the lots read per sale and flags it", async () => {
@@ -306,10 +391,15 @@ describe("getHomeLots", () => {
         });
       }
     });
-    const result = await t.query(api.auctions.getHomeLots, {
+    const facets = await t.query(api.auctions.getHomeFacets, {
       auctionIds: [sale],
     });
-    expect(result.capped).toBe(true);
-    expect(result.total).toBe(HOME_LOTS_READ_PER_AUCTION);
+    expect(facets.capped).toBe(true);
+    expect(facets.total).toBe(HOME_LOTS_READ_PER_AUCTION);
+    const grid = await t.query(api.auctions.getHomeLots, {
+      auctionIds: [sale],
+      limit: HOME_LOTS_MAX_LIMIT,
+    });
+    expect(grid.matched).toBe(HOME_LOTS_READ_PER_AUCTION);
   });
 });
