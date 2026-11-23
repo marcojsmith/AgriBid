@@ -93,6 +93,19 @@ export default defineSchema({
     // Snapshot of the parent auction's fee defaults at assignment time, so later auction edits don't change an already-assigned lot's fees.
     resolvedBuyerPremiumPct: v.optional(v.number()),
     resolvedSellerCommissionPct: v.optional(v.number()),
+    // Where `resolvedBuyerPremiumPct` came from. "auction": the snapshot is the
+    // single buyer premium (active buyer % platformFees rows are ignored).
+    // "platform": informational only; settlement uses active buyer % fee rows
+    // if any, else the platform default read at settlement time. Undefined on
+    // legacy lots (a legacy snapshot always came from the auction).
+    premiumSource: v.optional(
+      v.union(v.literal("auction"), v.literal("platform"))
+    ),
+    // Seller VAT status/type snapshotted from the seller profile at assignment
+    // (undefined = unknown = treated as VAT-registered). Profile edits then only
+    // affect future assignments; admins can correct a lot via adminSetLotSellerVat.
+    sellerVatRegistered: v.optional(v.boolean()),
+    sellerType: v.optional(sellerTypeValidator),
     winnerId: v.optional(v.union(v.string(), v.null())),
     images: v.union(
       v.object({
@@ -425,6 +438,24 @@ export default defineSchema({
     .index("by_viewerKey_and_lastViewedAt", ["viewerKey", "lastViewedAt"])
     .index("by_lastViewedAt", ["lastViewedAt"]),
 
+  // Precomputed engagement score per assigned lot of a live auction, rebuilt
+  // every 5 minutes by `engagement.refreshEngagementScores` from the lot's
+  // counters. Read by `getMostEngagedLots` so views never re-trigger it.
+  // score = bids * 3 + watchers * 2 + log2(1 + views). `lotNumber` is
+  // denormalised for the tie-break.
+  engagementScores: defineTable({
+    lotId: v.id("lots"),
+    auctionId: v.id("auctions"),
+    lotNumber: v.optional(v.number()),
+    bids: v.number(),
+    watchers: v.number(),
+    views: v.number(),
+    score: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_auctionId_and_score", ["auctionId", "score"])
+    .index("by_lotId", ["lotId"]),
+
   presence: defineTable({
     userId: v.string(),
     updatedAt: v.number(),
@@ -465,8 +496,9 @@ export default defineSchema({
   counters: defineTable({
     // e.g., "auctions", "profiles", "support", "announcements",
     // "lotNumber:<auctionId>" (last lot number issued), "watchers:<lotId>" (`total`),
-    // "views:<lotId>" (`total`) or "anonviews:<lotId>" (`active` = hour bucket,
-    // `total` = anonymous views counted in it).
+    // "views:<lotId>" (`total`), "bids:<lotId>" (`total` = valid bids) or
+    // "anonviews:<lotId>" (`active` = hour bucket, `total` = anonymous views
+    // counted in it).
     name: v.string(),
     total: v.number(),
     active: v.optional(v.number()),

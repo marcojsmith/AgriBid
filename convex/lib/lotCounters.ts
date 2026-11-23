@@ -27,6 +27,13 @@ export const watcherCounterName = (lotId: Id<"lots">) => `watchers:${lotId}`;
 export const viewCounterName = (lotId: Id<"lots">) => `views:${lotId}`;
 
 /**
+ * Counter row name holding a lot's valid (non-voided) bid count (in `total`).
+ * @param lotId - The lot id.
+ * @returns The counter name.
+ */
+export const bidCounterName = (lotId: Id<"lots">) => `bids:${lotId}`;
+
+/**
  * Counter row name holding a lot's anonymous-view budget: `active` is the hour
  * bucket and `total` the anonymous views counted in it.
  * @param lotId - The lot id.
@@ -71,6 +78,23 @@ export async function adjustWatcherCount(
 }
 
 /**
+ * Applies a delta to a lot's valid-bid counter, never going below 0. Call with
+ * `+1` wherever a valid bid is inserted and `-1` when a valid bid is voided or
+ * removed.
+ *
+ * @param ctx - Mutation context.
+ * @param lotId - The lot the bid belongs to.
+ * @param delta - `+1` when a valid bid is added, `-1` when one is voided.
+ */
+export async function adjustBidCount(
+  ctx: MutationCtx,
+  lotId: Id<"lots">,
+  delta: 1 | -1
+): Promise<void> {
+  await updateCounter(ctx, bidCounterName(lotId), "total", delta);
+}
+
+/**
  * Deletes (at most) one bounded batch of a lot's watchlist rows and its
  * `lotViewers` dedupe rows. When more rows remain it schedules
  * `internal.engagement.continueLotDataRemoval` to continue; the watcher/view
@@ -103,8 +127,17 @@ export async function removeLotWatchData(
     );
     return;
   }
-  const counter = await getCounter(ctx, watcherCounterName(lotId));
-  if (counter) await ctx.db.delete("counters", counter._id);
+  for (const name of [watcherCounterName(lotId), bidCounterName(lotId)]) {
+    const counter = await getCounter(ctx, name);
+    if (counter) await ctx.db.delete("counters", counter._id);
+  }
+  const scores = await ctx.db
+    .query("engagementScores")
+    .withIndex("by_lotId", (q) => q.eq("lotId", lotId))
+    .take(LOT_DATA_DELETE_BATCH);
+  await Promise.all(
+    scores.map((row) => ctx.db.delete("engagementScores", row._id))
+  );
 }
 
 /**
@@ -147,6 +180,21 @@ export async function getViewCount(
   lotId: Id<"lots">
 ): Promise<number> {
   const counter = await getCounter(ctx, viewCounterName(lotId));
+  return counter?.total ?? 0;
+}
+
+/**
+ * Reads a lot's valid-bid count from its counter row.
+ *
+ * @param ctx - Query or mutation context.
+ * @param lotId - The lot.
+ * @returns The valid-bid count, 0 when no counter exists.
+ */
+export async function getBidCount(
+  ctx: QueryCtx,
+  lotId: Id<"lots">
+): Promise<number> {
+  const counter = await getCounter(ctx, bidCounterName(lotId));
   return counter?.total ?? 0;
 }
 

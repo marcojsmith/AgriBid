@@ -425,6 +425,10 @@ When a bid is placed:
 2. Create notification for outbid user
 3. Notification appears in real-time via Convex
 
+### Engagement ranking
+
+Every valid bid insert bumps the lot's `bids:<lotId>` counter and `voidBid` decrements it. A cron (`refresh engagement scores`, every 5 minutes, on by default) rebuilds `engagementScores` for live auctions from the bids, watcher and view counters only, with `score = bids * 3 + watchers * 2 + log2(1 + views)`; `getMostEngagedLots` reads just that table, so views never re-run it. `migrations:backfillBidCounts` rebuilds the bid counters.
+
 ---
 
 _Last Updated: 2026-03-02_

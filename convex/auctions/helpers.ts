@@ -10,7 +10,7 @@ import {
   imageAnglesValidator,
   SELLER_TYPE_LABELS,
 } from "../lib/lotSpecs";
-import { resolveSellerVatKind } from "../lib/sellerVat";
+import { resolveLotSellerVat } from "../lib/sellerVat";
 
 export interface RawImages {
   front?: string;
@@ -391,6 +391,7 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
       getWatcherCount(ctx, lot._id),
     ]);
   const isAuthenticated = identity !== null;
+  const sellerVat = resolveLotSellerVat(lot, sellerProfile);
   const coldStartVideoUrl = lot.coldStartVideo
     ? ((await ctx.storage.getUrl(lot.coldStartVideo)) ?? undefined)
     : undefined;
@@ -440,9 +441,9 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     serialNumber: lot.serialNumber,
     imageAngles: lot.imageAngles,
     coldStartVideoUrl,
-    sellerVatKind: resolveSellerVatKind(sellerProfile),
-    sellerTypeLabel: sellerProfile?.sellerType
-      ? SELLER_TYPE_LABELS[sellerProfile.sellerType]
+    sellerVatKind: sellerVat.vatKind,
+    sellerTypeLabel: sellerVat.sellerType
+      ? SELLER_TYPE_LABELS[sellerVat.sellerType]
       : undefined,
     images: await resolveImageUrls(ctx.storage, lot.images),
   };

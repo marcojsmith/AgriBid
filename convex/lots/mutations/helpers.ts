@@ -167,6 +167,25 @@ export async function assertMinPhotos(
 }
 
 /**
+ * Enforces the minimum photo count on an edit of a lot awaiting review.
+ * Edits that keep or raise the (distinct) photo count are always allowed, so
+ * lots that were already short stay grandfathered and editable; only an edit
+ * that LOWERS the count below the minimum is rejected.
+ * @param ctx - Mutation context.
+ * @param previousImages - The lot's images before the edit.
+ * @param nextImages - The lot's images after the edit.
+ * @throws ConvexError when the edit lowers the count below the minimum.
+ */
+export async function assertMinPhotosOnEdit(
+  ctx: MutationCtx,
+  previousImages: LotValidationInput["images"] | undefined,
+  nextImages: LotValidationInput["images"] | undefined
+): Promise<void> {
+  if (countLotPhotos(nextImages) >= countLotPhotos(previousImages)) return;
+  await assertMinPhotos(ctx, nextImages);
+}
+
+/**
  * Counter field a lot status maps to. `approved` and `assigned` both count as
  * live/`active`; `unsold` and `rejected` intentionally have no counter field.
  */

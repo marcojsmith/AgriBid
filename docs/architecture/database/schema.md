@@ -554,6 +554,33 @@ below 0.
 
 ---
 
+## engagementScores
+
+Precomputed engagement score of each assigned lot in a live auction, rebuilt
+every 5 minutes by `engagement:refreshEngagementScores` from the `watchers:`,
+`views:` and `bids:` counters (never from `bids` rows) and read by
+`getMostEngagedLots`.
+
+`score = bids * 3 + watchers * 2 + log2(1 + views)`
+
+| Field       | Type             | Required | Description                        |
+| ----------- | ---------------- | -------- | ---------------------------------- |
+| `lotId`     | `id("lots")`     | Yes      | The lot                            |
+| `auctionId` | `id("auctions")` | Yes      | The live auction it is assigned to |
+| `lotNumber` | `number`         | No       | Denormalised for the tie-break     |
+| `bids`      | `number`         | Yes      | Valid (non-voided) bid count       |
+| `watchers`  | `number`         | Yes      | Watcher count                      |
+| `views`     | `number`         | Yes      | Counted views                      |
+| `score`     | `number`         | Yes      | Formula above                      |
+| `updatedAt` | `number`         | Yes      | Last time the row changed          |
+
+### Indexes
+
+- `by_auctionId_and_score`: Top lots of an auction (`order("desc").take(n)`)
+- `by_lotId`: Upsert and delete per lot
+
+---
+
 ## presence
 
 Real-time user presence tracking.

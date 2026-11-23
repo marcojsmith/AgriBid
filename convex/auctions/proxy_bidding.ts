@@ -3,6 +3,7 @@ import { v } from "convex/values";
 
 import { query } from "../_generated/server";
 import { getAuthUser } from "../lib/auth";
+import { adjustBidCount } from "../lib/lotCounters";
 import {
   SOFT_CLOSE_THRESHOLD_MS,
   PRICE_THRESHOLD_FOR_INCREMENT,
@@ -13,6 +14,30 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 
 const AUTO_BID_TIMESTAMP_OFFSET = 1; // Ensure auto-bid is chronologically after the manual bid
+
+/**
+ * Inserts a valid bid and bumps the lot's `bids:<lotId>` counter in the same
+ * transaction (the counter feeds engagement scoring).
+ *
+ * @param ctx - Mutation context
+ * @param bid - The bid to insert
+ * @param bid.lotId - The lot being bid on
+ * @param bid.bidderId - The bidder's user id
+ * @param bid.amount - The bid amount
+ * @param bid.timestamp - The bid timestamp
+ */
+async function insertValidBid(
+  ctx: MutationCtx,
+  bid: {
+    lotId: Id<"lots">;
+    bidderId: string;
+    amount: number;
+    timestamp: number;
+  }
+): Promise<void> {
+  await ctx.db.insert("bids", { ...bid, status: "valid" });
+  await adjustBidCount(ctx, bid.lotId, 1);
+}
 
 /**
  * Result shape for the handleNewBid function.
@@ -327,12 +352,11 @@ async function resolveProxyBids(
     );
 
     if (validatedAmount !== null) {
-      await ctx.db.insert("bids", {
+      await insertValidBid(ctx, {
         lotId,
         bidderId: highestProxy.bidderId,
         amount: validatedAmount,
         timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET,
-        status: "valid",
       });
 
       await ctx.db.patch("lots", lotId, {
@@ -368,12 +392,11 @@ async function resolveProxyBids(
     );
 
     if (validatedAmount !== null && validatedAmount > bidAmount) {
-      await ctx.db.insert("bids", {
+      await insertValidBid(ctx, {
         lotId,
         bidderId: highestProxy.bidderId,
         amount: validatedAmount,
         timestamp: Date.now() + AUTO_BID_TIMESTAMP_OFFSET,
-        status: "valid",
       });
 
       await ctx.db.patch("lots", lotId, {
@@ -431,12 +454,11 @@ export async function handleNewBid(
 
   // 3. Manual Bid Placement
   const now = Date.now();
-  await ctx.db.insert("bids", {
+  await insertValidBid(ctx, {
     lotId,
     bidderId,
     amount: bidAmount,
     timestamp: now,
-    status: "valid",
   });
 
   // 4. Update Lot Price and handle Soft Close

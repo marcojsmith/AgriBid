@@ -3,8 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api, internal } from "./_generated/api";
+import { handleNewBid } from "./auctions/proxy_bidding";
+import { computeEngagementScore } from "./engagement";
 import {
   ENGAGEMENT_CANDIDATE_CAP,
+  ENGAGEMENT_REFRESH_AUCTION_CAP,
   LOT_ANON_VIEW_CAP_PER_HOUR,
   LOT_DATA_DELETE_BATCH,
   LOT_VIEWER_RETENTION_MS,
@@ -14,6 +17,7 @@ import {
 } from "./constants";
 import {
   anonViewCounterName,
+  bidCounterName,
   removeLotWatchData,
   viewCounterName,
   watcherCounterName,
@@ -111,44 +115,34 @@ async function makeLot(
  *
  * @param t - Test context
  * @param lotId - The lot
- * @param signals - Watcher/view counter totals and bid statuses
+ * @param signals - Watcher/view/bid counter totals (upserted)
  * @param signals.watchers - Watcher counter total
  * @param signals.views - View counter total
- * @param signals.bids - Bid statuses to insert
+ * @param signals.bids - Valid-bid counter total
  */
 async function seedSignals(
   t: TestContext,
   lotId: Id<"lots">,
-  signals: {
-    watchers?: number;
-    views?: number;
-    bids?: ("valid" | "voided" | undefined)[];
-  }
+  signals: { watchers?: number; views?: number; bids?: number }
 ): Promise<void> {
   await t.run(async (ctx) => {
     const now = Date.now();
-    if (signals.watchers !== undefined) {
-      await ctx.db.insert("counters", {
-        name: `watchers:${lotId}`,
-        total: signals.watchers,
-        updatedAt: now,
-      });
-    }
-    if (signals.views !== undefined) {
-      await ctx.db.insert("counters", {
-        name: viewCounterName(lotId),
-        total: signals.views,
-        updatedAt: now,
-      });
-    }
-    for (const status of signals.bids ?? []) {
-      await ctx.db.insert("bids", {
-        lotId,
-        bidderId: "b",
-        amount: 600,
-        timestamp: now,
-        status,
-      });
+    const entries: [string, number | undefined][] = [
+      [watcherCounterName(lotId), signals.watchers],
+      [viewCounterName(lotId), signals.views],
+      [bidCounterName(lotId), signals.bids],
+    ];
+    for (const [name, total] of entries) {
+      if (total === undefined) continue;
+      const existing = await ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", name))
+        .unique();
+      if (existing) {
+        await ctx.db.patch("counters", existing._id, { total, updatedAt: now });
+      } else {
+        await ctx.db.insert("counters", { name, total, updatedAt: now });
+      }
     }
   });
 }
@@ -258,6 +252,7 @@ describe("recordLotView", () => {
     const auctionId = await makeAuction(t);
     const lotId = await makeLot(t, auctionId, 1);
     const bucket = Math.floor(Date.now() / MS_PER_HOUR);
+    expect(LOT_ANON_VIEW_CAP_PER_HOUR).toBe(20);
     // Budget almost used up: one anonymous view left this hour.
     await t.run((ctx) =>
       ctx.db.insert("counters", {
@@ -545,7 +540,231 @@ describe("removeLotWatchData", () => {
   });
 });
 
+describe("computeEngagementScore", () => {
+  it("weighs bids x3 + watchers x2 + log2(1 + views)", () => {
+    expect(computeEngagementScore({ bids: 0, watchers: 0, views: 0 })).toBe(0);
+    expect(computeEngagementScore({ bids: 2, watchers: 3, views: 0 })).toBe(12);
+    expect(computeEngagementScore({ bids: 1, watchers: 1, views: 7 })).toBe(8);
+    // log2(1 + 10) = 3.459..., rounded to 3 decimals.
+    expect(computeEngagementScore({ bids: 0, watchers: 0, views: 10 })).toBe(
+      3.459
+    );
+  });
+
+  it("grows views logarithmically", () => {
+    const small = computeEngagementScore({ bids: 0, watchers: 0, views: 100 });
+    const large = computeEngagementScore({
+      bids: 0,
+      watchers: 0,
+      views: 10_000,
+    });
+    expect(large).toBeLessThan(small * 3);
+    expect(computeEngagementScore({ bids: 1, watchers: 0, views: 0 })).toBe(3);
+  });
+});
+
+/**
+ * Reads every `engagementScores` row.
+ *
+ * @param t - Test context
+ * @returns The rows
+ */
+function scoreRows(t: TestContext) {
+  return t.run((ctx) => ctx.db.query("engagementScores").collect());
+}
+
+describe("refreshEngagementScores", () => {
+  it("upserts a row per assigned lot of a live auction from counters only", async () => {
+    const t = makeContext();
+    const auctionId = await makeAuction(t);
+    const a = await makeLot(t, auctionId, 1);
+    const b = await makeLot(t, auctionId, 2);
+    await seedSignals(t, a, { watchers: 1, views: 7 });
+    await seedSignals(t, b, { watchers: 2, views: 3, bids: 2 });
+    // Raw bid rows are never read: the counter is the source of truth.
+    await t.run((ctx) =>
+      ctx.db.insert("bids", {
+        lotId: a,
+        bidderId: "b",
+        amount: 700,
+        timestamp: Date.now(),
+        status: "valid",
+      })
+    );
+
+    expect(
+      await t.mutation(internal.engagement.refreshEngagementScores, {})
+    ).toEqual({ auctions: 1, upserted: 2, removed: 0 });
+
+    const rows = await scoreRows(t);
+    expect(rows).toHaveLength(2);
+    const rowA = rows.find((r) => r.lotId === a);
+    const rowB = rows.find((r) => r.lotId === b);
+    expect(rowA).toMatchObject({
+      auctionId,
+      lotNumber: 1,
+      bids: 0,
+      watchers: 1,
+      views: 7,
+      score: 5,
+    });
+    expect(rowB).toMatchObject({
+      lotNumber: 2,
+      bids: 2,
+      watchers: 2,
+      views: 3,
+      score: 12,
+    });
+  });
+
+  it("is idempotent and patches only rows whose values changed", async () => {
+    const t = makeContext();
+    const auctionId = await makeAuction(t);
+    const a = await makeLot(t, auctionId, 1);
+    const b = await makeLot(t, auctionId, 2);
+    await seedSignals(t, a, { views: 3 });
+    await seedSignals(t, b, { watchers: 1 });
+    await t.mutation(internal.engagement.refreshEngagementScores, {});
+    const before = await scoreRows(t);
+
+    expect(
+      await t.mutation(internal.engagement.refreshEngagementScores, {})
+    ).toEqual({ auctions: 1, upserted: 0, removed: 0 });
+    expect(await scoreRows(t)).toEqual(before);
+
+    await seedSignals(t, a, { views: 3, bids: 1 }); // adds a bids counter
+    expect(
+      await t.mutation(internal.engagement.refreshEngagementScores, {})
+    ).toEqual({ auctions: 1, upserted: 1, removed: 0 });
+    const rowA = (await scoreRows(t)).find((r) => r.lotId === a);
+    expect(rowA).toMatchObject({ bids: 1, score: 5 });
+    const rowB = (await scoreRows(t)).find((r) => r.lotId === b);
+    expect(rowB).toEqual(before.find((r) => r.lotId === b));
+  });
+
+  it("moves a row when its lot is renumbered or reassigned", async () => {
+    const t = makeContext();
+    const first = await makeAuction(t);
+    const second = await makeAuction(t);
+    const lot = await makeLot(t, first, 1);
+    await t.mutation(internal.engagement.refreshEngagementScores, {});
+
+    await t.run((ctx) =>
+      ctx.db.patch("lots", lot, { auctionId: second, lotNumber: 4 })
+    );
+    await t.mutation(internal.engagement.refreshEngagementScores, {});
+
+    const rows = await scoreRows(t);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ auctionId: second, lotNumber: 4 });
+  });
+
+  it("deletes rows of lots that are no longer assigned or are hidden", async () => {
+    const t = makeContext();
+    const auctionId = await makeAuction(t);
+    const kept = await makeLot(t, auctionId, 1);
+    const unassigned = await makeLot(t, auctionId, 2);
+    const hidden = await makeLot(t, auctionId, 3);
+    await t.mutation(internal.engagement.refreshEngagementScores, {});
+    expect(await scoreRows(t)).toHaveLength(3);
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("lots", unassigned, {
+        status: "approved",
+        auctionId: undefined,
+        lotNumber: undefined,
+      });
+      await ctx.db.patch("lots", hidden, { hiddenByFlags: true });
+    });
+    expect(
+      await t.mutation(internal.engagement.refreshEngagementScores, {})
+    ).toEqual({ auctions: 1, upserted: 0, removed: 2 });
+    expect((await scoreRows(t)).map((r) => r.lotId)).toEqual([kept]);
+  });
+
+  it("only refreshes live published auctions", async () => {
+    const t = makeContext();
+    const now = Date.now();
+    const live = await makeAuction(t);
+    const upcoming = await makeAuction(t, { startTime: now + MS_PER_HOUR });
+    const draft = await makeAuction(t, { status: "draft" });
+    const closed = await makeAuction(t, {
+      status: "closed",
+      endTime: now - MS_PER_HOUR,
+    });
+    for (const id of [live, upcoming, draft, closed]) await makeLot(t, id, 1);
+
+    expect(
+      await t.mutation(internal.engagement.refreshEngagementScores, {})
+    ).toEqual({ auctions: 1, upserted: 1, removed: 0 });
+    expect((await scoreRows(t)).map((r) => r.auctionId)).toEqual([live]);
+  });
+
+  it("is bounded: soonest-ending auctions first, capped lots per auction", async () => {
+    const t = makeContext();
+    const now = Date.now();
+    const auctionIds: Id<"auctions">[] = [];
+    for (let i = 0; i < ENGAGEMENT_REFRESH_AUCTION_CAP + 1; i++) {
+      auctionIds.push(
+        await makeAuction(t, { endTime: now + (i + 1) * MS_PER_DAY })
+      );
+    }
+    for (const id of auctionIds) await makeLot(t, id, 1);
+    // The soonest auction holds more lots than the per-auction cap.
+    await t.run(async (ctx) => {
+      for (let i = 2; i <= ENGAGEMENT_CANDIDATE_CAP + 5; i++) {
+        await ctx.db.insert("lots", {
+          title: `Lot ${String(i)}`,
+          make: "m",
+          model: "m",
+          year: 2020,
+          operatingHours: 1,
+          location: "x",
+          reservePrice: 1,
+          startingPrice: 1,
+          currentPrice: 1,
+          minIncrement: 1,
+          sellerId: "s",
+          status: "assigned",
+          auctionId: auctionIds[0],
+          lotNumber: i,
+          images: [],
+        });
+      }
+    });
+
+    const result = await t.mutation(
+      internal.engagement.refreshEngagementScores,
+      {}
+    );
+    expect(result.auctions).toBe(ENGAGEMENT_REFRESH_AUCTION_CAP);
+    const rows = await scoreRows(t);
+    expect(rows.filter((r) => r.auctionId === auctionIds[0])).toHaveLength(
+      ENGAGEMENT_CANDIDATE_CAP
+    );
+    expect(rows.map((r) => r.auctionId)).not.toContain(
+      auctionIds[ENGAGEMENT_REFRESH_AUCTION_CAP]
+    );
+  });
+
+  it("does nothing when there is no live auction", async () => {
+    const t = makeContext();
+    expect(
+      await t.mutation(internal.engagement.refreshEngagementScores, {})
+    ).toEqual({ auctions: 0, upserted: 0, removed: 0 });
+  });
+});
+
 describe("getMostEngagedLots", () => {
+  /**
+   * Runs the engagement refresh so the query has rows to read.
+   *
+   * @param t - Test context
+   */
+  async function refresh(t: TestContext): Promise<void> {
+    await t.mutation(internal.engagement.refreshEngagementScores, {});
+  }
+
   it("returns [] when there is no live auction", async () => {
     const t = makeContext();
     expect(await t.query(api.engagement.getMostEngagedLots, {})).toEqual([]);
@@ -568,28 +787,37 @@ describe("getMostEngagedLots", () => {
     }
   });
 
+  it("returns [] before the first refresh (empty table)", async () => {
+    const t = makeContext();
+    const auctionId = await makeAuction(t);
+    const lot = await makeLot(t, auctionId, 1);
+    await seedSignals(t, lot, { views: 50, watchers: 3 });
+    expect(
+      await t.query(api.engagement.getMostEngagedLots, { auctionId })
+    ).toEqual([]);
+    expect(await t.query(api.engagement.getMostEngagedLots, {})).toEqual([]);
+  });
+
   it("returns [] when the auction has no assigned lots", async () => {
     const t = makeContext();
     const auctionId = await makeAuction(t);
     await makeLot(t, auctionId, 1, "approved");
+    await refresh(t);
     expect(
       await t.query(api.engagement.getMostEngagedLots, { auctionId })
     ).toEqual([]);
   });
 
-  it("ranks by watchers + valid bids + views and ignores voided bids", async () => {
+  it("ranks by bids*3 + watchers*2 + log2(1+views)", async () => {
     const t = makeContext();
     const auctionId = await makeAuction(t);
     const a = await makeLot(t, auctionId, 1);
     const b = await makeLot(t, auctionId, 2);
     const c = await makeLot(t, auctionId, 3);
-    await seedSignals(t, a, { watchers: 1, views: 1 }); // 2
-    await seedSignals(t, b, {
-      watchers: 2,
-      views: 3,
-      bids: ["valid", undefined, "voided", "voided"],
-    }); // 2 + 3 + 2 = 7
-    await seedSignals(t, c, { views: 4, bids: ["voided"] }); // 4
+    await seedSignals(t, a, { watchers: 1, views: 1 }); // 2 + 1 = 3
+    await seedSignals(t, b, { watchers: 2, views: 3, bids: 2 }); // 6 + 4 + 2 = 12
+    await seedSignals(t, c, { views: 15 }); // log2(16) = 4
+    await refresh(t);
 
     const result = await t.query(api.engagement.getMostEngagedLots, {
       auctionId,
@@ -600,29 +828,63 @@ describe("getMostEngagedLots", () => {
       watchers: 2,
       bids: 2,
       views: 3,
-      score: 7,
+      score: 12,
     });
+    expect(result[1].score).toBe(4);
+    expect(result[2].score).toBe(3);
     expect(result[0].lot.title).toBe("Lot 2");
   });
 
-  it("breaks ties by lower lot number", async () => {
+  it("weighs a valid bid above a watcher above views", async () => {
+    const t = makeContext();
+    const auctionId = await makeAuction(t);
+    const bidLot = await makeLot(t, auctionId, 3);
+    const watchLot = await makeLot(t, auctionId, 2);
+    const viewLot = await makeLot(t, auctionId, 1);
+    await seedSignals(t, bidLot, { bids: 1 }); // 3
+    await seedSignals(t, watchLot, { watchers: 1 }); // 2
+    await seedSignals(t, viewLot, { views: 3 }); // 2 (log2 4), ties watcher
+    await refresh(t);
+    const result = await t.query(api.engagement.getMostEngagedLots, {
+      auctionId,
+      limit: 3,
+    });
+    expect(result.map((r) => r.lot._id)).toEqual([bidLot, viewLot, watchLot]);
+  });
+
+  it("breaks ties by lower lot number, then id, including at the cut-off", async () => {
     const t = makeContext();
     const auctionId = await makeAuction(t);
     const high = await makeLot(t, auctionId, 9);
     const low = await makeLot(t, auctionId, 2);
-    await seedSignals(t, high, { views: 5 });
-    await seedSignals(t, low, { views: 5 });
-    const result = await t.query(api.engagement.getMostEngagedLots, {
+    const mid = await makeLot(t, auctionId, 5);
+    await seedSignals(t, high, { views: 7 });
+    await seedSignals(t, low, { views: 7 });
+    await seedSignals(t, mid, { views: 7 });
+    await refresh(t);
+
+    const top3 = await t.query(api.engagement.getMostEngagedLots, {
+      auctionId,
+      limit: 3,
+    });
+    expect(top3.map((r) => r.lot._id)).toEqual([low, mid, high]);
+    // The cut-off lands inside a group of equal scores.
+    const top2 = await t.query(api.engagement.getMostEngagedLots, {
       auctionId,
       limit: 2,
     });
-    expect(result.map((r) => r.lot._id)).toEqual([low, high]);
+    expect(top2.map((r) => r.lot._id)).toEqual([low, mid]);
+    const top1 = await t.query(api.engagement.getMostEngagedLots, {
+      auctionId,
+    });
+    expect(top1.map((r) => r.lot._id)).toEqual([low]);
   });
 
   it("defaults to 1 result and clamps the limit to 1..3", async () => {
     const t = makeContext();
     const auctionId = await makeAuction(t);
     for (let i = 1; i <= 5; i++) await makeLot(t, auctionId, i);
+    await refresh(t);
 
     const len = async (limit?: number) =>
       (await t.query(api.engagement.getMostEngagedLots, { auctionId, limit }))
@@ -646,12 +908,13 @@ describe("getMostEngagedLots", () => {
     }); // not started
     await makeLot(t, later, 1);
     const soonerLot = await makeLot(t, sooner, 1);
+    await refresh(t);
 
     const result = await t.query(api.engagement.getMostEngagedLots, {});
     expect(result.map((r) => r.lot._id)).toEqual([soonerLot]);
   });
 
-  it("only considers the first ENGAGEMENT_CANDIDATE_CAP lots", async () => {
+  it("only scores the first ENGAGEMENT_CANDIDATE_CAP lots", async () => {
     const t = makeContext();
     const auctionId = await makeAuction(t);
     const lotIds: Id<"lots">[] = [];
@@ -680,6 +943,7 @@ describe("getMostEngagedLots", () => {
     });
     // The 101st lot (outside the cap) is by far the most engaged.
     await seedSignals(t, lotIds[ENGAGEMENT_CANDIDATE_CAP], { views: 1000 });
+    await refresh(t);
     const result = await t.query(api.engagement.getMostEngagedLots, {
       auctionId,
       limit: 3,
@@ -690,24 +954,146 @@ describe("getMostEngagedLots", () => {
     );
   });
 
-  it("caps counted bids at 200", async () => {
+  it("serves the stored scores: new views do not change the ranking until a refresh", async () => {
+    const t = makeContext();
+    const auctionId = await makeAuction(t);
+    const a = await makeLot(t, auctionId, 1);
+    const b = await makeLot(t, auctionId, 2);
+    await seedSignals(t, a, { watchers: 1 });
+    await refresh(t);
+
+    await t.run((ctx) =>
+      ctx.db.insert("counters", {
+        name: viewCounterName(b),
+        total: 10_000,
+        updatedAt: Date.now(),
+      })
+    );
+    const stale = await t.query(api.engagement.getMostEngagedLots, {
+      auctionId,
+      limit: 2,
+    });
+    expect(stale.map((r) => r.lot._id)).toEqual([a, b]);
+
+    await refresh(t);
+    const fresh = await t.query(api.engagement.getMostEngagedLots, {
+      auctionId,
+      limit: 2,
+    });
+    expect(fresh.map((r) => r.lot._id)).toEqual([b, a]);
+  });
+
+  it("skips lots that left the sale or were hidden since the last refresh", async () => {
+    const t = makeContext();
+    const auctionId = await makeAuction(t);
+    const gone = await makeLot(t, auctionId, 1);
+    const hidden = await makeLot(t, auctionId, 2);
+    const ok = await makeLot(t, auctionId, 3);
+    await seedSignals(t, gone, { bids: 3 });
+    await seedSignals(t, hidden, { bids: 2 });
+    await seedSignals(t, ok, { bids: 1 });
+    await refresh(t);
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("lots", gone, { status: "sold" });
+      await ctx.db.patch("lots", hidden, { hiddenByFlags: true });
+    });
+    const result = await t.query(api.engagement.getMostEngagedLots, {
+      auctionId,
+      limit: 3,
+    });
+    expect(result.map((r) => r.lot._id)).toEqual([ok]);
+  });
+});
+
+describe("valid-bid counter", () => {
+  const ADMIN = "admin_1";
+
+  /**
+   * Places two bidders' bids on a lot with a proxy so three valid bids exist.
+   *
+   * @param t - Test context
+   * @param lotId - The lot
+   */
+  async function placeBids(t: TestContext, lotId: Id<"lots">): Promise<void> {
+    await t.run(async (ctx) => {
+      await handleNewBid(ctx, lotId, "bidder_a", 500, 1000);
+      await handleNewBid(ctx, lotId, "bidder_b", 600);
+    });
+  }
+
+  /**
+   * Reads a lot's `bids:` counter total.
+   *
+   * @param t - Test context
+   * @param lotId - The lot
+   * @returns The total, 0 when absent
+   */
+  async function bidTotal(t: TestContext, lotId: Id<"lots">): Promise<number> {
+    return await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", bidCounterName(lotId)))
+        .unique();
+      return row?.total ?? 0;
+    });
+  }
+
+  it("counts manual and proxy auto bids as they are inserted", async () => {
     const t = makeContext();
     const auctionId = await makeAuction(t);
     const lotId = await makeLot(t, auctionId, 1);
-    await t.run(async (ctx) => {
-      for (let i = 0; i < 210; i++) {
-        await ctx.db.insert("bids", {
-          lotId,
-          bidderId: "b",
-          amount: 600 + i,
-          timestamp: Date.now(),
-          status: "valid",
-        });
-      }
+    await placeBids(t, lotId);
+
+    const bids = await t.run((ctx) => ctx.db.query("bids").collect());
+    expect(bids).toHaveLength(3); // A 500, B 600, A auto 650
+    expect(await bidTotal(t, lotId)).toBe(3);
+  });
+
+  it("decrements when an admin voids a bid and not on a repeat void", async () => {
+    const t = makeContext();
+    await t.run((ctx) =>
+      ctx.db.insert("profiles", {
+        userId: ADMIN,
+        role: "admin",
+        isVerified: true,
+        kycStatus: "verified",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+    const auctionId = await makeAuction(t);
+    const lotId = await makeLot(t, auctionId, 1);
+    await placeBids(t, lotId);
+    const [first] = await t.run((ctx) => ctx.db.query("bids").collect());
+    const admin = t.withIdentity({ subject: ADMIN });
+
+    await admin.mutation(api.admin.mutations.voidBid, {
+      bidId: first._id,
+      reason: "test",
     });
-    const [top] = await t.query(api.engagement.getMostEngagedLots, {
-      auctionId,
+    expect(await bidTotal(t, lotId)).toBe(2);
+    await admin.mutation(api.admin.mutations.voidBid, {
+      bidId: first._id,
+      reason: "again",
     });
-    expect(top.bids).toBe(200);
+    expect(await bidTotal(t, lotId)).toBe(2);
+  });
+
+  it("is removed with the lot's other watch data", async () => {
+    const t = makeContext();
+    const auctionId = await makeAuction(t);
+    const lotId = await makeLot(t, auctionId, 1);
+    const otherId = await makeLot(t, auctionId, 2);
+    await seedSignals(t, lotId, { bids: 2, watchers: 1 });
+    await seedSignals(t, otherId, { bids: 1 });
+    await t.mutation(internal.engagement.refreshEngagementScores, {});
+    expect(await scoreRows(t)).toHaveLength(2);
+
+    await t.run((ctx) => removeLotWatchData(ctx, lotId));
+
+    expect(await bidTotal(t, lotId)).toBe(0);
+    expect(await bidTotal(t, otherId)).toBe(1);
+    expect((await scoreRows(t)).map((r) => r.lotId)).toEqual([otherId]);
   });
 });

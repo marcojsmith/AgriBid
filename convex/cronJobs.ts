@@ -16,7 +16,10 @@ import {
 } from "./auctions/internal";
 import { CRON_JOBS, cronSettingKey, findCronJob } from "./cronRegistry";
 import type { CronJobKey } from "./cronRegistry";
-import { purgeLotViewersHandler } from "./engagement";
+import {
+  purgeLotViewersHandler,
+  refreshEngagementScoresHandler,
+} from "./engagement";
 import { requireAdmin } from "./lib/auth";
 import { runOrphanSweep } from "./storageCleanup";
 
@@ -213,6 +216,25 @@ export const purgeLotViewers = internalMutation({
       await ctx.scheduler.runAfter(0, internal.cronJobs.purgeLotViewers, {});
     }
     return result;
+  },
+});
+
+/**
+ * Cron wrapper: refresh the precomputed engagement scores unless the job is
+ * disabled.
+ */
+export const refreshEngagementScores = internalMutation({
+  args: {},
+  returns: v.object({
+    auctions: v.number(),
+    upserted: v.number(),
+    removed: v.number(),
+  }),
+  handler: async (ctx) => {
+    if (!(await isCronJobEnabled(ctx, "refresh_engagement_scores"))) {
+      return { auctions: 0, upserted: 0, removed: 0 };
+    }
+    return await refreshEngagementScoresHandler(ctx);
   },
 });
 

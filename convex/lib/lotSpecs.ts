@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
 
+import { COLD_START_VIDEO_MAX_BYTES } from "../constants";
+import { safeDelete } from "./storage";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
@@ -87,6 +89,15 @@ export const lotSpecFields = {
   imageAngles: v.optional(imageAnglesValidator),
 };
 
+/**
+ * Lot spec fields for edit mutations: like {@link lotSpecFields} but
+ * `coldStartVideo` also accepts `null` to remove the video.
+ */
+export const lotSpecEditFields = {
+  ...lotSpecFields,
+  coldStartVideo: v.optional(v.union(v.id("_storage"), v.null())),
+};
+
 /** Image references of a lot (object form or legacy array of refs). */
 export type LotImageRefs =
   | string[]
@@ -137,18 +148,20 @@ export function assertImageAnglesMatchImages(
 }
 
 /**
- * Ensures a cold start video reference points at an existing storage file with
- * a `video/*` content type. No-op when no video is provided.
+ * Ensures a cold start video reference points at an existing storage file that
+ * is a video and at most `COLD_START_VIDEO_MAX_BYTES`. Both the content type
+ * and the size come from the `_storage` system metadata, never from anything
+ * the client supplied. No-op when no video is provided (or on removal).
  *
  * @param ctx - Query or mutation context
  * @param storageId - The storage id the caller wants to attach, if any
- * @throws ConvexError when the file is missing or is not a video
+ * @throws ConvexError when the file is missing, not a video, or too large
  */
 export async function assertValidColdStartVideo(
   ctx: QueryCtx | MutationCtx,
-  storageId: Id<"_storage"> | undefined
+  storageId: Id<"_storage"> | null | undefined
 ): Promise<void> {
-  if (storageId === undefined) return;
+  if (storageId === undefined || storageId === null) return;
   const file = await ctx.db.system.get("_storage", storageId);
   if (!file) {
     throw new ConvexError("Cold start video file not found");
@@ -156,6 +169,32 @@ export async function assertValidColdStartVideo(
   if (!file.contentType?.startsWith("video/")) {
     throw new ConvexError("Cold start video must be a video file");
   }
+  if (file.size > COLD_START_VIDEO_MAX_BYTES) {
+    throw new ConvexError(
+      `Cold start video must be at most ${(COLD_START_VIDEO_MAX_BYTES / (1024 * 1024)).toString()} MB`
+    );
+  }
+}
+
+/**
+ * Deletes a lot's previous cold start video file once it has been replaced by
+ * a different file or removed (`null`). Call after the lot was patched. Does
+ * nothing when the field was not touched, there was no previous video, or the
+ * same file is kept.
+ *
+ * @param ctx - Mutation context
+ * @param previous - The lot's cold start video before the update
+ * @param next - The requested value: a new id, `null` to remove, or `undefined` for untouched
+ */
+export async function deleteReplacedColdStartVideo(
+  ctx: MutationCtx,
+  previous: Id<"_storage"> | undefined,
+  next: Id<"_storage"> | null | undefined
+): Promise<void> {
+  if (previous === undefined || next === undefined || next === previous) {
+    return;
+  }
+  await safeDelete(ctx, previous, "old cold start video");
 }
 
 /** Max length of free-text spec fields (transmission, serial number). */

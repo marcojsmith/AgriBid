@@ -14,6 +14,7 @@ import {
   assertLotEditable,
   assertLotOwnership,
   assertMinPhotos,
+  assertMinPhotosOnEdit,
   validateLotBeforeSubmit,
 } from "../../lots/mutations/helpers";
 import {
@@ -28,6 +29,8 @@ import {
   assertImageAnglesMatchImages,
   assertValidColdStartVideo,
   assertValidLotSpecs,
+  deleteReplacedColdStartVideo,
+  lotSpecEditFields,
   lotSpecFields,
 } from "../../lib/lotSpecs";
 import type { Id } from "../../_generated/dataModel";
@@ -36,13 +39,16 @@ import type { MutationCtx } from "../../_generated/server";
 /** Optional machine spec fields accepted by lot creation and draft saving. */
 type LotSpecArgs = ObjectType<typeof lotSpecFields>;
 
+/** Spec fields accepted by draft edits: `coldStartVideo: null` removes the video. */
+type LotSpecEditArgs = ObjectType<typeof lotSpecEditFields>;
+
 /**
  * Picks the provided (defined) spec fields from mutation args so they can be
- * spread into a db insert.
+ * spread into a db insert. A `null` cold start video (removal) is skipped.
  * @param args - Mutation args that may carry spec fields.
  * @returns Only the spec fields that were provided.
  */
-function pickSpecFields(args: LotSpecArgs): LotSpecArgs {
+function pickSpecFields(args: LotSpecEditArgs): LotSpecArgs {
   return {
     ...(args.powerKw !== undefined && { powerKw: args.powerKw }),
     ...(args.drive !== undefined && { drive: args.drive }),
@@ -56,9 +62,10 @@ function pickSpecFields(args: LotSpecArgs): LotSpecArgs {
     ...(args.serialNumber !== undefined && {
       serialNumber: args.serialNumber,
     }),
-    ...(args.coldStartVideo !== undefined && {
-      coldStartVideo: args.coldStartVideo,
-    }),
+    ...(args.coldStartVideo !== undefined &&
+      args.coldStartVideo !== null && {
+        coldStartVideo: args.coldStartVideo,
+      }),
     ...(args.imageAngles !== undefined && { imageAngles: args.imageAngles }),
   };
 }
@@ -370,7 +377,7 @@ export const saveDraftHandler = async (
       notes?: string;
     };
     startTime?: number;
-  } & LotSpecArgs
+  } & LotSpecEditArgs
 ) => {
   const { userId } = await requireVerified(ctx);
 
@@ -428,11 +435,15 @@ export const saveDraftHandler = async (
       restArgs.imageAngles,
       images ?? existing.images
     );
-    await assertValidColdStartVideo(ctx, restArgs.coldStartVideo);
+    // Re-attaching the video the lot already has is a no-op, not re-validated.
+    if (restArgs.coldStartVideo !== existing.coldStartVideo) {
+      await assertValidColdStartVideo(ctx, restArgs.coldStartVideo);
+    }
 
-    // The minimum photo count is enforced only when a lot is submitted
-    // (createLot non-draft, submitLotForReview), never on edits of a lot that
-    // is already awaiting review.
+    // The minimum photo count is enforced on submit (createLot non-draft,
+    // submitLotForReview) and, for a lot awaiting review, only when an edit
+    // LOWERS its photo count below the minimum, so already-short lots stay
+    // grandfathered and editable.
     if (existing.status === "pending_review") {
       const mergedState = {
         ...existing,
@@ -440,6 +451,9 @@ export const saveDraftHandler = async (
         ...(images && { images }),
       };
       validateLotBeforeSubmit(mergedState);
+      if (images) {
+        await assertMinPhotosOnEdit(ctx, existing.images, images);
+      }
     }
 
     // `durationDays` and `startTime` are legacy scheduling fields the lot no
@@ -456,6 +470,10 @@ export const saveDraftHandler = async (
     if (images !== undefined) {
       patchData.images = images;
     }
+    // `null` removes the video (patching with `undefined` unsets the field).
+    if (restArgs.coldStartVideo === null) {
+      patchData.coldStartVideo = undefined;
+    }
     if (restArgs.startingPrice !== undefined) {
       patchData.currentPrice = restArgs.startingPrice;
       patchData.minIncrement =
@@ -465,6 +483,11 @@ export const saveDraftHandler = async (
     }
 
     await ctx.db.patch("lots", validLotId, patchData);
+    await deleteReplacedColdStartVideo(
+      ctx,
+      existing.coldStartVideo,
+      restArgs.coldStartVideo
+    );
 
     return validLotId;
   }
@@ -565,7 +588,7 @@ export const saveDraft = mutation({
       })
     ),
     startTime: v.optional(v.number()),
-    ...lotSpecFields,
+    ...lotSpecEditFields,
   },
   returns: v.id("lots"),
   handler: saveDraftHandler,

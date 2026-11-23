@@ -19,6 +19,7 @@ vi.mock("./_generated/api", () => ({
       weeklyMockDataReset: "weeklyReset",
       sweepOrphanedUploads: "sweepOrphanedUploads",
       purgeLotViewers: "purgeLotViewers",
+      refreshEngagementScores: "refreshEngagementScores",
     },
   },
 }));
@@ -69,6 +70,12 @@ describe("Crons Coverage", () => {
       "purge lot viewers",
       { hours: 24 },
       "purgeLotViewers"
+    );
+
+    expect(crons.interval).toHaveBeenCalledWith(
+      "refresh engagement scores",
+      { minutes: 5 },
+      "refreshEngagementScores"
     );
   });
 });

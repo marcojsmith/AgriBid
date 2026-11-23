@@ -39,13 +39,23 @@ async function setup() {
 }
 
 describe("cronJobs", () => {
-  it("lists every job disabled by default for admins", async () => {
+  it("lists every job at its registry default for admins", async () => {
     const t = await setup();
     const jobs = await t
       .withIdentity({ subject: ADMIN })
       .query(api.cronJobs.getCronJobs, {});
     expect(jobs).toHaveLength(CRON_JOBS.length);
-    expect(jobs.every((job) => !job.enabled)).toBe(true);
+    for (const job of CRON_JOBS) {
+      expect(jobs.find((j) => j.key === job.key)?.enabled).toBe(
+        job.defaultEnabled
+      );
+    }
+  });
+
+  it("enables only the lightweight engagement jobs by default", () => {
+    expect(
+      CRON_JOBS.filter((job) => job.defaultEnabled).map((job) => job.key)
+    ).toEqual(["purge_lot_viewers", "refresh_engagement_scores"]);
   });
 
   it("rejects non-admins", async () => {
@@ -135,6 +145,9 @@ describe("cronJobs", () => {
 
   it("gated wrappers no-op while disabled", async () => {
     const t = await setup();
+    await t.mutation(internal.cronJobs.setAllCronJobsEnabled, {
+      enabled: false,
+    });
     expect(
       await t.mutation(internal.cronJobs.settleExpiredAuctions, {})
     ).toEqual({ settled: 0, hasMore: false });
@@ -158,9 +171,65 @@ describe("cronJobs", () => {
       deleted: 0,
       hasMore: false,
     });
+    expect(
+      await t.mutation(internal.cronJobs.refreshEngagementScores, {})
+    ).toEqual({ auctions: 0, upserted: 0, removed: 0 });
   });
 
-  it("purgeLotViewers wrapper purges stale rows only once enabled", async () => {
+  it("refreshEngagementScores runs by default and can be switched off", async () => {
+    const t = await setup();
+    await t.run(async (ctx) => {
+      const now = Date.now();
+      const auctionId = await ctx.db.insert("auctions", {
+        title: "Sale",
+        startTime: now - 60_000,
+        endTime: now + 60 * 60_000,
+        status: "published",
+        createdBy: "admin",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("lots", {
+        title: "L",
+        make: "m",
+        model: "m",
+        year: 2020,
+        operatingHours: 1,
+        location: "x",
+        reservePrice: 1,
+        startingPrice: 1,
+        currentPrice: 1,
+        minIncrement: 1,
+        sellerId: "s",
+        status: "assigned",
+        auctionId,
+        lotNumber: 1,
+        images: [],
+      });
+    });
+    const rows = () =>
+      t.run(
+        async (ctx) => (await ctx.db.query("engagementScores").collect()).length
+      );
+
+    // Default enabled: no setting row stored yet.
+    expect(
+      await t.mutation(internal.cronJobs.refreshEngagementScores, {})
+    ).toEqual({ auctions: 1, upserted: 1, removed: 0 });
+    expect(await rows()).toBe(1);
+
+    await t
+      .withIdentity({ subject: ADMIN })
+      .mutation(api.cronJobs.setCronJobEnabled, {
+        key: "refresh_engagement_scores",
+        enabled: false,
+      });
+    expect(
+      await t.mutation(internal.cronJobs.refreshEngagementScores, {})
+    ).toEqual({ auctions: 0, upserted: 0, removed: 0 });
+  });
+
+  it("purgeLotViewers wrapper purges stale rows by default and not once disabled", async () => {
     const t = await setup();
     await t.run(async (ctx) => {
       const id = await ctx.db.insert("lots", {
@@ -187,17 +256,61 @@ describe("cronJobs", () => {
     const count = () =>
       t.run(async (ctx) => (await ctx.db.query("lotViewers").collect()).length);
 
+    // Explicitly disabled: nothing is purged.
+    await t
+      .withIdentity({ subject: ADMIN })
+      .mutation(api.cronJobs.setCronJobEnabled, {
+        key: "purge_lot_viewers",
+        enabled: false,
+      });
     await t.mutation(internal.cronJobs.purgeLotViewers, {});
     expect(await count()).toBe(1);
 
-    await t.mutation(internal.cronJobs.setAllCronJobsEnabled, {
-      enabled: true,
-    });
+    // Re-enabled: purges.
+    await t
+      .withIdentity({ subject: ADMIN })
+      .mutation(api.cronJobs.setCronJobEnabled, {
+        key: "purge_lot_viewers",
+        enabled: true,
+      });
     expect(await t.mutation(internal.cronJobs.purgeLotViewers, {})).toEqual({
       deleted: 1,
       hasMore: false,
     });
     expect(await count()).toBe(0);
+  });
+
+  it("purgeLotViewers runs with no stored setting (default on)", async () => {
+    const t = await setup();
+    await t.run(async (ctx) => {
+      const id = await ctx.db.insert("lots", {
+        title: "L",
+        make: "m",
+        model: "m",
+        year: 2020,
+        operatingHours: 1,
+        location: "x",
+        reservePrice: 1,
+        startingPrice: 1,
+        currentPrice: 1,
+        minIncrement: 1,
+        sellerId: "s",
+        status: "assigned",
+        images: [],
+      });
+      await ctx.db.insert("lotViewers", {
+        lotId: id,
+        viewerKey: "k",
+        lastViewedAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+      });
+    });
+    expect(await t.mutation(internal.cronJobs.purgeLotViewers, {})).toEqual({
+      deleted: 1,
+      hasMore: false,
+    });
+    expect(await t.run((ctx) => ctx.db.query("settings").collect())).toEqual(
+      []
+    );
   });
 
   it("purgeLotViewers reschedules itself while a backlog remains", async () => {

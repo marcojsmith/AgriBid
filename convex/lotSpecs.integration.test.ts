@@ -341,6 +341,109 @@ describe("cold start video validation", () => {
       })
     ).rejects.toThrow("Cold start video file not found");
   });
+
+  /**
+   * Stores a file and attaches it to a lot as its cold start video.
+   *
+   * @param t - The convex-test context.
+   * @param lotId - The lot.
+   * @returns The storage id.
+   */
+  async function attachVideo(
+    t: TestContext,
+    lotId: Id<"lots">
+  ): Promise<Id<"_storage">> {
+    return await t.run(async (ctx) => {
+      const id = await ctx.storage.store(new Blob(["video"]));
+      await ctx.db.patch("lots", lotId, { coldStartVideo: id });
+      return id;
+    });
+  }
+
+  const fileExists = (t: TestContext, id: Id<"_storage">) =>
+    t.run(async (ctx) => (await ctx.db.system.get("_storage", id)) !== null);
+
+  it("saveDraft removes the video with null and deletes the file", async () => {
+    const t = createTestContext();
+    const categoryId = await seed(t);
+    const lotId = await insertLot(t, categoryId);
+    const videoId = await attachVideo(t, lotId);
+
+    await asSeller(t).mutation(api.auctions.saveDraft, {
+      lotId,
+      coldStartVideo: null,
+    });
+
+    const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+    expect(lot?.coldStartVideo).toBeUndefined();
+    expect(await fileExists(t, videoId)).toBe(false);
+  });
+
+  it("adminUpdateLot removes the video with null and deletes the file", async () => {
+    const t = createTestContext();
+    const categoryId = await seed(t);
+    const lotId = await insertLot(t, categoryId);
+    const videoId = await attachVideo(t, lotId);
+
+    await asAdmin(t).mutation(api.auctions.adminUpdateLot, {
+      lotId,
+      updates: { coldStartVideo: null },
+    });
+
+    const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+    expect(lot?.coldStartVideo).toBeUndefined();
+    expect(await fileExists(t, videoId)).toBe(false);
+  });
+
+  it("keeps the file when the same video is re-sent or the field is untouched", async () => {
+    const t = createTestContext();
+    const categoryId = await seed(t);
+    const lotId = await insertLot(t, categoryId);
+    const videoId = await attachVideo(t, lotId);
+
+    await asSeller(t).mutation(api.auctions.saveDraft, {
+      lotId,
+      title: "Same video",
+      coldStartVideo: videoId,
+    });
+    await asAdmin(t).mutation(api.auctions.adminUpdateLot, {
+      lotId,
+      updates: { coldStartVideo: videoId },
+    });
+    await asAdmin(t).mutation(api.auctions.adminUpdateLot, {
+      lotId,
+      updates: { serialNumber: "S1" },
+    });
+
+    const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+    expect(lot?.coldStartVideo).toBe(videoId);
+    expect(await fileExists(t, videoId)).toBe(true);
+  });
+
+  it("null on a lot without a video is a harmless no-op", async () => {
+    const t = createTestContext();
+    const categoryId = await seed(t);
+    const lotId = await insertLot(t, categoryId);
+    await asSeller(t).mutation(api.auctions.saveDraft, {
+      lotId,
+      coldStartVideo: null,
+    });
+    const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+    expect(lot?.coldStartVideo).toBeUndefined();
+  });
+
+  it("a new draft ignores a null cold start video", async () => {
+    const t = createTestContext();
+    const categoryId = await seed(t);
+    const draftId = await asSeller(t).mutation(api.auctions.saveDraft, {
+      title: "New draft",
+      categoryId,
+      images: { front: "img-front", additional: [] },
+      coldStartVideo: null,
+    });
+    const lot = await t.run(async (ctx) => ctx.db.get("lots", draftId));
+    expect(lot?.coldStartVideo).toBeUndefined();
+  });
 });
 
 describe("min photos gate", () => {
@@ -392,7 +495,7 @@ describe("min photos gate", () => {
     expect(result.success).toBe(true);
   });
 
-  it("does not gate saveDraft edits of a pending_review lot", async () => {
+  it("does not gate saveDraft edits that leave a pending_review lot's photos alone", async () => {
     const t = createTestContext();
     const categoryId = await seed(t); // default 8, lot has 1 photo
     const lotId = await insertLot(t, categoryId, { status: "pending_review" });
@@ -402,6 +505,152 @@ describe("min photos gate", () => {
     });
     const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
     expect(lot?.title).toBe("New");
+  });
+
+  describe("photo edits of a pending_review lot", () => {
+    const photos = (n: number) => ({
+      front: "p0",
+      additional: Array.from({ length: n - 1 }, (_, i) => `p${String(i + 1)}`),
+    });
+
+    it("keeps already-short lots editable when the count is kept or raised", async () => {
+      const t = createTestContext();
+      const categoryId = await seed(t); // default 8, lot has 2 photos
+      const lotId = await insertLot(t, categoryId, {
+        status: "pending_review",
+        images: photos(2),
+      });
+      // Same count, different ordering/refs.
+      await asSeller(t).mutation(api.auctions.saveDraft, {
+        lotId,
+        images: { front: "x0", additional: ["x1"] },
+      });
+      // Raised, still below the minimum.
+      await asSeller(t).mutation(api.auctions.saveDraft, {
+        lotId,
+        images: photos(3),
+      });
+      const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+      expect(lot?.images).toEqual({
+        front: "p0",
+        additional: ["p1", "p2"],
+      });
+    });
+
+    it("rejects an edit that lowers the count below the minimum", async () => {
+      const t = createTestContext();
+      const categoryId = await seed(t, 3);
+      const lotId = await insertLot(t, categoryId, {
+        status: "pending_review",
+        images: photos(3),
+      });
+      await expect(
+        asSeller(t).mutation(api.auctions.saveDraft, {
+          lotId,
+          images: photos(2),
+        })
+      ).rejects.toThrow("At least 3 photos are required (you have 2)");
+      const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+      expect(lot?.images).toEqual(photos(3));
+    });
+
+    it("rejects lowering the count of an already-short lot", async () => {
+      const t = createTestContext();
+      const categoryId = await seed(t); // default 8
+      const lotId = await insertLot(t, categoryId, {
+        status: "pending_review",
+        images: photos(3),
+      });
+      await expect(
+        asSeller(t).mutation(api.auctions.saveDraft, {
+          lotId,
+          images: photos(2),
+        })
+      ).rejects.toThrow("At least 8 photos are required (you have 2)");
+    });
+
+    it("allows lowering the count while staying at or above the minimum", async () => {
+      const t = createTestContext();
+      const categoryId = await seed(t, 3);
+      const lotId = await insertLot(t, categoryId, {
+        status: "pending_review",
+        images: photos(5),
+      });
+      await asSeller(t).mutation(api.auctions.saveDraft, {
+        lotId,
+        images: photos(3),
+      });
+      const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+      expect(lot?.images).toEqual(photos(3));
+    });
+
+    it("counts duplicate refs once when comparing", async () => {
+      const t = createTestContext();
+      const categoryId = await seed(t, 3);
+      const lotId = await insertLot(t, categoryId, {
+        status: "pending_review",
+        images: photos(3),
+      });
+      await expect(
+        asSeller(t).mutation(api.auctions.saveDraft, {
+          lotId,
+          images: { front: "p0", additional: ["p0", "p1"] },
+        })
+      ).rejects.toThrow("At least 3 photos are required (you have 2)");
+    });
+
+    it("does not gate draft lots", async () => {
+      const t = createTestContext();
+      const categoryId = await seed(t);
+      const lotId = await insertLot(t, categoryId, {
+        status: "draft",
+        images: photos(5),
+      });
+      await asSeller(t).mutation(api.auctions.saveDraft, {
+        lotId,
+        images: photos(1),
+      });
+      const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+      expect(lot?.images).toEqual(photos(1));
+    });
+
+    it("applies the same rule to updateLot", async () => {
+      const t = createTestContext();
+      const categoryId = await seed(t, 3);
+      const lotId = await insertLot(t, categoryId, {
+        status: "pending_review",
+        images: photos(3),
+      });
+      await expect(
+        asSeller(t).mutation(api.auctions.updateLot, {
+          lotId,
+          updates: { images: { additional: ["p1"] } },
+        })
+      ).rejects.toThrow("At least 3 photos are required (you have 2)");
+
+      // Keeping the count (replacing a ref) is fine.
+      await asSeller(t).mutation(api.auctions.updateLot, {
+        lotId,
+        updates: { images: { additional: ["q1", "q2"] } },
+      });
+      const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+      expect(lot?.images).toEqual({ front: "p0", additional: ["q1", "q2"] });
+    });
+
+    it("keeps already-short lots editable through updateLot", async () => {
+      const t = createTestContext();
+      const categoryId = await seed(t); // default 8
+      const lotId = await insertLot(t, categoryId, {
+        status: "pending_review",
+        images: photos(2),
+      });
+      await asSeller(t).mutation(api.auctions.updateLot, {
+        lotId,
+        updates: { title: "Renamed", images: { additional: ["p1", "p2"] } },
+      });
+      const lot = await t.run(async (ctx) => ctx.db.get("lots", lotId));
+      expect(lot?.title).toBe("Renamed");
+    });
   });
 
   it("counts a photo reference used twice only once", async () => {

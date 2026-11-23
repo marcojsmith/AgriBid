@@ -3,43 +3,27 @@ import { v, ConvexError } from "convex/values";
 import { mutation } from "../../_generated/server";
 import { getBuyerPremiumPct } from "../../admin/platformSettings";
 import { requireAdmin } from "../../lib/auth";
+import { percentToFraction } from "../../lib/buyerPremium";
 import { issueNextLotNumber } from "../../lib/lotCounters";
 import { adjustLotStatusCounters } from "../../lots/mutations/helpers";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
-
-/** Active `platformFees` rows inspected when looking for a buyer percentage fee. */
-const ACTIVE_FEE_SCAN_CAP = 50;
-
-/**
- * Whether any active platform fee is a percentage fee charged to buyers.
- * Settlement applies every such row, so the platform premium fallback must not
- * also be snapshotted onto the lot.
- *
- * @param ctx - Mutation context.
- * @returns True when an active percentage fee applies to buyer or both.
- */
-async function hasActiveBuyerPercentageFee(ctx: MutationCtx): Promise<boolean> {
-  const activeFees = await ctx.db
-    .query("platformFees")
-    .withIndex("by_active", (q) => q.eq("isActive", true))
-    .take(ACTIVE_FEE_SCAN_CAP);
-  return activeFees.some(
-    (fee) =>
-      fee.feeType === "percentage" &&
-      (fee.appliesTo === "buyer" || fee.appliesTo === "both")
-  );
-}
 
 /**
  * Admin assigns an approved lot to an auction container.
  * The target auction does not need to be published yet: admins may pre-stage
  * lots into a `draft` auction before publishing it.
  *
- * Snapshots the auction's fee defaults (`defaultBuyerPremiumPct`/
- * `defaultSellerCommissionPct`) onto the lot's `resolvedBuyerPremiumPct`/
- * `resolvedSellerCommissionPct` fields so later auction edits cannot
- * retroactively change this lot's fees (issue #318).
+ * Snapshots, so later edits cannot retroactively change this lot:
+ * - the auction's fee defaults (`defaultBuyerPremiumPct`/
+ *   `defaultSellerCommissionPct`) onto `resolvedBuyerPremiumPct`/
+ *   `resolvedSellerCommissionPct` (issue #318). The buyer premium is always
+ *   snapshotted: from the auction with `premiumSource: "auction"`, otherwise
+ *   the platform default (percent -> fraction, 4 dp) with `premiumSource:
+ *   "platform"`. Settlement decides which premium actually applies (see
+ *   `resolveBuyerPremium`), so the buyer is never charged twice.
+ * - the seller's VAT status and type from their profile (unset stays
+ *   undefined, i.e. unknown, which is treated as VAT-registered).
  *
  * @param ctx - Mutation context.
  * @param args - The lot and target auction ids.
@@ -71,24 +55,29 @@ export const assignLotToAuctionHandler = async (
     throw new ConvexError("Cannot assign lots to a closed auction");
   }
 
-  // Resolve the auction's fee defaults onto the lot now, so later edits to the
-  // auction's defaults cannot change an already-assigned lot's fees (issue #318).
-  // When the auction sets no premium, fall back to the platform-wide buyer
-  // premium (stored as a percent; lots hold a fraction, rounded to 4 dp) --
-  // but only if settlement will not already charge a percentage buyer fee from
-  // `platformFees`, otherwise the buyer would be charged twice.
+  const premiumSource =
+    auction.defaultBuyerPremiumPct !== undefined
+      ? ("auction" as const)
+      : ("platform" as const);
   const resolvedBuyerPremiumPct =
     auction.defaultBuyerPremiumPct ??
-    ((await hasActiveBuyerPercentageFee(ctx))
-      ? undefined
-      : Math.round((await getBuyerPremiumPct(ctx)) * 100) / 10000);
+    percentToFraction(await getBuyerPremiumPct(ctx));
+
+  const sellerProfile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
+    .unique();
+
   const lotNumber = await issueNextLotNumber(ctx, args.auctionId);
   await ctx.db.patch("lots", args.lotId, {
     auctionId: args.auctionId,
     lotNumber,
     status: "assigned",
     resolvedBuyerPremiumPct,
+    premiumSource,
     resolvedSellerCommissionPct: auction.defaultSellerCommissionPct,
+    sellerVatRegistered: sellerProfile?.vatRegistered,
+    sellerType: sellerProfile?.sellerType,
   });
   await adjustLotStatusCounters(ctx, "approved", "assigned");
 

@@ -80,15 +80,21 @@ export const LOT_VIEWER_RETENTION_MS = MS_PER_DAY;
 // Rows deleted per purge run.
 export const LOT_VIEWER_PURGE_BATCH = 500;
 // Counted anonymous (signed-out) views per lot per hour.
-export const LOT_ANON_VIEW_CAP_PER_HOUR = 200;
+export const LOT_ANON_VIEW_CAP_PER_HOUR = 20;
 // Watchlist / lotViewers rows deleted per call when removing a lot's data.
 export const LOT_DATA_DELETE_BATCH = 500;
-// Lots considered when ranking most-engaged lots.
+// Lots considered per auction when scoring most-engaged lots.
 export const ENGAGEMENT_CANDIDATE_CAP = 100;
-// Bids counted per lot when ranking.
-export const ENGAGEMENT_BID_COUNT_CAP = 200;
+// Live auctions rescored per `refreshEngagementScores` run (soonest-ending first).
+export const ENGAGEMENT_REFRESH_AUCTION_CAP = 5;
+// Score weights: score = bids * 3 + watchers * 2 + log2(1 + views).
+export const ENGAGEMENT_BID_WEIGHT = 3;
+export const ENGAGEMENT_WATCHER_WEIGHT = 2;
 export const ENGAGEMENT_MAX_LIMIT = 3;
 export const ENGAGEMENT_DEFAULT_LIMIT = 1;
+
+// Largest accepted cold start video file (bytes).
+export const COLD_START_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 
 // Default presence heartbeat interval in ms. Must stay in sync with the
 // client-side fallback in src/components/PresenceListener.tsx.

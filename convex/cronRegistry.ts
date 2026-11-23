@@ -15,6 +15,7 @@ export type CronJobKey =
   | "sweep_orphaned_uploads"
   | "process_error_reports"
   | "purge_lot_viewers"
+  | "refresh_engagement_scores"
   | "weekly_mock_data_reset";
 
 /** Static description of a toggleable background job. */
@@ -23,7 +24,7 @@ export interface CronJobDefinition {
   label: string;
   description: string;
   schedule: string;
-  /** Whether the job runs when no setting has been stored (off: opt-in). */
+  /** Whether the job runs when no setting has been stored (most jobs: opt-in, off). */
   defaultEnabled: boolean;
 }
 
@@ -73,7 +74,15 @@ export const CRON_JOBS: readonly CronJobDefinition[] = [
     description:
       "Deletes the per-viewer lot view dedupe records older than 24 hours.",
     schedule: "Every 24 hours",
-    defaultEnabled: false,
+    defaultEnabled: true,
+  },
+  {
+    key: "refresh_engagement_scores",
+    label: "Refresh engagement scores",
+    description:
+      "Recomputes the most-engaged-lot ranking (bids, watchers, views) for live auctions.",
+    schedule: "Every 5 minutes",
+    defaultEnabled: true,
   },
   {
     key: "weekly_mock_data_reset",

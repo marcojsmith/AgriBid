@@ -9,6 +9,7 @@ import * as constants from "./constants";
 import { getAuthUser, resolveUserId } from "./lib/auth";
 import {
   anonViewCounterName,
+  getBidCount,
   getViewCount,
   getWatcherCount,
   removeLotWatchData,
@@ -77,7 +78,7 @@ async function reserveAnonymousView(
 /**
  * Records a view of a lot. A viewer counts once per lot per 30 minutes and at
  * most 60 counted views per hour; anonymous viewers additionally share a
- * per-lot cap of 200 counted views per hour. Only `assigned` lots are counted.
+ * per-lot cap of 20 counted views per hour. Only `assigned` lots are counted.
  *
  * @param ctx - Mutation context
  * @param args - Lot id and optional anonymous session id
@@ -188,6 +189,50 @@ export const continueLotDataRemoval = internalMutation({
 });
 
 /**
+ * Engagement score of a lot: `bids * 3 + watchers * 2 + log2(1 + views)`.
+ * Valid bids weigh most, watchers next, and views are logarithmic so a flood of
+ * (cheap) views cannot outrank real intent. Rounded to 3 decimals so the stored
+ * value is stable and unchanged rows are never rewritten.
+ *
+ * @param signals - The lot's counters
+ * @param signals.bids - Valid (non-voided) bid count
+ * @param signals.watchers - Watcher count
+ * @param signals.views - Counted view count
+ * @returns The engagement score
+ */
+export function computeEngagementScore(signals: {
+  bids: number;
+  watchers: number;
+  views: number;
+}): number {
+  const raw =
+    signals.bids * constants.ENGAGEMENT_BID_WEIGHT +
+    signals.watchers * constants.ENGAGEMENT_WATCHER_WEIGHT +
+    Math.log2(1 + signals.views);
+  return Math.round(raw * 1000) / 1000;
+}
+
+/**
+ * Live (published, started, not ended) auctions that end soonest first.
+ *
+ * @param ctx - Query context
+ * @param now - Current time in ms
+ * @returns Up to `LIVE_AUCTION_SCAN_CAP` live auctions, soonest-ending first
+ */
+async function listLiveAuctions(
+  ctx: QueryCtx,
+  now: number
+): Promise<Doc<"auctions">[]> {
+  const candidates = await ctx.db
+    .query("auctions")
+    .withIndex("by_status_endTime", (q) =>
+      q.eq("status", "published").gt("endTime", now)
+    )
+    .take(LIVE_AUCTION_SCAN_CAP);
+  return candidates.filter((auction) => auction.startTime <= now);
+}
+
+/**
  * Picks the auction to rank: the given published auction, or the live
  * published auction that ends soonest.
  *
@@ -203,28 +248,126 @@ async function resolveEngagementAuction(
     const auction = await ctx.db.get("auctions", auctionId);
     return auction?.status === "published" ? auction._id : null;
   }
-  const now = Date.now();
-  const candidates = await ctx.db
-    .query("auctions")
-    .withIndex("by_status_endTime", (q) =>
-      q.eq("status", "published").gt("endTime", now)
-    )
-    .take(LIVE_AUCTION_SCAN_CAP);
-  const live = candidates.find((auction) => auction.startTime <= now);
-  return live?._id ?? null;
+  const live = await listLiveAuctions(ctx, Date.now());
+  return live[0]?._id ?? null;
 }
 
-interface EngagedCandidate {
-  lot: Doc<"lots">;
-  watchers: number;
-  bids: number;
-  views: number;
-  score: number;
+/** Outcome of one `refreshEngagementScores` run. */
+export interface EngagementRefreshResult {
+  auctions: number;
+  upserted: number;
+  removed: number;
 }
 
 /**
- * Public: the most engaged lots (watchers + valid bids + views) of an auction.
- * Without `auctionId`, uses the live auction that ends soonest.
+ * Rebuilds the `engagementScores` rows of the live auctions that end soonest
+ * (at most `ENGAGEMENT_REFRESH_AUCTION_CAP`, each with at most
+ * `ENGAGEMENT_CANDIDATE_CAP` assigned, unhidden lots). It reads ONLY counter
+ * rows (watchers, views, bids), never the `bids` table. Rows are upserted and
+ * patched only when a value changed; rows of lots that are no longer assigned
+ * (or hidden) in the auction are deleted. Idempotent.
+ *
+ * @param ctx - Mutation context
+ * @returns Counts of auctions processed and rows written/removed
+ */
+export async function refreshEngagementScoresHandler(
+  ctx: MutationCtx
+): Promise<EngagementRefreshResult> {
+  const now = Date.now();
+  const auctions = (await listLiveAuctions(ctx, now)).slice(
+    0,
+    constants.ENGAGEMENT_REFRESH_AUCTION_CAP
+  );
+  let upserted = 0;
+  let removed = 0;
+
+  for (const auction of auctions) {
+    const lots = await ctx.db
+      .query("lots")
+      .withIndex("by_status_auctionId", (q) =>
+        q.eq("status", "assigned").eq("auctionId", auction._id)
+      )
+      .take(constants.ENGAGEMENT_CANDIDATE_CAP);
+    const eligible = lots.filter((lot) => lot.hiddenByFlags !== true);
+    const eligibleIds = new Set<Id<"lots">>(eligible.map((lot) => lot._id));
+
+    for (const lot of eligible) {
+      const [watchers, views, bids, existing] = await Promise.all([
+        getWatcherCount(ctx, lot._id),
+        getViewCount(ctx, lot._id),
+        getBidCount(ctx, lot._id),
+        ctx.db
+          .query("engagementScores")
+          .withIndex("by_lotId", (q) => q.eq("lotId", lot._id))
+          .first(),
+      ]);
+      const next = {
+        lotId: lot._id,
+        auctionId: auction._id,
+        lotNumber: lot.lotNumber,
+        bids,
+        watchers,
+        views,
+        score: computeEngagementScore({ bids, watchers, views }),
+      };
+      if (!existing) {
+        await ctx.db.insert("engagementScores", { ...next, updatedAt: now });
+        upserted++;
+      } else if (
+        existing.auctionId !== next.auctionId ||
+        existing.lotNumber !== next.lotNumber ||
+        existing.bids !== next.bids ||
+        existing.watchers !== next.watchers ||
+        existing.views !== next.views ||
+        existing.score !== next.score
+      ) {
+        await ctx.db.patch("engagementScores", existing._id, {
+          ...next,
+          updatedAt: now,
+        });
+        upserted++;
+      }
+    }
+
+    const stored = await ctx.db
+      .query("engagementScores")
+      .withIndex("by_auctionId_and_score", (q) =>
+        q.eq("auctionId", auction._id)
+      )
+      .take(constants.ENGAGEMENT_CANDIDATE_CAP * 2);
+    for (const row of stored) {
+      if (!eligibleIds.has(row.lotId)) {
+        await ctx.db.delete("engagementScores", row._id);
+        removed++;
+      }
+    }
+  }
+
+  return { auctions: auctions.length, upserted, removed };
+}
+
+/**
+ * Internal: refresh the precomputed engagement scores (called by the gated
+ * cron every 5 minutes).
+ */
+export const refreshEngagementScores = internalMutation({
+  args: {},
+  returns: v.object({
+    auctions: v.number(),
+    upserted: v.number(),
+    removed: v.number(),
+  }),
+  handler: refreshEngagementScoresHandler,
+});
+
+/**
+ * Public: the most engaged lots of an auction, ranked by the precomputed
+ * `engagementScores` (score = bids * 3 + watchers * 2 + log2(1 + views),
+ * refreshed every 5 minutes). Without `auctionId`, uses the live auction that
+ * ends soonest. Ties go to the lower lot number, then the lower id. Reads only
+ * `engagementScores` (top `limit` via `by_auctionId_and_score`, plus the rows
+ * tied with the last one) and the top lots themselves, so view counts never
+ * re-run it. Empty until the first refresh.
  */
 export const getMostEngagedLots = query({
   args: {
@@ -252,52 +395,61 @@ export const getMostEngagedLots = query({
     const auctionId = await resolveEngagementAuction(ctx, args.auctionId);
     if (!auctionId) return [];
 
-    const lots = await ctx.db
-      .query("lots")
-      .withIndex("by_status_auctionId", (q) =>
-        q.eq("status", "assigned").eq("auctionId", auctionId)
+    const top = await ctx.db
+      .query("engagementScores")
+      .withIndex("by_auctionId_and_score", (q) => q.eq("auctionId", auctionId))
+      .order("desc")
+      .take(limit);
+
+    // The index orders equal scores by creation time; re-resolve the tie at
+    // the cut-off so the documented tie-break (lot number, then id) holds.
+    let ranked = top;
+    if (top.length === limit) {
+      const cutoff = top[limit - 1].score;
+      const tied = await ctx.db
+        .query("engagementScores")
+        .withIndex("by_auctionId_and_score", (q) =>
+          q.eq("auctionId", auctionId).eq("score", cutoff)
+        )
+        .take(constants.ENGAGEMENT_CANDIDATE_CAP);
+      ranked = [...top.filter((row) => row.score > cutoff), ...tied];
+    }
+    ranked = [...ranked]
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          (a.lotNumber ?? Number.MAX_SAFE_INTEGER) -
+            (b.lotNumber ?? Number.MAX_SAFE_INTEGER) ||
+          a.lotId.localeCompare(b.lotId)
       )
-      .take(constants.ENGAGEMENT_CANDIDATE_CAP);
+      .slice(0, limit);
 
-    const scored: EngagedCandidate[] = await Promise.all(
-      lots
-        .filter((lot) => lot.hiddenByFlags !== true)
-        .map(async (lot) => {
-          const [watchers, views, bidRows] = await Promise.all([
-            getWatcherCount(ctx, lot._id),
-            getViewCount(ctx, lot._id),
-            ctx.db
-              .query("bids")
-              .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
-              .take(constants.ENGAGEMENT_BID_COUNT_CAP + 1),
-          ]);
-          const bids = Math.min(
-            bidRows.filter((bid) => bid.status !== "voided").length,
-            constants.ENGAGEMENT_BID_COUNT_CAP
-          );
-          return { lot, watchers, bids, views, score: watchers + bids + views };
-        })
-    );
+    const entries: {
+      lot: Doc<"lots">;
+      row: Doc<"engagementScores">;
+    }[] = [];
+    for (const row of ranked) {
+      const lot = await ctx.db.get("lots", row.lotId);
+      // A lot may have left the sale or been hidden since the last refresh.
+      if (
+        lot?.status === "assigned" &&
+        lot.auctionId === auctionId &&
+        lot.hiddenByFlags !== true
+      ) {
+        entries.push({ lot, row });
+      }
+    }
 
-    scored.sort(
-      (a, b) =>
-        b.score - a.score ||
-        (a.lot.lotNumber ?? Number.MAX_SAFE_INTEGER) -
-          (b.lot.lotNumber ?? Number.MAX_SAFE_INTEGER) ||
-        a.lot._id.localeCompare(b.lot._id)
-    );
-
-    const top = scored.slice(0, limit);
     const summaries = await toLotSummaries(
       ctx,
-      top.map((entry) => entry.lot)
+      entries.map((entry) => entry.lot)
     );
-    return top.map((entry, index) => ({
+    return entries.map((entry, index) => ({
       lot: summaries[index],
-      watchers: entry.watchers,
-      bids: entry.bids,
-      views: entry.views,
-      score: entry.score,
+      watchers: entry.row.watchers,
+      bids: entry.row.bids,
+      views: entry.row.views,
+      score: entry.row.score,
     }));
   },
 });

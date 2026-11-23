@@ -60,7 +60,15 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
     lotFees: MockLotFee[] = []
   ) => {
     const platformFees = new Map(
-      lotFees.map((f) => [f.feeId, { _id: f.feeId, isActive: true }])
+      lotFees.map((f) => [
+        f.feeId,
+        {
+          _id: f.feeId,
+          isActive: true,
+          feeType: f.feeType,
+          appliesTo: f.appliedTo,
+        },
+      ])
     );
     const mockDb = {
       get: vi.fn().mockImplementation((table: string, id: unknown) => {
@@ -76,6 +84,8 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
       }),
       query: vi.fn().mockImplementation((table: string) => ({
         withIndex: vi.fn().mockReturnThis(),
+        // No `settings` row: the platform buyer premium default applies.
+        unique: vi.fn().mockResolvedValue(null),
         collect: vi
           .fn()
           .mockResolvedValue(
@@ -282,6 +292,7 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
       (table: string) =>
         ({
           withIndex: vi.fn().mockReturnThis(),
+          unique: vi.fn().mockResolvedValue(null),
           collect: vi.fn().mockResolvedValue(
             table === "lotFees"
               ? [
@@ -301,7 +312,19 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
 
     const result = await getLotFeesForUserHandler(ctx, { lotId });
 
-    expect(result).toEqual({ buyerFees: [], sellerFees: [] });
+    // The inactive seller row is dropped; the lot has no snapshot and no active
+    // buyer % rows, so only the (zero-value at price 0) platform premium remains.
+    expect(result).toEqual({
+      buyerFees: [
+        {
+          feeName: "Buyer Premium",
+          feeType: "percentage",
+          rate: 0.12,
+          calculatedAmount: 0,
+        },
+      ],
+      sellerFees: [],
+    });
   });
 
   it("throws when the lot does not exist", async () => {

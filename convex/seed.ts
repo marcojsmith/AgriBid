@@ -21,7 +21,11 @@ import { getCallerRole } from "./lib/auth";
 import { deleteAuctionImages, safeDelete } from "./lib/storage";
 import { updateCounter, logAudit } from "./admin_utils";
 import { getLotCounterKey } from "./lots/mutations/helpers";
-import { issueNextLotNumber, watcherCounterName } from "./lib/lotCounters";
+import {
+  bidCounterName,
+  issueNextLotNumber,
+  watcherCounterName,
+} from "./lib/lotCounters";
 import { ensureLegalPageDraftRows } from "./lib/legalPages";
 import {
   PROVINCES,
@@ -1521,6 +1525,11 @@ async function performSeed(
       createdAt: now,
       updatedAt: now,
     });
+    // Inserted INACTIVE on purpose. Seeded lots carry an auction-sourced 12%
+    // snapshot, which is the one buyer premium; an active buyer % row would be
+    // ignored for them anyway. Keeping it inactive documents the rule (one
+    // premium, never both) and lets an admin switch the platform to fee-row
+    // premiums deliberately. The seeded lotFees ledger still references it.
     await ctx.db.insert("platformFees", {
       name: "Buyer's Premium",
       description:
@@ -1528,7 +1537,7 @@ async function performSeed(
       feeType: "percentage",
       value: DEFAULT_BUYER_PREMIUM_PCT / 100,
       appliesTo: "buyer",
-      isActive: true,
+      isActive: false,
       visibleToBuyer: true,
       visibleToSeller: true,
       sortOrder: 2,
@@ -2435,6 +2444,14 @@ async function performSeed(
         ? await issueNextLotNumber(ctx, event._id)
         : existing?.lotNumber;
 
+    // Snapshot the seller's VAT status/type like the assignment mutation does.
+    const lotSellerProfile = event
+      ? await ctx.db
+          .query("profiles")
+          .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
+          .unique()
+      : null;
+
     const lotData = {
       ...lotFields,
       description: lot.description || "No description provided.",
@@ -2444,6 +2461,9 @@ async function performSeed(
       resolvedBuyerPremiumPct: event
         ? MOCK_DEFAULT_BUYER_PREMIUM_PCT
         : undefined,
+      premiumSource: event ? ("auction" as const) : undefined,
+      sellerVatRegistered: lotSellerProfile?.vatRegistered,
+      sellerType: lotSellerProfile?.sellerType,
       resolvedSellerCommissionPct: event
         ? MOCK_DEFAULT_SELLER_COMMISSION_PCT
         : undefined,
@@ -2616,7 +2636,7 @@ async function performSeed(
         feeType: sellerFee.feeType,
         rate: sellerFee.value,
         salePrice,
-        calculatedAmount: Math.round((salePrice * sellerFee.value) / 100),
+        calculatedAmount: Math.round(salePrice * sellerFee.value * 100) / 100,
         createdAt: settledAt,
       });
       await ctx.db.insert("lotFees", {
@@ -2627,7 +2647,7 @@ async function performSeed(
         feeType: buyerFee.feeType,
         rate: buyerFee.value,
         salePrice,
-        calculatedAmount: Math.round((salePrice * buyerFee.value) / 100),
+        calculatedAmount: Math.round(salePrice * buyerFee.value * 100) / 100,
         createdAt: settledAt,
       });
     }
@@ -3031,6 +3051,15 @@ async function performSeed(
   // Bids
   const allBids = await ctx.db.query("bids").collect();
   await updateCounter(ctx, "bids", "total", allBids.length, true);
+  // Per-lot valid-bid counters feed the engagement ranking.
+  const validBidsByLot = new Map<Id<"lots">, number>();
+  for (const bid of allBids) {
+    if (bid.status === "voided") continue;
+    validBidsByLot.set(bid.lotId, (validBidsByLot.get(bid.lotId) ?? 0) + 1);
+  }
+  for (const [lotId, count] of validBidsByLot) {
+    await updateCounter(ctx, bidCounterName(lotId), "total", count, true);
+  }
 
   const soldLots = allLots.filter((l) => l.status === "sold");
   const salesVolume = soldLots.reduce(

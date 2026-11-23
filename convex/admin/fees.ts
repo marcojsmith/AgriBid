@@ -5,6 +5,7 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { requireAdmin, getAuthUser, resolveUserId } from "../lib/auth";
 import { logAudit } from "../admin_utils";
 import { computeResolvedDefaultFees } from "../auctions/internal";
+import { resolveBuyerPremium } from "../lib/buyerPremium";
 import type { Id } from "../_generated/dataModel";
 
 const MIN_PERCENTAGE = 0.0001;
@@ -16,6 +17,7 @@ const MAX_NAME_LENGTH = 100;
 // defaults (they have no `platformFees` row to draw a name from).
 const RESOLVED_BUYER_FEE_NAME = "Auction Buyer Premium";
 const RESOLVED_SELLER_FEE_NAME = "Auction Seller Commission";
+const PLATFORM_BUYER_FEE_NAME = "Buyer Premium";
 
 function validateFeeValue(feeType: string, value: number): void {
   if (feeType === "percentage") {
@@ -486,10 +488,12 @@ export const getLotFees = query({
  * Side effects: read-only query; filters out inactive platform fees.
  *
  * In addition to the persisted `platformFees`-sourced `lotFees` rows, this
- * merges the amounts derived from the lot's snapshotted auction fee defaults
- * (`resolvedBuyerPremiumPct`/`resolvedSellerCommissionPct`) applied to the
- * lot's current (or, once settled, final) `currentPrice`. See
- * `computeResolvedDefaultFees` for why those are not persisted.
+ * merges the amounts derived from the lot's single resolved buyer premium
+ * (auction snapshot or platform default; see `resolveBuyerPremium`) and its
+ * snapshotted seller commission, applied to the lot's current (or, once
+ * settled, final) `currentPrice`. See `computeResolvedDefaultFees` for why
+ * those are not persisted. Persisted buyer percentage rows are shown only when
+ * they are the buyer premium.
  */
 export const getLotFeesForUserHandler = async (
   ctx: QueryCtx,
@@ -536,8 +540,19 @@ export const getLotFeesForUserHandler = async (
     calculatedAmount: number;
   }[] = [];
 
+  // Exactly one buyer premium (see `resolveBuyerPremium`): persisted buyer
+  // percentage rows only count when the fee rows are the premium.
+  const buyerPremium = await resolveBuyerPremium(ctx, lot);
+
   for (const fee of fees) {
     if (!activeFeeIds.includes(fee.feeId)) continue;
+    if (
+      fee.appliedTo === "buyer" &&
+      fee.feeType === "percentage" &&
+      buyerPremium.source !== "feeRows"
+    ) {
+      continue;
+    }
 
     const platformFee = await ctx.db.get("platformFees", fee.feeId);
     if (!platformFee) continue;
@@ -558,12 +573,18 @@ export const getLotFeesForUserHandler = async (
 
   // Merge the lot's snapshotted auction-default fees. `currentPrice` holds the
   // final sale price once a lot is settled, and the current high bid beforehand.
-  for (const fee of computeResolvedDefaultFees(lot, lot.currentPrice)) {
+  for (const fee of computeResolvedDefaultFees(
+    lot,
+    lot.currentPrice,
+    buyerPremium
+  )) {
+    const buyerFeeName =
+      buyerPremium.source === "platformDefault"
+        ? PLATFORM_BUYER_FEE_NAME
+        : RESOLVED_BUYER_FEE_NAME;
     const feeData = {
       feeName:
-        fee.appliedTo === "buyer"
-          ? RESOLVED_BUYER_FEE_NAME
-          : RESOLVED_SELLER_FEE_NAME,
+        fee.appliedTo === "buyer" ? buyerFeeName : RESOLVED_SELLER_FEE_NAME,
       feeType: "percentage" as const,
       rate: fee.rate,
       calculatedAmount: fee.calculatedAmount,

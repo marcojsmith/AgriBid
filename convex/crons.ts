@@ -54,6 +54,16 @@ crons.interval(
 );
 
 /**
+ * Rebuild the precomputed lot engagement scores of live auctions every 5
+ * minutes (reads counters only; powers `getMostEngagedLots`).
+ */
+crons.interval(
+  "refresh engagement scores",
+  { minutes: 5 },
+  internal.cronJobs.refreshEngagementScores
+);
+
+/**
  * Daily job to process error reports and create GitHub issues.
  * Runs at 2 AM UTC to avoid peak hours.
  */

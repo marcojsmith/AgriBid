@@ -588,6 +588,67 @@ describe("Seed Coverage", () => {
       }
     });
 
+    it("keeps the seeded buyer premium to one 12% rule: inactive fee row, auction-sourced lot snapshots", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const buyerRow = mockDb
+        .rows("platformFees")
+        .find((f) => f.appliesTo === "buyer");
+      expect(buyerRow?.isActive).toBe(false);
+
+      const saleLots = mockDb.rows("lots").filter((l) => l.auctionId);
+      expect(saleLots.length).toBeGreaterThan(0);
+      for (const lot of saleLots) {
+        expect(lot.resolvedBuyerPremiumPct).toBe(0.12);
+        expect(lot.premiumSource).toBe("auction");
+      }
+    });
+
+    it("snapshots each seeded lot's seller VAT status and type", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const profiles = mockDb.rows("profiles");
+      const saleLots = mockDb.rows("lots").filter((l) => l.auctionId);
+      for (const lot of saleLots) {
+        const seller = profiles.find((p) => p.userId === lot.sellerId);
+        expect(lot.sellerVatRegistered).toBe(seller?.vatRegistered);
+        expect(lot.sellerType).toBe(seller?.sellerType);
+      }
+      expect(
+        saleLots.some((l) => l.sellerVatRegistered === false && l.sellerType)
+      ).toBe(true);
+    });
+
+    it("seeds lotFees at the real amount, rounded as settlement does", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const lots = mockDb.rows("lots");
+      const ledger = mockDb.rows("lotFees");
+      expect(ledger.length).toBeGreaterThan(0);
+      for (const row of ledger) {
+        const lot = lots.find((l) => l._id === row.lotId);
+        const salePrice = lot?.currentPrice as number;
+        expect(row.salePrice).toBe(salePrice);
+        expect(row.calculatedAmount).toBe(
+          Math.round(salePrice * (row.rate as number) * 100) / 100
+        );
+        // A 12% buyer premium on a sale in the hundreds of thousands of rand
+        // is thousands, never the 100x-too-small value seeded previously.
+        if (row.appliedTo === "buyer") {
+          expect(row.calculatedAmount).toBeCloseTo(salePrice * 0.12, 2);
+        }
+      }
+    });
+
     it("backfills only the missing VAT field on the primary seller and extra sellers", async () => {
       vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
       const { sellerId } = seedExistingProfiles();
