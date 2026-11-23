@@ -22,6 +22,7 @@ describe("LotCard", () => {
         state="open"
         price={400_000}
         count={8}
+        reserve="applies"
         onToggleWatch={onToggleWatch}
       />
     );
@@ -50,6 +51,7 @@ describe("LotCard", () => {
         state="current-bid"
         price={414_000}
         count={7}
+        reserve="not-met"
         watching
         onToggleWatch={() => undefined}
         closesIn="2d 3h"
@@ -62,6 +64,11 @@ describe("LotCard", () => {
     expect(
       screen.getByRole("button", { name: "Watching lot 3, New Holland T6070" })
     ).toBeInTheDocument();
+  });
+
+  it("shows no reserve pill when the page does not know the reserve state", () => {
+    render(<LotCard lot={LOT} state="current-bid" price={414_000} count={7} />);
+    expect(screen.queryByText(/reserve/i)).toBeNull();
   });
 
   it("accepts an explicit reserve state and singular bid count", () => {

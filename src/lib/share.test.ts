@@ -31,9 +31,25 @@ describe("shareOrCopy", () => {
     await expect(shareOrCopy(PAYLOAD)).resolves.toBe("cancelled");
   });
 
-  it("reports failed when the share sheet errors", async () => {
-    stubNavigator({ share: vi.fn().mockRejectedValue(new Error("boom")) });
-    await expect(shareOrCopy(PAYLOAD)).resolves.toBe("failed");
+  it("falls back to copying when the share sheet errors", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubNavigator({
+      share: vi.fn().mockRejectedValue(new Error("boom")),
+      clipboard: { writeText } as unknown as Clipboard,
+    });
+    await expect(shareOrCopy(PAYLOAD)).resolves.toBe("copied");
+  });
+
+  it("copies when canShare rejects the payload", async () => {
+    const share = vi.fn();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubNavigator({
+      share,
+      canShare: () => false,
+      clipboard: { writeText } as unknown as Clipboard,
+    });
+    await expect(shareOrCopy(PAYLOAD)).resolves.toBe("copied");
+    expect(share).not.toHaveBeenCalled();
   });
 
   it("copies text and link when there is no share sheet", async () => {

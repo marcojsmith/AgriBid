@@ -86,7 +86,7 @@ export function CostBox({
       data-seller={seller}
       className={cn(
         "flex flex-col gap-px rounded-md border px-3 py-2.5",
-        onDark ? "border-hero-muted/50" : "border-border",
+        onDark ? "border-hero-muted/40" : "border-border",
         className
       )}
     >

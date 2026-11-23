@@ -76,7 +76,7 @@ export function StickyBar({
 }: StickyBarProps) {
   const variant = ctaVariant === "outline" ? "outline" : "default";
   const ctaClass = cn(
-    "h-12 px-3 text-[15px] font-semibold",
+    "h-12 px-3 text-[15px] font-semibold max-md:h-[46px]",
     ctaVariant === "outline" && "bg-card"
   );
   return (

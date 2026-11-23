@@ -1,5 +1,7 @@
+import { URGENT_MS } from "./auction-badges";
+
 const HOUR_MS = 60 * 60 * 1000;
-const TEN_MIN_MS = 10 * 60 * 1000;
+const TEN_MIN_MS = URGENT_MS;
 
 /** Visual tone of a countdown. */
 export type CountdownTone = "neutral" | "warn" | "urgent";

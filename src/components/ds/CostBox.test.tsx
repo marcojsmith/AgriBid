@@ -63,7 +63,7 @@ describe("CostBox", () => {
     expect(screen.queryByRole("button")).toBeNull();
     expect(container.firstElementChild).toHaveClass(
       "extra",
-      "border-hero-muted/50"
+      "border-hero-muted/40"
     );
   });
 });

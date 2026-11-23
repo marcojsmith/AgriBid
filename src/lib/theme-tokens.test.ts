@@ -145,6 +145,7 @@ const TOKEN_PAIRS: [string, string][] = [
   ["ok-fg", "card"],
   ["warn-fg", "background"],
   ["warn-fg", "card"],
+  ["urgent-fg", "card"],
   ["ok-fg", "ok-soft"],
   ["warn-fg", "warn-soft"],
   ["ok-fg", "muted"],

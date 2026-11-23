@@ -19,7 +19,10 @@ export type ShareResult = "shared" | "copied" | "cancelled" | "failed";
  * @returns `shared`, `copied`, `cancelled` (the user dismissed the sheet) or `failed`
  */
 export async function shareOrCopy(payload: SharePayload): Promise<ShareResult> {
-  if (typeof navigator.share === "function") {
+  const canShare =
+    typeof navigator.share === "function" &&
+    (typeof navigator.canShare !== "function" || navigator.canShare(payload));
+  if (canShare) {
     try {
       await navigator.share(payload);
       return "shared";
@@ -27,7 +30,7 @@ export async function shareOrCopy(payload: SharePayload): Promise<ShareResult> {
       if (error instanceof DOMException && error.name === "AbortError") {
         return "cancelled";
       }
-      return "failed";
+      // Any other share error: fall through to copying the link.
     }
   }
   try {

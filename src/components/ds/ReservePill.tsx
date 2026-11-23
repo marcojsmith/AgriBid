@@ -60,8 +60,10 @@ export function ReservePill({
       data-slot="reserve-pill"
       data-state={state}
       className={cn(
-        "inline-flex w-fit items-center gap-1 rounded-sm px-2 py-0.5 leading-snug font-semibold whitespace-nowrap [&>svg]:size-3.5",
-        size === "card" ? "text-[13px]" : "text-sm",
+        "inline-flex w-fit items-center gap-1 rounded-sm px-2 py-0.5 leading-snug font-semibold whitespace-nowrap",
+        size === "card"
+          ? "text-[13px] [&>svg]:size-[13px]"
+          : "text-sm [&>svg]:size-3.5",
         classes,
         className
       )}

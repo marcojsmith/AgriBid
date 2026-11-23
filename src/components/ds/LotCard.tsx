@@ -41,7 +41,7 @@ interface LotCardProps {
   price: number;
   /** Number of watchers (open) or bids (every other state). */
   count?: number;
-  /** Reserve state for open and current-bid lots. Defaults to "applies" (open) or "not-met" (current bid). */
+  /** Reserve state for open and current-bid lots. No reserve pill is shown when missing, so a page never claims a state it does not know. */
   reserve?: ReserveState;
   /** The relative close line, e.g. "2d 3h". Shown as "Closes in 2d 3h" under the town. */
   closesIn?: string;
@@ -159,10 +159,9 @@ export function LotCard({
           ) : null}
         </p>
         {state === "open" || state === "current-bid" ? (
-          <ReservePill
-            size="card"
-            state={reserve ?? (state === "open" ? "applies" : "not-met")}
-          />
+          reserve ? (
+            <ReservePill size="card" state={reserve} />
+          ) : null
         ) : (
           <StatusPill size="card" outcome={state} />
         )}

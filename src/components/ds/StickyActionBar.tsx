@@ -40,7 +40,7 @@ export function StickyActionBar({
       aria-label={label}
       data-slot="sticky-action-bar"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 flex min-h-[68px] items-center gap-2 border-t border-border bg-card px-4 pb-[env(safe-area-inset-bottom)] md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 flex min-h-[68px] items-center gap-1.5 border-t border-border bg-card px-4 pb-[env(safe-area-inset-bottom)] md:hidden",
         className
       )}
     >

@@ -28,7 +28,7 @@ export function LotChip({
     <span
       data-slot="lot-chip"
       className={cn(
-        "num inline-block rounded-sm bg-chip px-2 py-0.5 text-[13px] leading-normal font-semibold whitespace-nowrap text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/.22)]",
+        "num inline-block rounded-sm bg-chip px-2 py-0.5 text-[13px] leading-normal lg:text-sm font-semibold whitespace-nowrap text-white shadow-[inset_0_0_0_1px_rgb(255_255_255/.22)]",
         overPhoto && "absolute top-2 left-2 z-[2]",
         className
       )}
