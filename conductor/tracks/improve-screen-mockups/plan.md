@@ -25,6 +25,35 @@ Reference for every WP: `spec.md`, `mockups.html` and `final/*.png` in this fold
 
 Order: 0 → 1 → 2 → 3a → 3b → 3c → 4 → 4b → 4c → 5 → 6 → 6b → 7 → 8. The 3x backend WPs can run before WP2 if WP2 stalls (no code overlap).
 
+## Phase 2 (from 2026-11-23): build the page-by-page confirmed design
+
+WP5, WP6, WP6b, WP7 and WP8 above are superseded by this phase. Phase 2 uses a new spec instead of `final/*.png`:
+
+- confirmed mockups `rounds/home-r5.html`, `rounds/event-r4.html`, `rounds/lot-r4.html`, `rounds/share-r3.html`
+- the component sheet `rounds/components.html`
+- `rounds/build-spec.md`
+- `decisions.md`
+- `docs/architecture/ui-design/design-system.md`
+
+Owner direction:
+
+- Build Home, Auction event and Lot, and merge each PR when it is ready.
+- Then make mockups for the next page (Register / sign-in / deposit).
+
+| WP  | Title                                                                                                                                                                                                                                                                                                    | Risk                                                | Depends | Status      | PR  |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ------- | ----------- | --- |
+| D1  | Foundations: token updates, date format without SAST, new/changed `ds/` components from the kit, `/design-system` page, land decisions.md + design-system.md                                                                                                                                             | medium (app-wide visual)                            | none    | in progress |     |
+| D2  | Data and settings: lot specs (power, drive, transmission, tyres, serial, cold-start video), seller VAT status + seller type, VAT-by-seller buyer total, deposit / premium / seller-cost / finance-contact / reminders / min-photos settings, engagement score, seed refresh with real webuytractors lots | **risky** (schema, settings mutations, money maths) | D1      | todo        |     |
+| D3  | Home rebuild to `home-r5`                                                                                                                                                                                                                                                                                | low                                                 | D1, D2  | todo        |     |
+| D4  | Auction event rebuild to `event-r4` (replaces PR #406; reuse its lot-ordering backend)                                                                                                                                                                                                                   | medium                                              | D1, D2  | todo        |     |
+| D5  | Lot rebuild to `lot-r4`: bid panel states, quick bids, confirm sheet on every bid, no max-bid UI, sticky bar, watch toast, gallery                                                                                                                                                                       | **risky** (bid flow)                                | D1, D2  | todo        |     |
+| D6  | "Under consideration": reserve not met at close → seller has 48 h to accept, else Not sold; seller accept action; bidder status                                                                                                                                                                          | **risky** (settlement)                              | D5      | todo        |     |
+| D7  | Link previews (per-page OG tags + images served to crawlers) and the app icon set                                                                                                                                                                                                                        | medium (edge function)                              | D3–D5   | todo        |     |
+| D8  | Request a transport quote form (to the AgriBid team)                                                                                                                                                                                                                                                     | low                                                 | D5      | todo        |     |
+| D9  | Remind me: web push (admin on/off), iPhone Add-to-Home-Screen sheet                                                                                                                                                                                                                                      | **risky** (service worker, push keys)               | D4      | todo        |     |
+
+Order: D1 → D2 → D3 → D4 → D5 → D6 → D7 → D8 → D9, then the Register mockups.
+
 ## Work packages
 
 ### WP0 · Track docs (Haiku thread, docs-only)

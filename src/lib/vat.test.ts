@@ -5,7 +5,38 @@ import {
   calculateBuyerTotal,
   parseVatRate,
   premiumFromRate,
+  vatBaseForSeller,
 } from "./vat";
+
+describe("vatBaseForSeller", () => {
+  it("charges VAT on the premium only for a private seller", () => {
+    expect(vatBaseForSeller("private")).toBe("premium");
+  });
+
+  it("charges VAT on bid plus premium for a VAT-registered or unknown seller", () => {
+    expect(vatBaseForSeller("vat")).toBe("bid-and-premium");
+    expect(vatBaseForSeller("any")).toBe("bid-and-premium");
+  });
+});
+
+describe("calculateBuyerTotal VAT base", () => {
+  it("matches the worked R 400 000 example for a VAT-registered seller", () => {
+    expect(
+      calculateBuyerTotal({ bid: 400_000, premium: 48_000, vatRatePct: 15 })
+    ).toEqual({ bid: 400_000, premium: 48_000, vat: 67_200, total: 515_200 });
+  });
+
+  it("matches the worked R 400 000 example for a private seller", () => {
+    expect(
+      calculateBuyerTotal({
+        bid: 400_000,
+        premium: 48_000,
+        vatRatePct: 15,
+        vatBase: "premium",
+      })
+    ).toEqual({ bid: 400_000, premium: 48_000, vat: 7_200, total: 455_200 });
+  });
+});
 
 describe("calculateBuyerTotal", () => {
   it("applies VAT to bid plus premium", () => {

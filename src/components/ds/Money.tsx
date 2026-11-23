@@ -8,7 +8,7 @@ interface MoneyProps {
   label?: string;
   /** Append "excl. VAT". */
   exclVat?: boolean;
-  /** Render the figure in the display serif (lot page prices). */
+  /** Render the figure at the 34px bid-panel size (Inter 700). */
   display?: boolean;
   className?: string;
 }
@@ -23,7 +23,7 @@ interface MoneyProps {
  * @param props.amount - Amount in rand
  * @param props.label - Optional label shown above the amount
  * @param props.exclVat - Append "excl. VAT" after the amount
- * @param props.display - Use the display serif for the figure
+ * @param props.display - Use the 34px bid-panel size for the figure
  * @param props.className - Extra classes merged onto the root element
  * @returns The price element
  */
@@ -43,7 +43,7 @@ export function Money({
         <span
           className={cn(
             "num font-semibold",
-            display && "font-display text-3xl"
+            display && "text-[34px] leading-[1.15] font-bold"
           )}
         >
           {formatRand(amount)}

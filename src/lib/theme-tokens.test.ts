@@ -145,6 +145,12 @@ const TOKEN_PAIRS: [string, string][] = [
   ["ok-fg", "card"],
   ["warn-fg", "background"],
   ["warn-fg", "card"],
+  ["urgent-fg", "card"],
+  ["ok-fg", "ok-soft"],
+  ["warn-fg", "warn-soft"],
+  ["ok-fg", "muted"],
+  ["warn-fg", "muted"],
+  ["hero-foreground", "btn"],
   ...STATUSES.map((s): [string, string] => [`${s}-fg`, `${s}-soft`]),
   ...STATUSES.map((s): [string, string] => [`${s}-fg`, "background"]),
 ];
@@ -159,6 +165,12 @@ describe.each([":root", ".dark"] as const)("WCAG AA contrast (%s)", (sel) => {
       throw new Error(`${fg} or ${bg} missing in ${sel}`);
     }
     expect(contrast(fgColor, bgColor)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("white text on the lot chip is at least 4.5:1", () => {
+    const chip = tokens.get("chip");
+    if (!chip) throw new Error(`chip missing in ${sel}`);
+    expect(contrast(WHITE, chip)).toBeGreaterThanOrEqual(4.5);
   });
 
   it.each(STATUSES)("white text on %s-solid is at least 4.5:1", (status) => {
@@ -205,6 +217,10 @@ describe("theme token exposure", () => {
       "hero-muted",
       "ok-fg",
       "warn-fg",
+      "ok-soft",
+      "warn-soft",
+      "watch-on",
+      "chip",
       ...STATUSES.flatMap((s) => [`${s}-solid`, `${s}-soft`, `${s}-fg`]),
     ]) {
       expect(INDEX_CSS).toContain(`--color-${name}:`);
@@ -212,3 +228,33 @@ describe("theme token exposure", () => {
     expect(INDEX_CSS).toContain("--font-display:");
   });
 });
+
+describe.each([":root", ".dark"] as const)(
+  "confirmed design values (%s)",
+  (sel) => {
+    const tokens = readTokens(sel);
+    const light = sel === ":root";
+
+    it("uses the darker secondary text and divider values", () => {
+      expect(tokens.get("muted-foreground")).toEqual(
+        light ? [24, 10, 26] : [40, 10, 82]
+      );
+      expect(tokens.get("border")).toEqual(light ? [24, 10, 80] : [150, 4, 26]);
+      expect(tokens.get("input")).toEqual(tokens.get("border"));
+    });
+
+    it("uses the confirmed hero text values", () => {
+      expect(tokens.get("hero-foreground")).toEqual([40, 30, 98]);
+      expect(tokens.get("hero-muted")).toEqual(
+        light ? [142, 14, 86] : [142, 14, 84]
+      );
+    });
+
+    it("keeps the ok and warn aliases identical to the live and soon tokens", () => {
+      expect(tokens.get("ok-soft")).toEqual(tokens.get("live-soft"));
+      expect(tokens.get("ok-fg")).toEqual(tokens.get("live-fg"));
+      expect(tokens.get("warn-soft")).toEqual(tokens.get("soon-soft"));
+      expect(tokens.get("warn-fg")).toEqual(tokens.get("soon-fg"));
+    });
+  }
+);

@@ -18,22 +18,22 @@ const toneClass = (tone: CountdownTone): string =>
 interface CountdownProps {
   /** End time in ms since epoch; null/undefined shows "TBD". */
   endTime?: number | null;
-  /** Show the absolute SAST end time (`Sat 22 Nov, 10:00 SAST`) instead of a live countdown. */
+  /** Show the absolute end time (`Tue 25 Nov, 11:00`, South African time) instead of a live countdown. */
   absolute?: boolean;
   className?: string;
 }
 
 /**
  * Time remaining for an auction or lot. Neutral by default, amber under one
- * hour, red under two minutes, tabular figures (no monospace). With
- * `absolute` it shows the SAST closing time instead.
+ * hour, red under ten minutes, tabular figures (no monospace). With
+ * `absolute` it shows the closing time instead.
  *
  * A `className` text colour overrides the tone colour (e.g. `text-white` on
  * a dark photo overlay). Use it for every closing time. Add the label ("Closes in") yourself.
  *
  * @param props - Component props
  * @param props.endTime - End time in ms since epoch (null shows TBD)
- * @param props.absolute - Show the SAST closing time instead of a countdown
+ * @param props.absolute - Show the closing time instead of a countdown
  * @param props.className - Extra classes
  * @returns The countdown text
  */

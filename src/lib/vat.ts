@@ -4,14 +4,36 @@
  * Pure functions with no React or Convex dependencies, so the lot page, the
  * pre-bid panel and the fee breakdown all share one calculation.
  *
- * VAT base assumption (to be confirmed with the owner): VAT is charged on the
- * hammer price PLUS the buyer's premium and any other buyer fees, i.e.
- * `vat = (bid + premium) * vatRatePct / 100`. Nothing else in the codebase
- * applies VAT, so this is the single place that defines the rule.
+ * VAT base depends on the seller (owner decision, 2026-11-23):
+ * - VAT-registered seller (and, where the seller is unknown, the worst case):
+ *   VAT is charged on the hammer price PLUS the premium,
+ *   `vat = (bid + premium) * vatRatePct / 100`.
+ * - Private seller: VAT is charged on the premium only,
+ *   `vat = premium * vatRatePct / 100`.
+ * Nothing else in the codebase applies VAT, so this is the single place that
+ * defines the rule.
  */
 
 /** VAT rate (percent) used when no admin has set one. Mirrors `convex/constants.ts`. */
 export const DEFAULT_VAT_RATE_PCT = 15;
+
+/** What VAT is charged on: bid plus premium, or the premium alone. */
+export type VatBase = "bid-and-premium" | "premium";
+
+/** The seller kinds a cost estimate can be shown for. `any` = seller not known yet. */
+export type SellerVatKind = "vat" | "private" | "any";
+
+/**
+ * Maps a seller kind to its VAT base. A private seller charges no VAT on the
+ * bid, so VAT applies to the premium only. A VAT-registered seller, and the
+ * generic "any seller" example on Home and Event, use bid plus premium.
+ *
+ * @param seller - The seller kind
+ * @returns The VAT base
+ */
+export function vatBaseForSeller(seller: SellerVatKind): VatBase {
+  return seller === "private" ? "premium" : "bid-and-premium";
+}
 
 /** The amounts a buyer pays on a lot, each rounded to whole rand. */
 export interface BuyerTotal {
@@ -19,7 +41,7 @@ export interface BuyerTotal {
   bid: number;
   /** Buyer's premium and other buyer fees, before VAT. */
   premium: number;
-  /** VAT on `bid + premium`. */
+  /** VAT on `bid + premium`, or on `premium` alone for a private seller. */
   vat: number;
   /** `bid + premium + vat`. */
   total: number;
@@ -33,6 +55,8 @@ export interface BuyerTotalInput {
   premium: number;
   /** VAT rate as a percentage from 0 to 100 (15 = 15%). */
   vatRatePct: number;
+  /** What VAT applies to. Defaults to `bid-and-premium`. */
+  vatBase?: VatBase;
 }
 
 /**
@@ -72,7 +96,8 @@ export function premiumFromRate(bid: number, premiumFraction: number): number {
  * parts so the displayed lines always add up. Non-finite or negative inputs
  * are treated as 0, and the VAT rate is clamped to 0-100.
  *
- * VAT base: hammer price plus buyer's premium (see the module note).
+ * VAT base: hammer price plus buyer's premium by default, or the premium
+ * alone with `vatBase: "premium"` (private seller; see the module note).
  *
  * @param input - Bid, premium and VAT rate
  * @returns The rounded breakdown
@@ -83,7 +108,8 @@ export function calculateBuyerTotal(input: BuyerTotalInput): BuyerTotal {
   const bid = Math.round(clean(input.bid));
   const premium = Math.round(clean(input.premium));
   const rate = Math.min(100, clean(input.vatRatePct));
-  const vat = Math.round(((bid + premium) * rate) / 100);
+  const base = input.vatBase === "premium" ? premium : bid + premium;
+  const vat = Math.round((base * rate) / 100);
 
   return { bid, premium, vat, total: bid + premium + vat };
 }

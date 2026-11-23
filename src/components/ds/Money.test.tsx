@@ -28,6 +28,9 @@ describe("Money", () => {
 
   it("uses the display serif when asked", () => {
     const { container } = render(<Money amount={5000} display />);
-    expect(container.querySelector(".num")).toHaveClass("font-display");
+    expect(container.querySelector(".num")).toHaveClass(
+      "text-[34px]",
+      "font-bold"
+    );
   });
 });

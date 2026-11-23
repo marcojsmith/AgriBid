@@ -47,6 +47,10 @@
   --color-hero-muted: hsl(var(--hero-muted));
   --color-ok-fg: hsl(var(--ok-fg));
   --color-warn-fg: hsl(var(--warn-fg));
+  --color-ok-soft: hsl(var(--ok-soft));
+  --color-warn-soft: hsl(var(--warn-soft));
+  --color-watch-on: hsl(var(--watch-on));
+  --color-chip: hsl(var(--chip));
   --color-live-solid: hsl(var(--live-solid));
   --color-live-soft: hsl(var(--live-soft));
   --color-live-fg: hsl(var(--live-fg));
@@ -92,7 +96,7 @@
     --secondary: 35 30% 40%; /* Earthy brown, darkened from the mockup's 45% for AA text */
     --secondary-foreground: 40 30% 98%;
     --muted: 40 20% 92%;
-    --muted-foreground: 24 10% 36%;
+    --muted-foreground: 24 10% 26%;
     --accent: 142 25% 93%;
     --accent-foreground: 24 10% 10%;
     --destructive: 0 68% 42%;
@@ -101,8 +105,8 @@
     --success-foreground: 0 0% 100%;
     --warning: 32 88% 34%;
     --warning-foreground: 0 0% 100%;
-    --border: 24 10% 86%;
-    --input: 24 10% 86%;
+    --border: 24 10% 80%;
+    --input: 24 10% 80%;
     --ring: 142 30% 25%;
     --radius: 0.5rem; /* lg 8px, md 6px, sm 4px */
 
@@ -112,16 +116,16 @@
 
     /* Hero band */
     --hero: 142 32% 17%;
-    --hero-foreground: 40 30% 96%;
-    --hero-muted: 142 12% 78%;
+    --hero-foreground: 40 30% 98%;
+    --hero-muted: 142 14% 86%;
 
     /* Status: solid = badge fill (white text), soft = pill bg, fg = text on soft */
     --live-solid: 142 58% 28%;
     --live-soft: 142 45% 92%;
-    --live-fg: 142 60% 24%;
+    --live-fg: 142 60% 22%;
     --soon-solid: 32 88% 34%;
     --soon-soft: 38 90% 92%;
-    --soon-fg: 30 90% 28%;
+    --soon-fg: 30 90% 26%;
     --urgent-solid: 0 68% 42%;
     --urgent-soft: 0 80% 95%;
     --urgent-fg: 0 68% 40%;
@@ -133,8 +137,12 @@
     --passed-fg: 24 8% 32%;
 
     /* Feedback text */
-    --ok-fg: 142 60% 24%;
-    --warn-fg: 30 90% 28%;
+    --ok-fg: 142 60% 22%;
+    --warn-fg: 30 90% 26%;
+    --ok-soft: 142 45% 92%;
+    --warn-soft: 38 90% 92%;
+    --watch-on: 0 72% 46%; /* filled heart on a watched lot */
+    --chip: 24 10% 10%; /* lot chip fill, white text, same in both themes */
 
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -154,8 +162,8 @@
     --primary-soft: 142 20% 15%;
     --secondary: 35 35% 62%;
     --secondary-foreground: 150 6% 7%;
-    --muted: 150 4% 15%;
-    --muted-foreground: 40 6% 68%;
+    --muted: 150 4% 12%;
+    --muted-foreground: 40 10% 82%;
     --accent: 142 20% 15%;
     --accent-foreground: 40 20% 95%;
     /* Dark: lifted so they read as text (errors, notices) on the dark surfaces; fills use dark text */
@@ -165,23 +173,23 @@
     --success-foreground: 150 6% 7%;
     --warning: 38 90% 68%;
     --warning-foreground: 150 6% 7%;
-    --border: 150 4% 22%;
-    --input: 150 4% 22%;
+    --border: 150 4% 26%;
+    --input: 150 4% 26%;
     --ring: 142 40% 66%; /* lifted: 3:1 against both the page and filled buttons */
 
     --btn: 142 36% 32%;
     --btn-foreground: 40 30% 98%;
 
     --hero: 142 30% 12%;
-    --hero-foreground: 40 30% 96%;
-    --hero-muted: 142 12% 74%;
+    --hero-foreground: 40 30% 98%;
+    --hero-muted: 142 14% 84%;
 
     --live-solid: 142 58% 28%;
     --live-soft: 142 30% 16%;
-    --live-fg: 142 50% 64%;
+    --live-fg: 142 50% 66%;
     --soon-solid: 32 88% 34%;
     --soon-soft: 38 40% 16%;
-    --soon-fg: 38 90% 68%;
+    --soon-fg: 38 90% 70%;
     --urgent-solid: 0 68% 42%;
     --urgent-soft: 0 40% 17%;
     --urgent-fg: 0 80% 70%;
@@ -192,8 +200,12 @@
     --passed-soft: 150 4% 18%;
     --passed-fg: 40 6% 72%;
 
-    --ok-fg: 142 50% 64%;
-    --warn-fg: 38 90% 68%;
+    --ok-fg: 142 50% 66%;
+    --warn-fg: 38 90% 70%;
+    --ok-soft: 142 30% 16%;
+    --warn-soft: 38 40% 16%;
+    --watch-on: 0 72% 46%;
+    --chip: 24 10% 10%;
 
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;

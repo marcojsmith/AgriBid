@@ -13,7 +13,9 @@ interface StickyActionBarProps {
 
 /**
  * A bar fixed to the bottom of the screen on phones only (hidden from `md`),
- * padded for the device safe area. Put the primary action(s) inside.
+ * 68px high and padded for the device safe area. Put the primary action(s)
+ * inside. For the standard [title / sub] [WhatsApp] [CTA] layout use
+ * `StickyBar`, which builds on this.
  *
  * Use it for the one action that must stay reachable while scrolling a long
  * mobile page. The page needs bottom padding so content isn't covered.
@@ -38,7 +40,7 @@ export function StickyActionBar({
       aria-label={label}
       data-slot="sticky-action-bar"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t border-border bg-card px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 flex min-h-[68px] items-center gap-1.5 border-t border-border bg-card px-4 pb-[env(safe-area-inset-bottom)] md:hidden",
         className
       )}
     >

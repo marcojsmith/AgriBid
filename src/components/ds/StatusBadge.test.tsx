@@ -12,18 +12,16 @@ describe("StatusBadge", () => {
     expect(el?.textContent).toBe("●Live");
   });
 
-  it("renders the opening date in SAST", () => {
+  it("renders the opening date in South African time", () => {
     render(
       <StatusBadge
         status={{ kind: "opens", startTime: Date.UTC(2025, 10, 22, 8, 0) }}
       />
     );
-    expect(
-      screen.getByText("Opens Sat 22 Nov, 10:00 SAST")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Opens Sat 22 Nov, 10:00")).toBeInTheDocument();
   });
 
-  it("uses the soon tone for closing soon and urgent inside the last hour", () => {
+  it("uses the soon tone for closing soon and urgent inside the last 10 minutes", () => {
     const { rerender } = render(
       <StatusBadge status={{ kind: "closing-soon", urgent: false }} />
     );
@@ -36,11 +34,13 @@ describe("StatusBadge", () => {
     ).toHaveAttribute("data-tone", "urgent");
   });
 
-  it("renders Sold and Passed in with text labels", () => {
+  it("renders Sold, Not sold and Under consideration with text labels", () => {
     const { rerender } = render(<StatusBadge status={{ kind: "sold" }} />);
     expect(screen.getByText("Sold")).toBeInTheDocument();
     rerender(<StatusBadge status={{ kind: "passed" }} />);
-    expect(screen.getByText("Passed in")).toBeInTheDocument();
+    expect(screen.getByText("Not sold")).toBeInTheDocument();
+    rerender(<StatusBadge status={{ kind: "under-consideration" }} />);
+    expect(screen.getByText("Under consideration")).toBeInTheDocument();
   });
 
   it("supports the soft variant", () => {
