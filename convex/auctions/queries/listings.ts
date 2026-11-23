@@ -4,12 +4,12 @@ import {
   paginationOptsValidator,
   query,
   type QueryCtx,
-  LotSummaryValidator,
+  OwnerLotSummaryValidator,
   getAuthenticatedUserId,
   unauthenticatedPaginatedResult,
   type PaginationOptions,
 } from "./shared";
-import { toLotSummaries } from "../helpers";
+import { toOwnerLotSummaries } from "../helpers";
 import { countQuery } from "../../admin_utils";
 
 /**
@@ -40,7 +40,7 @@ export const getMyListingsHandler = async (
     ),
   ]);
 
-  const page = await toLotSummaries(ctx, results.page);
+  const page = await toOwnerLotSummaries(ctx, results.page);
 
   return {
     ...results,
@@ -58,7 +58,7 @@ export const getMyListingsHandler = async (
 export const getMyListings = query({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({
-    page: v.array(LotSummaryValidator),
+    page: v.array(OwnerLotSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),

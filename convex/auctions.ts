@@ -92,8 +92,10 @@ export { settleExpiredLots, cleanupDrafts } from "./auctions/internal";
 export {
   resolveImageUrls,
   LotSummaryValidator,
+  OwnerLotSummaryValidator,
   toLotSummary,
   toLotSummaries,
+  toOwnerLotSummaries,
   LotDetailValidator,
 } from "./auctions/helpers";
 export type { RawImages } from "./auctions/helpers";

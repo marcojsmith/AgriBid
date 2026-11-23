@@ -38,7 +38,12 @@ export const AuctionCardSkeleton = ({
               isCompact ? "aspect-[4/3] border-r" : "aspect-video"
             )}
           >
-            <span className={isCompact ? "text-2xl" : "text-4xl"} aria-hidden="true">🚜</span>
+            <span
+              className={isCompact ? "text-2xl" : "text-4xl"}
+              aria-hidden="true"
+            >
+              🚜
+            </span>
           </div>
 
           {/* Timer area placeholder - Under Image (Compact) */}

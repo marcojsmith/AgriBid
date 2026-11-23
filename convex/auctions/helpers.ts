@@ -204,12 +204,21 @@ export const LotSummaryValidator = v.object({
   location: v.string(),
   categoryId: v.optional(v.id("equipmentCategories")),
   categoryName: v.string(),
-  reservePrice: v.number(),
+  /** Server-computed; the reserve amount itself is never sent to buyers. */
+  reserveState: v.union(
+    v.literal("none"),
+    v.literal("applies"),
+    v.literal("met"),
+    v.literal("not_met")
+  ),
+  /** True when the caller is this lot's seller (ids are never sent). */
+  isSeller: v.boolean(),
+  /** True when the caller is the current leader or final winner (ids are never sent). */
+  isWinner: v.boolean(),
   startingPrice: v.number(),
   currentPrice: v.number(),
   minIncrement: v.number(),
   durationDays: v.optional(v.number()),
-  sellerId: v.string(),
   status: v.string(),
   auctionId: v.optional(v.id("auctions")),
   lotNumber: v.optional(v.number()),
@@ -220,7 +229,6 @@ export const LotSummaryValidator = v.object({
     v.union(v.literal("draft"), v.literal("published"), v.literal("closed"))
   ),
   extendedEndTime: v.optional(v.number()),
-  winnerId: v.optional(v.union(v.string(), v.null())),
   description: v.optional(v.string()),
   conditionReportUrl: v.optional(v.string()),
   isExtended: v.optional(v.boolean()),
@@ -236,13 +244,26 @@ export const LotSummaryValidator = v.object({
 });
 
 /**
- * Validator for a bid object, including enriched bidder name.
+ * Validator for the lot summary returned on seller-only and admin-only paths
+ * (`getMyListings`, admin queues): the public summary plus the raw reserve,
+ * seller id and winner id. Never use it on a public query.
+ */
+export const OwnerLotSummaryValidator = v.object({
+  ...LotSummaryValidator.fields,
+  reservePrice: v.number(),
+  sellerId: v.string(),
+  winnerId: v.optional(v.union(v.string(), v.null())),
+});
+
+/**
+ * Validator for a bid object, including enriched bidder name. `bidderId` is
+ * present only for the lot's seller and admins.
  */
 export const BidValidator = v.object({
   _id: v.id("bids"),
   _creationTime: v.number(),
   lotId: v.id("lots"),
-  bidderId: v.string(),
+  bidderId: v.optional(v.string()),
   amount: v.number(),
   timestamp: v.number(),
   status: v.optional(v.union(v.literal("valid"), v.literal("voided"))),
@@ -262,7 +283,10 @@ export const BidValidator = v.object({
  * @param preloaded - Optional preloaded lookups for batch processing
  * @param preloaded.categories - Map of category id to category document
  * @param preloaded.auctions - Map of auction id to auction document
- * @returns An object with selected lot fields, the parent auction's window, and an `images` object whose entries are resolved URLs for `front`, `engine`, `cabin`, `rear` and an `additional` array of resolved URLs
+ * @param preloaded.viewerIds - The caller's ids (profile and auth user id)
+ * @returns An object with selected lot fields, the parent auction's window, and an `images` object whose entries are resolved URLs for `front`, `engine`, `cabin`, `rear` and an `additional` array of resolved URLs.
+ *   The reserve amount, seller id and winner id are never included: callers get
+ *   `reserveState`, `isSeller` and `isWinner` instead.
  */
 export async function toLotSummary(
   ctx: QueryCtx,
@@ -273,9 +297,10 @@ export async function toLotSummary(
       Doc<"equipmentCategories"> | null
     >;
     auctions: Map<Id<"auctions">, Doc<"auctions"> | null>;
+    viewerIds: string[];
   }
 ) {
-  const [category, auction] = await Promise.all([
+  const [category, auction, bidCount, viewerIds] = await Promise.all([
     lot.categoryId
       ? (preloaded?.categories.get(lot.categoryId) ??
         ctx.db.get("equipmentCategories", lot.categoryId))
@@ -284,6 +309,8 @@ export async function toLotSummary(
       ? (preloaded?.auctions.get(lot.auctionId) ??
         ctx.db.get("auctions", lot.auctionId))
       : null,
+    getBidCount(ctx, lot._id),
+    preloaded ? preloaded.viewerIds : getViewerIds(ctx),
   ]);
 
   return {
@@ -306,15 +333,15 @@ export async function toLotSummary(
     auctionEndTime: auction?.endTime,
     auctionStatus: auction?.status,
     extendedEndTime: lot.extendedEndTime,
-    reservePrice: lot.reservePrice,
+    reserveState: reserveStateOf(lot, bidCount),
+    isSeller: viewerIds.includes(lot.sellerId),
+    isWinner: lot.winnerId != null && viewerIds.includes(lot.winnerId),
     operatingHours: lot.operatingHours,
     location: lot.location,
     categoryId: lot.categoryId,
     // Intentionally `||` not `??`: an empty string category name also means "no category"
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
     categoryName: category?.name || "Unknown",
-    sellerId: lot.sellerId,
-    winnerId: lot.winnerId,
     conditionReportUrl: lot.conditionReportUrl,
     isExtended: lot.isExtended,
     seedId: lot.seedId,
@@ -338,6 +365,9 @@ export async function toLotSummaries(
   ctx: QueryCtx,
   lots: Doc<"lots">[]
 ): Promise<Awaited<ReturnType<typeof toLotSummary>>[]> {
+  // Nothing to convert: skip the category, auction and caller lookups.
+  if (lots.length === 0) return [];
+
   const categoryIds = new Set<Id<"equipmentCategories">>();
   const auctionIds = new Set<Id<"auctions">>();
 
@@ -369,9 +399,44 @@ export async function toLotSummaries(
     auctions.set(auctionIdArray[i], auctionDocs[i] ?? null);
   }
 
+  const viewerIds = await getViewerIds(ctx);
+
   return Promise.all(
-    lots.map((lot) => toLotSummary(ctx, lot, { categories, auctions }))
+    lots.map((lot) =>
+      toLotSummary(ctx, lot, { categories, auctions, viewerIds })
+    )
   );
+}
+
+/**
+ * Like {@link toLotSummaries} but adds the raw reserve, seller id and winner id.
+ * ONLY for seller-only and admin-only queries (callers must have checked
+ * ownership or admin role); public queries must use {@link toLotSummaries}.
+ *
+ * @param ctx - Query context
+ * @param lots - Lot documents to convert
+ * @returns Owner-level summaries in the same order as input
+ */
+export async function toOwnerLotSummaries(ctx: QueryCtx, lots: Doc<"lots">[]) {
+  const summaries = await toLotSummaries(ctx, lots);
+  return summaries.map((summary, index) => ({
+    ...summary,
+    reservePrice: lots[index].reservePrice,
+    sellerId: lots[index].sellerId,
+    winnerId: lots[index].winnerId,
+  }));
+}
+
+/**
+ * The caller's ids (profile user id and auth user id), empty for guests.
+ * Lot ids are stored under either, so comparisons check both.
+ *
+ * @param ctx - Query context
+ * @returns The caller's ids
+ */
+async function getViewerIds(ctx: QueryCtx): Promise<string[]> {
+  const viewer = await getAuthWithProfile(ctx);
+  return viewer ? [viewer.userId, viewer.authUser._id] : [];
 }
 
 /**

@@ -180,7 +180,11 @@ export const getLotBidsHandler = async (
   const isAdmin = auth?.profile?.role === "admin";
   // Guard against undefined === undefined: a missing lot doc combined
   // with an unauthenticated caller must never mark the caller as the seller.
-  const isSeller = Boolean(lot && lot.sellerId === auth?.userId);
+  const isSeller = Boolean(
+    lot &&
+    auth &&
+    (lot.sellerId === auth.userId || lot.sellerId === auth.authUser._id)
+  );
 
   // Only admins and the seller may see who bid; everyone else gets a single
   // shared placeholder, so no profile is read for them at all.
@@ -198,10 +202,15 @@ export const getLotBidsHandler = async (
     }
   }
 
-  const page = bids.map((bid: Doc<"bids">) => ({
-    ...bid,
-    bidderName: bidderNames.get(bid.bidderId) ?? "Anonymous",
-  }));
+  // Bidder ids identify accounts: only the seller and admins receive them.
+  const page = bids.map((bid: Doc<"bids">) => {
+    const { bidderId, ...rest } = bid;
+    return {
+      ...rest,
+      ...(isAdmin || isSeller ? { bidderId } : {}),
+      bidderName: bidderNames.get(bidderId) ?? "Anonymous",
+    };
+  });
 
   return {
     ...bidsResult,

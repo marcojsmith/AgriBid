@@ -23,6 +23,15 @@ export type LotSummary = FunctionReturnType<
 >["page"][number];
 
 /**
+ * Lot summary for admin tables, including the raw reserve, seller id and
+ * winner id. Only admin-gated queries return these; public summaries
+ * ({@link LotSummary}) carry `reserveState`, `isSeller` and `isWinner` instead.
+ */
+export type AdminLotSummary = FunctionReturnType<
+  typeof api.auctions.queries.admin.getAllLots
+>["page"][number];
+
+/**
  * Represents the images associated with an auction.
  */
 export interface AuctionImages {

@@ -5,10 +5,10 @@ import {
   paginationOptsValidator,
   query,
   type QueryCtx,
-  LotSummaryValidator,
+  OwnerLotSummaryValidator,
 } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { toLotSummaries } from "../helpers";
+import { toOwnerLotSummaries } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
 import { resolveDisplayNames } from "../../lib/userNames";
 import { countQuery } from "../../admin_utils";
@@ -33,7 +33,7 @@ export const getPendingLotsHandler = async (ctx: QueryCtx) => {
   const lots = fetchedLots.slice(0, ADMIN_COLLECTION_CAP);
 
   return {
-    items: await toLotSummaries(ctx, lots),
+    items: await toOwnerLotSummaries(ctx, lots),
     isTruncated,
   };
 };
@@ -47,7 +47,7 @@ export const getPendingLotsHandler = async (ctx: QueryCtx) => {
 export const getPendingLots = query({
   args: {},
   returns: v.object({
-    items: v.array(LotSummaryValidator),
+    items: v.array(OwnerLotSummaryValidator),
     isTruncated: v.boolean(),
   }),
   handler: getPendingLotsHandler,
@@ -76,7 +76,7 @@ export const getAllLotsHandler = async (
   return {
     ...lotsResult,
     totalCount,
-    page: await toLotSummaries(ctx, lotsResult.page),
+    page: await toOwnerLotSummaries(ctx, lotsResult.page),
   };
 };
 
@@ -91,7 +91,7 @@ export const getAllLots = query({
     paginationOpts: paginationOptsValidator,
   },
   returns: v.object({
-    page: v.array(LotSummaryValidator),
+    page: v.array(OwnerLotSummaryValidator),
     isDone: v.boolean(),
     continueCursor: v.string(),
     totalCount: v.number(),

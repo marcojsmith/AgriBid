@@ -49,7 +49,7 @@ import { getErrorMessage } from "@/lib/utils";
 import type { Province } from "@/lib/provinces";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
-import type { LotSummary } from "@/types/auction";
+import type { AdminLotSummary } from "@/types/auction";
 import { useBulkOperations } from "@/hooks/admin/useBulkOperations";
 
 import { BulkActionDialog } from "./dialogs/BulkActionDialog";
@@ -93,7 +93,7 @@ function formatTimeRemaining(endTime: number): string {
  * @param lot - The lot summary.
  * @returns The effective end timestamp in milliseconds, or undefined if unknown.
  */
-function effectiveLotEndTime(lot: LotSummary): number | undefined {
+function effectiveLotEndTime(lot: AdminLotSummary): number | undefined {
   return lot.extendedEndTime ?? lot.auctionEndTime;
 }
 
@@ -128,10 +128,12 @@ export default function AdminLots() {
     handleBulkStatusUpdate,
   } = useBulkOperations();
 
-  const [closingAuction, setClosingAuction] = useState<LotSummary | null>(null);
+  const [closingAuction, setClosingAuction] = useState<AdminLotSummary | null>(
+    null
+  );
   const [isClosing, setIsClosing] = useState(false);
 
-  const [provinceLot, setProvinceLot] = useState<LotSummary | null>(null);
+  const [provinceLot, setProvinceLot] = useState<AdminLotSummary | null>(null);
   const [isSavingProvince, setIsSavingProvince] = useState(false);
   const adminUpdateLot = useMutation(api.auctions.adminUpdateLot);
 
@@ -159,7 +161,7 @@ export default function AdminLots() {
     }
   };
 
-  const [specsLot, setSpecsLot] = useState<LotSummary | null>(null);
+  const [specsLot, setSpecsLot] = useState<AdminLotSummary | null>(null);
   const [isSavingSpecs, setIsSavingSpecs] = useState(false);
 
   /**
@@ -189,7 +191,7 @@ export default function AdminLots() {
    * Opens the confirmation dialog to force end a lot.
    * @param auction - The lot to close early
    */
-  const handleForceEnd = (auction: LotSummary): void => {
+  const handleForceEnd = (auction: AdminLotSummary): void => {
     setClosingAuction(auction);
   };
 
@@ -232,7 +234,7 @@ export default function AdminLots() {
   const filteredAuctions = useMemo(() => {
     // `results` is typed non-nullable but the loading-state path feeds
     // `undefined`, so the empty-array fallback is kept intentionally.
-    const auctions = allAuctions as LotSummary[] | undefined;
+    const auctions = allAuctions as AdminLotSummary[] | undefined;
     return (auctions ?? []).filter(
       (a) =>
         a.title.toLowerCase().includes(auctionSearch.toLowerCase()) ||

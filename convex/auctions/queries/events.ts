@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { PaginationOptions } from "convex/server";
 
 import { query, paginationOptsValidator, type QueryCtx } from "./shared";
-import { LotSummaryValidator, toLotSummaries } from "../helpers";
+import { OwnerLotSummaryValidator, toOwnerLotSummaries } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
 import { parseOffsetCursor } from "../../lib/pagination";
 import { resolveUrlCached } from "../../image_cache";
@@ -485,8 +485,8 @@ export const getAssignmentCandidatesHandler = async (
   ]);
 
   const [unassigned, assigned] = await Promise.all([
-    toLotSummaries(ctx, approvedLots),
-    toLotSummaries(ctx, auctionLots),
+    toOwnerLotSummaries(ctx, approvedLots),
+    toOwnerLotSummaries(ctx, auctionLots),
   ]);
 
   return { unassigned, assigned };
@@ -495,8 +495,8 @@ export const getAssignmentCandidatesHandler = async (
 export const getAssignmentCandidates = query({
   args: { auctionId: v.id("auctions") },
   returns: v.object({
-    unassigned: v.array(LotSummaryValidator),
-    assigned: v.array(LotSummaryValidator),
+    unassigned: v.array(OwnerLotSummaryValidator),
+    assigned: v.array(OwnerLotSummaryValidator),
   }),
   handler: getAssignmentCandidatesHandler,
 });

@@ -18,6 +18,16 @@ vi.mock("../../lib/auth", () => ({
   requireAdmin: vi.fn(),
 }));
 
+vi.mock("../helpers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../helpers")>();
+  return {
+    ...actual,
+    toOwnerLotSummaries: vi.fn((_ctx: unknown, lots: { _id: string }[]) =>
+      Promise.resolve(lots.map((lot) => ({ _id: lot._id })))
+    ),
+  };
+});
+
 vi.mock("../../admin_utils", () => ({
   countQuery: vi.fn(),
 }));

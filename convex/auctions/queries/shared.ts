@@ -4,12 +4,12 @@ import { query } from "../../_generated/server";
 import type { QueryCtx } from "../../_generated/server";
 import { getAuthUser, resolveUserId } from "../../lib/auth";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { LotSummaryValidator } from "../helpers";
+import { LotSummaryValidator, OwnerLotSummaryValidator } from "../helpers";
 
 export { paginationOptsValidator, type PaginationOptions };
 export { query };
 export type { QueryCtx };
-export { LotSummaryValidator };
+export { LotSummaryValidator, OwnerLotSummaryValidator };
 
 /**
  * Bid statistics for a single auction.
