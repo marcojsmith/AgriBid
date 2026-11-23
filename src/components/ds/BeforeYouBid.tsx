@@ -113,9 +113,9 @@ export function BeforeYouBid({
     <section
       data-slot="before-you-bid"
       aria-labelledby="before-you-bid"
-      className={cn("bg-muted/60 px-4 py-8 md:py-10", className)}
+      className={cn("bg-muted/60 py-8 md:py-10", className)}
     >
-      <div className="container mx-auto max-w-[1200px] px-0">
+      <div className="mx-auto max-w-[1200px] px-4">
         <h2 id="before-you-bid" className="mb-4 font-display text-2xl">
           Before you bid
         </h2>

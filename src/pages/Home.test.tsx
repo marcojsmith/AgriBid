@@ -78,7 +78,7 @@ vi.mock("@/hooks/useBranding", () => ({
 }));
 
 vi.mock("@/hooks/useScrolledPast", () => ({
-  useScrolledPast: () => data.ctaGone,
+  useScrolledPast: () => [() => undefined, data.ctaGone],
 }));
 
 vi.mock("@/components/LotBrowser", () => ({
@@ -302,9 +302,9 @@ describe("Home page", () => {
       }),
     ];
     renderHome();
-    expect(
-      screen.getByRole("region", { name: "Register to bid" })
-    ).toHaveTextContent(/Opens \w{3} \d+ \w{3}, \d{2}:\d{2}/);
+    expect(screen.getByRole("region", { name: "My bids" })).toHaveTextContent(
+      /Opens \w{3} \d+ \w{3}, \d{2}:\d{2}/
+    );
     fireEvent.click(screen.getByRole("button", { name: "My bids" }));
     expect(data.navigate).toHaveBeenCalledWith("/dashboard/bids");
   });
@@ -355,6 +355,41 @@ describe("Home page", () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Failed to update watchlist");
     });
+  });
+
+  it("drops a picked filter when the set of open sales changes", () => {
+    const { rerender } = renderHome();
+    fireEvent.click(screen.getByRole("button", { name: "Ford 8" }));
+    expect(screen.getByRole("button", { name: "Ford 8" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    data.sales = [sale("z")];
+    rerender(
+      <HelmetProvider>
+        <MemoryRouter>
+          <Home />
+        </MemoryRouter>
+      </HelmetProvider>
+    );
+    expect(screen.getByRole("button", { name: "Ford 8" })).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+  });
+
+  it("turns the sticky countdown urgent in the last 10 minutes", () => {
+    data.ctaGone = true;
+    data.sales = [
+      sale("a", {
+        endTime: NOW + 5 * 60_000,
+        effectiveEndTime: NOW + 5 * 60_000,
+      }),
+    ];
+    renderHome();
+    expect(
+      screen.getByRole("region", { name: "Register to bid" }).querySelector("b")
+    ).toHaveClass("text-urgent-fg");
   });
 
   it("filters the grid by category, make and price and submits a search", () => {

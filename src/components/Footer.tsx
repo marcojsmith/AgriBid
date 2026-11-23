@@ -58,7 +58,7 @@ export const Footer = () => {
 
   return (
     <footer className="border-t border-border bg-card">
-      <div className="container mx-auto max-w-[1200px] px-4 py-8 md:py-10">
+      <div className="mx-auto max-w-[1200px] px-4 py-8 md:py-10">
         <div className="grid gap-6 md:grid-cols-3 md:gap-10">
           <div className="space-y-1">
             <div className="font-display text-[26px] leading-tight font-bold text-primary">

@@ -63,8 +63,8 @@ export const Header = () => {
   };
 
   return (
-    <header className="border-b bg-background lg:sticky lg:top-0 z-50">
-      <div className="container mx-auto px-4 h-14 md:h-16 flex items-center gap-2 md:gap-6">
+    <header className="sticky top-0 z-50 border-b bg-background">
+      <div className="mx-auto max-w-[1200px] px-4 h-14 md:h-16 flex items-center gap-2 md:gap-6">
         <Link
           to="/"
           className="inline-flex min-h-11 shrink-0 items-center rounded-sm font-display text-[21px] font-bold tracking-tight text-primary"

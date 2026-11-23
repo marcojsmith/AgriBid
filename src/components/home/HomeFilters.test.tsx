@@ -73,6 +73,17 @@ describe("HomeFilters", () => {
     expect(screen.getByRole("button", { name: "All 85" })).toBeVisible();
   });
 
+  it("keeps the Price chip while a price filter is on so it can be cleared", () => {
+    render(
+      <HomeFilters
+        {...base}
+        priceRange={{ min: 500, max: 500 }}
+        price={{ min: 100 }}
+      />
+    );
+    expect(screen.getByRole("button", { name: /Price/ })).toBeVisible();
+  });
+
   it("hides the Price chip without a price range", () => {
     render(<HomeFilters {...base} priceRange={null} />);
     expect(screen.queryByRole("button", { name: /Price/ })).toBeNull();

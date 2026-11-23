@@ -1,5 +1,5 @@
 // app/src/pages/Home.tsx
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useConvexAuth,
   useMutation,
@@ -28,6 +28,7 @@ import { useBranding } from "@/hooks/useBranding";
 import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
 import { formatClosesIn } from "@/lib/countdown";
+import { URGENT_MS } from "@/lib/auction-badges";
 import { formatSastDate } from "@/lib/dates";
 import { pickHomeSales, whatsappLink } from "@/lib/homeSales";
 import {
@@ -87,7 +88,8 @@ function leadPhoto(images: LotImages): string | undefined {
 export default function Home() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const now = useNow();
+  // Ticks every 5 s so the seconds in the last 10 minutes stay current.
+  const now = useNow(5000);
   const { isAuthenticated } = useConvexAuth();
   const branding = useBranding();
 
@@ -96,12 +98,14 @@ export default function Home() {
     rawQuery === null || rawQuery === "" ? undefined : rawQuery;
   const searching = searchQuery !== undefined;
 
-  const [category, setCategory] = useState<string | null>(null);
-  const [make, setMake] = useState<string | null>(null);
-  const [price, setPrice] = useState<PriceFilter>({});
+  const [filters, setFilters] = useState<{
+    saleKey: string;
+    category: string | null;
+    make: string | null;
+    price: PriceFilter;
+  }>({ saleKey: "", category: null, make: null, price: {} });
   const [feesOpen, setFeesOpen] = useState(false);
-  const ctaRef = useRef<HTMLDivElement>(null);
-  const ctaGone = useScrolledPast(ctaRef);
+  const [ctaRef, ctaGone] = useScrolledPast();
 
   const active = usePaginatedQuery(
     api.auctions.getPublishedAuctions,
@@ -121,6 +125,16 @@ export default function Home() {
       ),
     [mode, hero, open]
   );
+
+  // Filters belong to the set of sales they were picked in: when a sale opens
+  // or closes the chips change, so a stale pick is dropped instead of hiding
+  // lots behind a chip that no longer exists.
+  const saleKey = gridSaleIds.join(",");
+  const current =
+    filters.saleKey === saleKey
+      ? filters
+      : { saleKey, category: null, make: null, price: {} as PriceFilter };
+  const { category, make, price } = current;
 
   const settings = useQuery(
     api.admin.platformSettings.getPlatformSettings,
@@ -177,7 +191,7 @@ export default function Home() {
 
   const businessInfo = branding?.businessInfo;
   const waHref = whatsappLink(businessInfo?.whatsapp);
-  const premiumPct = settings?.buyerPremiumPct ?? 12;
+  const premiumPct = settings?.buyerPremiumPct ?? 0;
 
   const featuredRow = featuredRows?.[0];
   const featured = featuredRow
@@ -220,6 +234,8 @@ export default function Home() {
   }));
 
   const showSticky = ctaGone && hero !== null;
+  const stickyRemaining =
+    hero?.bucket === "live" ? hero.effectiveEndTime - now : Infinity;
   const stickyTitle =
     hero?.bucket === "live"
       ? formatClosesIn(hero.effectiveEndTime - now)
@@ -331,9 +347,15 @@ export default function Home() {
                 category={category}
                 make={make}
                 price={price}
-                onCategory={setCategory}
-                onMake={setMake}
-                onPrice={setPrice}
+                onCategory={(key) => {
+                  setFilters({ ...current, category: key });
+                }}
+                onMake={(key) => {
+                  setFilters({ ...current, make: key });
+                }}
+                onPrice={(next) => {
+                  setFilters({ ...current, price: next });
+                }}
                 onSearch={(query) => {
                   void navigate(`/?q=${encodeURIComponent(query)}`);
                 }}
@@ -399,12 +421,13 @@ export default function Home() {
             <StickyBar
               hidden={!showSticky}
               title={stickyTitle}
+              urgent={stickyRemaining < URGENT_MS}
               whatsappHref={waHref}
               cta={isAuthenticated ? "My bids" : "Register to bid"}
               onCta={() => {
                 void navigate(isAuthenticated ? "/dashboard/bids" : "/login");
               }}
-              label="Register to bid"
+              label={isAuthenticated ? "My bids" : "Register to bid"}
             />
           ) : null}
         </>

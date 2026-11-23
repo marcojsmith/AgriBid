@@ -145,7 +145,7 @@ export function HomeHero({
         </Link>
       ) : null}
 
-      <div className="px-4 pt-5 pb-6 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-8 lg:py-10 lg:pl-[max(2rem,calc((100vw-1200px)/2))]">
+      <div className="px-4 pt-5 pb-6 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-8 lg:py-10 lg:pl-[max(2rem,calc((100vw-1200px)/2+1rem))]">
         {sale ? (
           <>
             <div className="flex items-center gap-2.5">

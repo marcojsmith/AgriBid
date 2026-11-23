@@ -122,8 +122,11 @@ export function HomeFilters({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [minText, setMinText] = useState("");
   const [maxText, setMaxText] = useState("");
-  const showPrice = priceRange !== null && priceRange.min < priceRange.max;
   const priceOn = price.min !== undefined || price.max !== undefined;
+  // Hidden when every lot costs the same, unless a price filter is on (so it
+  // can still be cleared).
+  const showPrice =
+    priceRange !== null && (priceRange.min < priceRange.max || priceOn);
 
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
@@ -151,7 +154,7 @@ export function HomeFilters({
 
   return (
     <div data-slot="home-filters" className={cn("space-y-3", className)}>
-      <form onSubmit={submit} role="search" className="relative">
+      <form onSubmit={submit} role="search" className="relative md:hidden">
         <label htmlFor="home-search" className="sr-only">
           Search make or model
         </label>

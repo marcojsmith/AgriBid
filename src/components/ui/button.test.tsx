@@ -53,11 +53,11 @@ describe("Button", () => {
     }
   );
 
-  it("makes the default size 48px tall on every screen", () => {
+  it("makes the default size 48px tall on every screen unless --btn-h lowers it", () => {
     render(<Button>Register to bid</Button>);
 
     const button = screen.getByRole("button", { name: "Register to bid" });
-    expect(button).toHaveClass("h-12");
+    expect(button.className).toContain("h-[var(--btn-h,3rem)]");
     expect(button.className).not.toMatch(/max-md:h-/);
   });
 
