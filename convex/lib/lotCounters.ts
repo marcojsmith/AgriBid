@@ -141,6 +141,29 @@ export async function removeLotWatchData(
 }
 
 /**
+ * Deletes (at most) one bounded batch of an auction's `engagementScores` rows.
+ * Call when an auction closes so its precomputed ranking does not linger; the
+ * 5-minute `refreshEngagementScores` cron sweeps any rows left over.
+ *
+ * @param ctx - Mutation context.
+ * @param auctionId - The auction that closed.
+ * @returns The number of rows deleted.
+ */
+export async function deleteAuctionEngagementScores(
+  ctx: MutationCtx,
+  auctionId: Id<"auctions">
+): Promise<number> {
+  const rows = await ctx.db
+    .query("engagementScores")
+    .withIndex("by_auctionId_and_score", (q) => q.eq("auctionId", auctionId))
+    .take(LOT_DATA_DELETE_BATCH);
+  await Promise.all(
+    rows.map((row) => ctx.db.delete("engagementScores", row._id))
+  );
+  return rows.length;
+}
+
+/**
  * Deletes (at most) one bounded batch of a lot's `lotViewers` rows. When no
  * rows remain afterwards, also deletes the lot's view and anonymous-view
  * counters. The caller is responsible for continuing when this returns true

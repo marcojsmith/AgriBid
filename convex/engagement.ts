@@ -265,7 +265,8 @@ export interface EngagementRefreshResult {
  * `ENGAGEMENT_CANDIDATE_CAP` assigned, unhidden lots). It reads ONLY counter
  * rows (watchers, views, bids), never the `bids` table. Rows are upserted and
  * patched only when a value changed; rows of lots that are no longer assigned
- * (or hidden) in the auction are deleted. Idempotent.
+ * (or hidden) in the auction are deleted, as are bounded batches of rows whose
+ * auction is no longer published. Idempotent.
  *
  * @param ctx - Mutation context
  * @returns Counts of auctions processed and rows written/removed
@@ -343,7 +344,39 @@ export async function refreshEngagementScoresHandler(
     }
   }
 
+  removed += await sweepStaleEngagementScores(ctx);
+
   return { auctions: auctions.length, upserted, removed };
+}
+
+/**
+ * Deletes `engagementScores` rows whose auction is gone or no longer
+ * `published` (closed, or sent back to draft), scanning at most
+ * `ENGAGEMENT_SWEEP_SCAN` rows. Covers closes that bypassed the close paths
+ * and rows left by a bounded delete.
+ *
+ * @param ctx - Mutation context
+ * @returns The number of rows deleted
+ */
+async function sweepStaleEngagementScores(ctx: MutationCtx): Promise<number> {
+  const scanned = await ctx.db
+    .query("engagementScores")
+    .take(constants.ENGAGEMENT_SWEEP_SCAN);
+  const published = new Map<Id<"auctions">, boolean>();
+  let removed = 0;
+  for (const row of scanned) {
+    let isPublished = published.get(row.auctionId);
+    if (isPublished === undefined) {
+      const auction = await ctx.db.get("auctions", row.auctionId);
+      isPublished = auction?.status === "published";
+      published.set(row.auctionId, isPublished);
+    }
+    if (!isPublished) {
+      await ctx.db.delete("engagementScores", row._id);
+      removed++;
+    }
+  }
+  return removed;
 }
 
 /**

@@ -239,6 +239,7 @@ describe("Lot assignment mutations", () => {
         resolvedBuyerPremiumPct: 0.05,
         premiumSource: "auction",
         resolvedSellerCommissionPct: 0.03,
+        commissionSource: "auction",
         sellerVatRegistered: undefined,
         sellerType: undefined,
       });
@@ -265,6 +266,7 @@ describe("Lot assignment mutations", () => {
         "resolvedSellerCommissionPct",
         undefined
       );
+      expect(patchArgs).toHaveProperty("commissionSource", undefined);
     });
 
     it("throws when the lot is missing", async () => {

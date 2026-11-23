@@ -936,7 +936,7 @@ describe("settlement (convex-test)", () => {
     expect(feeCounter?.sellerTotal).toBe(1060);
   });
 
-  it("charges the lot's snapshotted auction defaults without writing ledger rows", async () => {
+  it("charges the lot's snapshotted auction defaults and persists them as ledger rows", async () => {
     const t = createTestContext();
     const world = await seedWorld(t, { withFees: false });
     const lotId = await createLot(t, world, {
@@ -952,9 +952,15 @@ describe("settlement (convex-test)", () => {
     expect(lot.status).toBe("sold");
     expect(lot.winnerId).toBe(BIDDER_A);
 
-    // Defaults are derived, never persisted: lotFees stays empty while the
-    // aggregate counters still carry the amounts.
-    expect(await readLotFees(t, lotId)).toEqual([]);
+    // The resolved defaults are persisted (no `feeId`) so the ledger is what
+    // was charged, and the aggregate counters carry the same amounts.
+    const ledger = await readLotFees(t, lotId);
+    expect(
+      ledger.map((row) => [row.feeName, row.appliedTo, row.calculatedAmount])
+    ).toEqual([
+      ["Auction Buyer Premium", "buyer", 200],
+      ["Auction Seller Commission", "seller", 300],
+    ]);
     const feeCounter = await readCounter(t, "lotFees");
     expect(feeCounter?.buyerTotal).toBe(200);
     expect(feeCounter?.sellerTotal).toBe(300);

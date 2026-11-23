@@ -5,12 +5,19 @@ import { internal } from "../_generated/api";
 import { updateCounter, logAudit } from "../admin_utils";
 import { logActivity } from "../userActivity";
 import { deleteAuctionImages, safeDelete } from "../lib/storage";
-import { removeLotWatchData } from "../lib/lotCounters";
+import {
+  deleteAuctionEngagementScores,
+  removeLotWatchData,
+} from "../lib/lotCounters";
 import {
   isBuyerPercentageFee,
   resolveBuyerPremium,
   type ResolvedBuyerPremium,
 } from "../lib/buyerPremium";
+import {
+  isSellerPercentageFee,
+  resolveSellerCommission,
+} from "../lib/sellerCommission";
 import {
   DRAFT_RETENTION_MS,
   CLEANUP_BATCH_SIZE,
@@ -26,9 +33,20 @@ import type { MutationCtx } from "../_generated/server";
  */
 export interface ResolvedDefaultFee {
   appliedTo: "buyer" | "seller";
+  /** Where the rate came from: the auction snapshot or the platform default. */
+  source: "auction" | "platform";
+  /** Display name shared by live estimates and the persisted ledger row. */
+  feeName: string;
   rate: number;
   calculatedAmount: number;
 }
+
+/** Ledger/display name of an auction-snapshot buyer premium. */
+export const AUCTION_BUYER_FEE_NAME = "Auction Buyer Premium";
+/** Ledger/display name of a seller commission from the auction snapshot. */
+export const AUCTION_SELLER_FEE_NAME = "Auction Seller Commission";
+/** Ledger/display name of the platform default buyer premium. */
+export const PLATFORM_BUYER_FEE_NAME = "Buyer Premium";
 
 /**
  * Find the highest valid (non-voided) bid for a lot using the by_lot_amount
@@ -82,12 +100,9 @@ export function isReserveMet(bidAmount: number, reservePrice: number): boolean {
  * Compute the buyer/seller fee line items implied by a lot's snapshotted
  * auction fee defaults (`resolvedBuyerPremiumPct`/`resolvedSellerCommissionPct`).
  *
- * These amounts are intentionally NOT persisted to `lotFees`: that table's
- * `feeId` is a required FK to a real `platformFees` row, and auction defaults
- * are not `platformFees` rows. Keeping the amounts derived (rather than writing
- * fake ledger rows) also makes settlement idempotent by construction — there is
- * nothing to double-insert on a re-run. The read-side fee queries surface them
- * alongside the persisted `platformFees`-sourced rows.
+ * Used for live (unsettled) estimates and by settlement, which persists each
+ * returned line as a `lotFees` row (`source` "auction"/"platform", no `feeId`)
+ * so a settled lot's fees are read back from the ledger, never re-derived.
  *
  * The buyer side comes from the single resolved premium
  * (`resolveBuyerPremium`): it is derived only when that premium has a rate
@@ -107,19 +122,25 @@ export function computeResolvedDefaultFees(
   const fees: ResolvedDefaultFee[] = [];
 
   if (buyerPremium.rate !== undefined) {
+    const fromAuction = buyerPremium.source === "snapshot";
     fees.push({
       appliedTo: "buyer",
+      source: fromAuction ? "auction" : "platform",
+      feeName: fromAuction ? AUCTION_BUYER_FEE_NAME : PLATFORM_BUYER_FEE_NAME,
       rate: buyerPremium.rate,
       calculatedAmount: Math.round(salePrice * buyerPremium.rate * 100) / 100,
     });
   }
 
-  if (lot.resolvedSellerCommissionPct !== undefined) {
+  const sellerCommission = resolveSellerCommission(lot);
+  if (sellerCommission.rate !== undefined) {
     fees.push({
       appliedTo: "seller",
-      rate: lot.resolvedSellerCommissionPct,
+      source: "auction",
+      feeName: AUCTION_SELLER_FEE_NAME,
+      rate: sellerCommission.rate,
       calculatedAmount:
-        Math.round(salePrice * lot.resolvedSellerCommissionPct * 100) / 100,
+        Math.round(salePrice * sellerCommission.rate * 100) / 100,
     });
   }
 
@@ -133,10 +154,18 @@ export function computeResolvedDefaultFees(
  * Includes an idempotency guard to skip duplicate inserts.
  *
  * The buyer premium is applied exactly once (see `resolveBuyerPremium`): the
- * auction snapshot or the platform default (derived, included in the audit
- * total, not persisted to `lotFees` — see `computeResolvedDefaultFees`), or,
- * when neither applies, the active buyer percentage `platformFees` rows.
- * The snapshotted seller commission is derived the same way.
+ * auction snapshot or the platform default, or, when neither applies, the
+ * active buyer percentage `platformFees` rows. The seller commission is applied
+ * exactly once the same way (see `resolveSellerCommission`): the auction
+ * snapshot, or else the active seller percentage rows. Fixed fees stay
+ * additive.
+ *
+ * Everything charged is persisted to `lotFees` (the ledger): fee-row charges
+ * with `source` "fee_row" and a `feeId`, and the resolved snapshot/default
+ * premium and commission with `source` "auction"/"platform" and no `feeId`.
+ * Fee reads of a settled lot use only these rows, so later changes to fee
+ * rows, `buyer_premium_pct` or auction defaults never alter them. Re-running
+ * is idempotent (existing ledger rows are never re-inserted or re-counted).
  *
  * Updates aggregate fee counters (buyerTotal, sellerTotal) for efficient
  * dashboard statistics without full-table scans.
@@ -165,6 +194,11 @@ export async function calculateAndRecordFees(
   const defaultFees = computeResolvedDefaultFees(lot, salePrice, buyerPremium);
   const chargeBuyerSide = (fee: Doc<"platformFees">): boolean =>
     buyerPremium.source === "feeRows" || !isBuyerPercentageFee(fee);
+  // Likewise exactly one seller commission: the auction snapshot, or the active
+  // seller % fee rows. Seller % rows are skipped when the snapshot applies.
+  const sellerCommission = resolveSellerCommission(lot);
+  const chargeSellerSide = (fee: Doc<"platformFees">): boolean =>
+    sellerCommission.source === "feeRows" || !isSellerPercentageFee(fee);
 
   if (activeFees.length === 0 && defaultFees.length === 0) {
     return;
@@ -175,12 +209,20 @@ export async function calculateAndRecordFees(
   let buyerFeesAdded = 0;
   let sellerFeesAdded = 0;
 
+  const existingRows = await ctx.db
+    .query("lotFees")
+    .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
+    .collect();
+
   for (const fee of activeFees) {
     const rawAmount =
       fee.feeType === "percentage" ? salePrice * fee.value : fee.value;
     const calculatedAmount = Math.round(rawAmount * 100) / 100;
 
-    if (fee.appliesTo === "both" || fee.appliesTo === "seller") {
+    if (
+      (fee.appliesTo === "both" || fee.appliesTo === "seller") &&
+      chargeSellerSide(fee)
+    ) {
       const existing = await ctx.db
         .query("lotFees")
         .withIndex("by_lot_fee_applied", (q) =>
@@ -192,6 +234,7 @@ export async function calculateAndRecordFees(
         await ctx.db.insert("lotFees", {
           lotId: lot._id,
           feeId: fee._id,
+          source: "fee_row",
           feeName: fee.name,
           appliedTo: "seller",
           feeType: fee.feeType,
@@ -220,6 +263,7 @@ export async function calculateAndRecordFees(
         await ctx.db.insert("lotFees", {
           lotId: lot._id,
           feeId: fee._id,
+          source: "fee_row",
           feeName: fee.name,
           appliedTo: "buyer",
           feeType: fee.feeType,
@@ -235,6 +279,24 @@ export async function calculateAndRecordFees(
   }
 
   for (const fee of defaultFees) {
+    const alreadyRecorded = existingRows.some(
+      (row) =>
+        row.appliedTo === fee.appliedTo &&
+        (row.source === "auction" || row.source === "platform")
+    );
+    if (alreadyRecorded) continue;
+
+    await ctx.db.insert("lotFees", {
+      lotId: lot._id,
+      source: fee.source,
+      feeName: fee.feeName,
+      appliedTo: fee.appliedTo,
+      feeType: "percentage",
+      rate: fee.rate,
+      salePrice,
+      calculatedAmount: fee.calculatedAmount,
+      createdAt: now,
+    });
     totalFees += fee.calculatedAmount;
     if (fee.appliedTo === "buyer") {
       buyerFeesAdded += fee.calculatedAmount;
@@ -386,6 +448,7 @@ async function closeCompletedAuctions(
       status: "closed",
       updatedAt: now,
     });
+    await deleteAuctionEngagementScores(ctx, auction._id);
   }
 }
 

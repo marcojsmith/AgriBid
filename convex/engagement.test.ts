@@ -753,6 +753,113 @@ describe("refreshEngagementScores", () => {
       await t.mutation(internal.engagement.refreshEngagementScores, {})
     ).toEqual({ auctions: 0, upserted: 0, removed: 0 });
   });
+
+  it("sweeps rows whose auction is closed, a draft or gone", async () => {
+    const t = makeContext();
+    const now = Date.now();
+    const live = await makeAuction(t);
+    const closed = await makeAuction(t, {
+      status: "closed",
+      endTime: now - MS_PER_HOUR,
+    });
+    const draft = await makeAuction(t, { status: "draft" });
+    const gone = await makeAuction(t);
+    await makeLot(t, live, 1);
+    const staleLot = await makeLot(t, closed, 1, "draft");
+    await t.run(async (ctx) => {
+      for (const auctionId of [closed, closed, draft, gone]) {
+        await ctx.db.insert("engagementScores", {
+          lotId: staleLot,
+          auctionId,
+          bids: 1,
+          watchers: 0,
+          views: 0,
+          score: 3,
+          updatedAt: now,
+        });
+      }
+      await ctx.db.delete("auctions", gone);
+    });
+
+    expect(
+      await t.mutation(internal.engagement.refreshEngagementScores, {})
+    ).toEqual({ auctions: 1, upserted: 1, removed: 4 });
+
+    expect((await scoreRows(t)).map((r) => r.auctionId)).toEqual([live]);
+  });
+});
+
+describe("closing an auction deletes its engagement scores", () => {
+  /**
+   * Seeds a published, ended auction with one score row.
+   *
+   * @param t - Test context
+   * @returns The auction id and a second, still-live auction id
+   */
+  async function seedEndedAuction(t: TestContext) {
+    const now = Date.now();
+    const ended = await makeAuction(t, {
+      startTime: now - 2 * MS_PER_DAY,
+      endTime: now - MS_PER_HOUR,
+    });
+    const live = await makeAuction(t);
+    const lot = await makeLot(t, ended, 1, "draft");
+    const liveLot = await makeLot(t, live, 1);
+    await t.run(async (ctx) => {
+      for (const [auctionId, lotId] of [
+        [ended, lot],
+        [live, liveLot],
+      ] as const) {
+        await ctx.db.insert("engagementScores", {
+          lotId,
+          auctionId,
+          bids: 1,
+          watchers: 0,
+          views: 0,
+          score: 3,
+          updatedAt: now,
+        });
+      }
+    });
+    return { ended, live };
+  }
+
+  it("when the settlement cron closes the container", async () => {
+    const t = makeContext();
+    const { ended, live } = await seedEndedAuction(t);
+
+    await t.mutation(internal.auctions.settleExpiredLots, {});
+
+    const auction = await t.run((ctx) => ctx.db.get("auctions", ended));
+    expect(auction?.status).toBe("closed");
+    expect((await scoreRows(t)).map((r) => r.auctionId)).toEqual([live]);
+  });
+
+  it("when an admin closes the container", async () => {
+    const t = makeContext();
+    const { ended, live } = await seedEndedAuction(t);
+    const now = Date.now();
+    await t.run((ctx) =>
+      ctx.db.insert("profiles", {
+        userId: "admin_user",
+        name: "Admin",
+        email: "admin@example.com",
+        role: "admin",
+        isVerified: true,
+        kycStatus: "verified",
+        createdAt: now,
+        updatedAt: now,
+      })
+    );
+
+    await t
+      .withIdentity({ subject: "admin_user" })
+      .mutation(api.auctions.mutations.adminCrud.closeAuctionContainer, {
+        auctionId: ended,
+      });
+
+    expect((await scoreRows(t)).map((r) => r.auctionId)).toEqual([live]);
+  });
 });
 
 describe("getMostEngagedLots", () => {

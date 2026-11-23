@@ -87,6 +87,8 @@ export const LOT_DATA_DELETE_BATCH = 500;
 export const ENGAGEMENT_CANDIDATE_CAP = 100;
 // Live auctions rescored per `refreshEngagementScores` run (soonest-ending first).
 export const ENGAGEMENT_REFRESH_AUCTION_CAP = 5;
+/** Engagement score rows scanned per refresh run when sweeping stale ones. */
+export const ENGAGEMENT_SWEEP_SCAN = 500;
 // Score weights: score = bids * 3 + watchers * 2 + log2(1 + views).
 export const ENGAGEMENT_BID_WEIGHT = 3;
 export const ENGAGEMENT_WATCHER_WEIGHT = 2;

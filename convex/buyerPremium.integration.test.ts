@@ -179,8 +179,15 @@ async function settle(t: TestContext, lotId: Id<"lots">, price: number) {
     return {
       buyerTotal: counter?.buyerTotal ?? 0,
       sellerTotal: counter?.sellerTotal ?? 0,
-      buyerRows: rows.filter((r) => r.appliedTo === "buyer"),
-      sellerRows: rows.filter((r) => r.appliedTo === "seller"),
+      // `platformFees`-backed ledger rows only; the resolved premium and
+      // commission rows (source "auction"/"platform") are in `ledger`.
+      buyerRows: rows.filter(
+        (r) => r.appliedTo === "buyer" && r.feeId !== undefined
+      ),
+      sellerRows: rows.filter(
+        (r) => r.appliedTo === "seller" && r.feeId !== undefined
+      ),
+      ledger: rows,
     };
   });
 }
@@ -509,6 +516,320 @@ describe("fee rows toggled after assignment", () => {
   });
 });
 
+describe("settlement charges exactly one seller commission", () => {
+  it("seeded-shaped lot (snapshot + active seller % row) charges only the snapshot", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    await insertFee(t, {
+      feeType: "percentage",
+      value: 0.05,
+      appliesTo: "seller",
+      isActive: true,
+    });
+    const lotId = await insertLot(t, {
+      resolvedSellerCommissionPct: 0.05,
+      commissionSource: "auction",
+    });
+
+    const result = await settle(t, lotId, 10_000);
+
+    expect(result.sellerTotal).toBe(500);
+    expect(result.sellerRows).toHaveLength(0);
+  });
+
+  it("legacy lot (snapshot, no commissionSource) is treated as auction-sourced", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    await insertFee(t, {
+      feeType: "percentage",
+      value: 0.05,
+      appliesTo: "seller",
+      isActive: true,
+    });
+    const lotId = await insertLot(t, { resolvedSellerCommissionPct: 0.07 });
+
+    const result = await settle(t, lotId, 10_000);
+
+    expect(result.sellerTotal).toBe(700);
+    expect(result.sellerRows).toHaveLength(0);
+  });
+
+  it("no snapshot + active seller % row charges only the row", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    await insertFee(t, {
+      feeType: "percentage",
+      value: 0.05,
+      appliesTo: "seller",
+      isActive: true,
+    });
+    const lotId = await insertLot(t);
+
+    const result = await settle(t, lotId, 10_000);
+
+    expect(result.sellerTotal).toBe(500);
+    expect(result.sellerRows).toHaveLength(1);
+  });
+
+  it("no snapshot and no seller row charges no seller commission", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    const lotId = await insertLot(t);
+
+    const result = await settle(t, lotId, 10_000);
+
+    expect(result.sellerTotal).toBe(0);
+    expect(result.sellerRows).toHaveLength(0);
+  });
+
+  it("a 'both' percentage row still charges the buyer side under a seller snapshot", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    await insertFee(t, {
+      feeType: "percentage",
+      value: 0.02,
+      appliesTo: "both",
+      isActive: true,
+    });
+    const lotId = await insertLot(t, {
+      resolvedSellerCommissionPct: 0.05,
+      commissionSource: "auction",
+      resolvedBuyerPremiumPct: 0.12,
+      premiumSource: "platform",
+    });
+
+    const result = await settle(t, lotId, 10_000);
+
+    // Seller: snapshot only (the both-row's seller half is ignored).
+    expect(result.sellerTotal).toBe(500);
+    expect(result.sellerRows).toHaveLength(0);
+    // Buyer: the both-row is the premium (platform-sourced snapshot yields).
+    expect(result.buyerTotal).toBe(200);
+  });
+
+  it("fixed seller fees stay additive to the snapshot commission", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    await insertFee(t, {
+      feeType: "fixed",
+      value: 75,
+      appliesTo: "seller",
+      isActive: true,
+    });
+    const lotId = await insertLot(t, {
+      resolvedSellerCommissionPct: 0.05,
+      commissionSource: "auction",
+    });
+
+    const result = await settle(t, lotId, 10_000);
+
+    expect(result.sellerTotal).toBe(575);
+    expect(result.sellerRows).toHaveLength(1);
+  });
+
+  describe("fee rows toggled after assignment", () => {
+    /**
+     * Assigns an approved lot through the real mutation.
+     *
+     * @param t - The convex-test context.
+     * @param auctionCommission - The auction's own seller commission, if any.
+     * @returns The assigned lot id.
+     */
+    async function assign(
+      t: TestContext,
+      auctionCommission?: number
+    ): Promise<Id<"lots">> {
+      await seedProfiles(t);
+      const auctionId = await t.run(async (ctx) =>
+        ctx.db.insert("auctions", {
+          title: "Sale",
+          status: "draft",
+          startTime: Date.now() + 60_000,
+          endTime: Date.now() + 600_000,
+          defaultSellerCommissionPct: auctionCommission,
+          createdBy: ADMIN,
+          createdAt: 1,
+          updatedAt: 1,
+        })
+      );
+      const lotId = await insertLot(t, {
+        status: "approved",
+        winnerId: undefined,
+      });
+      await asAdmin(t).mutation(
+        api.auctions.mutations.assignment.assignLotToAuction,
+        { lotId, auctionId }
+      );
+      return lotId;
+    }
+
+    it("assignment records commissionSource 'auction' only when the auction sets a commission", async () => {
+      const withCommission = createTestContext();
+      const lotA = await assign(withCommission, 0.06);
+      const a = await withCommission.run(async (ctx) =>
+        ctx.db.get("lots", lotA)
+      );
+      expect(a?.resolvedSellerCommissionPct).toBe(0.06);
+      expect(a?.commissionSource).toBe("auction");
+
+      const without = createTestContext();
+      const lotB = await assign(without);
+      const b = await without.run(async (ctx) => ctx.db.get("lots", lotB));
+      expect(b?.resolvedSellerCommissionPct).toBeUndefined();
+      expect(b?.commissionSource).toBeUndefined();
+    });
+
+    it("auction-sourced lot ignores a seller % row activated after assignment", async () => {
+      const t = createTestContext();
+      const lotId = await assign(t, 0.06);
+      await insertFee(t, {
+        feeType: "percentage",
+        value: 0.05,
+        appliesTo: "seller",
+        isActive: true,
+      });
+
+      const result = await settle(t, lotId, 10_000);
+
+      expect(result.sellerTotal).toBe(600);
+      expect(result.sellerRows).toHaveLength(0);
+    });
+
+    it("lot without an auction commission picks up a seller % row activated after assignment", async () => {
+      const t = createTestContext();
+      const lotId = await assign(t);
+      await insertFee(t, {
+        feeType: "percentage",
+        value: 0.05,
+        appliesTo: "seller",
+        isActive: true,
+      });
+
+      const result = await settle(t, lotId, 10_000);
+
+      expect(result.sellerTotal).toBe(500);
+      expect(result.sellerRows).toHaveLength(1);
+    });
+  });
+});
+
+describe("getLotFeesForUser charges exactly one seller commission", () => {
+  /**
+   * Reads the seller's fee view of a lot.
+   *
+   * @param t - The convex-test context.
+   * @param lotId - The lot.
+   * @returns The caller's buyer and seller fee lines.
+   */
+  const sellerFees = (t: TestContext, lotId: Id<"lots">) =>
+    t.withIdentity({ subject: SELLER }).query(api.admin.getLotFeesForUser, {
+      lotId,
+    });
+
+  /**
+   * Persists a seller % lotFees row as settlement would have.
+   *
+   * @param t - The convex-test context.
+   * @param lotId - The lot.
+   * @param feeId - The platform fee row.
+   */
+  async function insertSellerLotFee(
+    t: TestContext,
+    lotId: Id<"lots">,
+    feeId: Id<"platformFees">
+  ): Promise<void> {
+    await t.run(async (ctx) => {
+      await ctx.db.insert("lotFees", {
+        lotId,
+        feeId,
+        feeName: "seller percentage fee",
+        appliedTo: "seller",
+        feeType: "percentage",
+        rate: 0.05,
+        salePrice: 10_000,
+        calculatedAmount: 500,
+        createdAt: 1,
+      });
+    });
+  }
+
+  it("auction snapshot, no ledger rows: one derived live line", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    const lotId = await insertLot(t, {
+      status: "assigned",
+      resolvedSellerCommissionPct: 0.06,
+      commissionSource: "auction",
+    });
+
+    const fees = await sellerFees(t, lotId);
+
+    expect(fees.sellerFees).toEqual([
+      {
+        feeName: "Auction Seller Commission",
+        feeType: "percentage",
+        rate: 0.06,
+        calculatedAmount: 600,
+      },
+    ]);
+  });
+
+  it("with a persisted ledger row the ledger wins over the snapshot", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    const feeId = await insertFee(t, {
+      feeType: "percentage",
+      value: 0.05,
+      appliesTo: "seller",
+      isActive: true,
+    });
+    const lotId = await insertLot(t, {
+      resolvedSellerCommissionPct: 0.06,
+      commissionSource: "auction",
+    });
+    await insertSellerLotFee(t, lotId, feeId);
+
+    const fees = await sellerFees(t, lotId);
+
+    expect(fees.sellerFees).toHaveLength(1);
+    expect(fees.sellerFees[0]).toMatchObject({
+      feeName: "seller percentage fee",
+      calculatedAmount: 500,
+    });
+  });
+
+  it("no snapshot: only the persisted seller % row", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    const feeId = await insertFee(t, {
+      feeType: "percentage",
+      value: 0.05,
+      appliesTo: "seller",
+      isActive: true,
+    });
+    const lotId = await insertLot(t);
+    await insertSellerLotFee(t, lotId, feeId);
+
+    const fees = await sellerFees(t, lotId);
+
+    expect(fees.sellerFees).toHaveLength(1);
+    expect(fees.sellerFees[0]).toMatchObject({
+      feeName: "seller percentage fee",
+      calculatedAmount: 500,
+    });
+  });
+
+  it("no snapshot and no row: no seller fees", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    const lotId = await insertLot(t);
+
+    const fees = await sellerFees(t, lotId);
+
+    expect(fees.sellerFees).toEqual([]);
+  });
+});
+
 describe("resolveBuyerPremium", () => {
   it("falls through to the platform default when an auction-sourced lot lacks a snapshot", async () => {
     const t = createTestContext();
@@ -535,7 +856,7 @@ describe("resolveBuyerPremium", () => {
 });
 
 describe("getLotFeesForUser charges exactly one buyer premium", () => {
-  it("auction snapshot: one derived line, a persisted buyer % row is hidden", async () => {
+  it("with a persisted ledger row the ledger wins over the auction snapshot", async () => {
     const t = createTestContext();
     await seedProfiles(t);
     const feeId = await insertFee(t, {
@@ -560,6 +881,30 @@ describe("getLotFeesForUser charges exactly one buyer premium", () => {
         calculatedAmount: 500,
         createdAt: 1,
       });
+    });
+
+    const fees = await winnerFees(t, lotId);
+
+    expect(fees.buyerFees).toHaveLength(1);
+    expect(fees.buyerFees[0]).toMatchObject({
+      feeName: "buyer percentage fee",
+      calculatedAmount: 500,
+    });
+  });
+
+  it("auction snapshot, unsettled lot: one derived live line", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    await insertFee(t, {
+      feeType: "percentage",
+      value: 0.05,
+      appliesTo: "buyer",
+      isActive: true,
+    });
+    const lotId = await insertLot(t, {
+      status: "assigned",
+      resolvedBuyerPremiumPct: 0.12,
+      premiumSource: "auction",
     });
 
     const fees = await winnerFees(t, lotId);
@@ -615,6 +960,7 @@ describe("getLotFeesForUser charges exactly one buyer premium", () => {
     await seedProfiles(t);
     await setPlatformPremium(t, 9);
     const lotId = await insertLot(t, {
+      status: "assigned",
       resolvedBuyerPremiumPct: 0.12,
       premiumSource: "platform",
     });
@@ -629,6 +975,276 @@ describe("getLotFeesForUser charges exactly one buyer premium", () => {
         calculatedAmount: 900,
       },
     ]);
+  });
+});
+
+describe("settled lots read fees from the persisted ledger only", () => {
+  const sellerView = (t: TestContext, lotId: Id<"lots">) =>
+    t.withIdentity({ subject: SELLER }).query(api.admin.getLotFeesForUser, {
+      lotId,
+    });
+
+  /**
+   * Settles a snapshot-sourced lot plus a fixed fee and returns what both
+   * parties see right after settlement.
+   *
+   * @param t - The convex-test context.
+   * @returns The lot id, the fixed fee id and both parties' fee views.
+   */
+  async function settleWithSnapshots(t: TestContext) {
+    await seedProfiles(t);
+    const fixedId = await insertFee(t, {
+      feeType: "fixed",
+      value: 50,
+      appliesTo: "both",
+      isActive: true,
+    });
+    const auctionId = await t.run(async (ctx) =>
+      ctx.db.insert("auctions", {
+        title: "Sale",
+        status: "published",
+        startTime: 1,
+        endTime: 2,
+        defaultBuyerPremiumPct: 0.12,
+        defaultSellerCommissionPct: 0.05,
+        createdBy: ADMIN,
+        createdAt: 1,
+        updatedAt: 1,
+      })
+    );
+    const lotId = await insertLot(t, {
+      auctionId,
+      resolvedBuyerPremiumPct: 0.12,
+      premiumSource: "auction",
+      resolvedSellerCommissionPct: 0.05,
+      commissionSource: "auction",
+      settledAt: 1,
+    });
+    await settle(t, lotId, 10_000);
+    return {
+      lotId,
+      auctionId,
+      fixedId,
+      buyer: await winnerFees(t, lotId),
+      seller: await sellerView(t, lotId),
+    };
+  }
+
+  it("persists the premium and commission as ledger rows with their source", async () => {
+    const t = createTestContext();
+    const { lotId } = await settleWithSnapshots(t);
+
+    const rows = await t.run(async (ctx) =>
+      ctx.db
+        .query("lotFees")
+        .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+        .collect()
+    );
+    const premium = rows.filter(
+      (r) => r.appliedTo === "buyer" && r.source === "auction"
+    );
+    const commission = rows.filter(
+      (r) => r.appliedTo === "seller" && r.source === "auction"
+    );
+    expect(premium).toHaveLength(1);
+    expect(premium[0]).toMatchObject({
+      feeName: "Auction Buyer Premium",
+      rate: 0.12,
+      salePrice: 10_000,
+      calculatedAmount: 1200,
+    });
+    expect(premium[0]?.feeId).toBeUndefined();
+    expect(commission).toHaveLength(1);
+    expect(commission[0]?.calculatedAmount).toBe(500);
+    expect(rows.filter((r) => r.source === "fee_row")).toHaveLength(2);
+  });
+
+  it("re-running settlement neither duplicates rows nor re-counts totals", async () => {
+    const t = createTestContext();
+    const { lotId } = await settleWithSnapshots(t);
+
+    const again = await settle(t, lotId, 10_000);
+
+    expect(again.ledger).toHaveLength(4);
+    expect(again.buyerTotal).toBe(1250);
+    expect(again.sellerTotal).toBe(550);
+  });
+
+  it("is unchanged by toggling buyer % fee rows, premium setting, seller rows and auction default", async () => {
+    const t = createTestContext();
+    const { lotId, auctionId, fixedId, buyer, seller } =
+      await settleWithSnapshots(t);
+    expect(buyer.buyerFees.map((f) => f.calculatedAmount)).toEqual([50, 1200]);
+    expect(seller.sellerFees.map((f) => f.calculatedAmount)).toEqual([50, 500]);
+
+    // (a) buyer % rows toggled active (and the fixed row deactivated)
+    const buyerPct = await insertFee(t, {
+      feeType: "percentage",
+      value: 0.2,
+      appliesTo: "buyer",
+      isActive: true,
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.patch("platformFees", fixedId, { isActive: false });
+    });
+    expect(await winnerFees(t, lotId)).toEqual(buyer);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("platformFees", buyerPct, { isActive: false });
+    });
+    expect(await winnerFees(t, lotId)).toEqual(buyer);
+
+    // (b) platform default premium changed
+    await setPlatformPremium(t, 30);
+    expect(await winnerFees(t, lotId)).toEqual(buyer);
+
+    // (c) seller % rows toggled
+    const sellerPct = await insertFee(t, {
+      feeType: "percentage",
+      value: 0.4,
+      appliesTo: "seller",
+      isActive: true,
+    });
+    expect(await sellerView(t, lotId)).toEqual(seller);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("platformFees", sellerPct, { isActive: false });
+    });
+    expect(await sellerView(t, lotId)).toEqual(seller);
+
+    // (d) the auction default changes
+    await t.run(async (ctx) => {
+      await ctx.db.patch("auctions", auctionId, {
+        defaultBuyerPremiumPct: 0.5,
+        defaultSellerCommissionPct: 0.5,
+      });
+    });
+    expect(await winnerFees(t, lotId)).toEqual(buyer);
+    expect(await sellerView(t, lotId)).toEqual(seller);
+  });
+
+  it("platform-default premium charged at settlement stays after the default changes", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    await setPlatformPremium(t, 9);
+    const lotId = await insertLot(t, { settledAt: 1 });
+    await settle(t, lotId, 10_000);
+
+    await setPlatformPremium(t, 20);
+
+    expect((await winnerFees(t, lotId)).buyerFees).toEqual([
+      {
+        feeName: "Buyer Premium",
+        feeType: "percentage",
+        rate: 0.09,
+        calculatedAmount: 900,
+      },
+    ]);
+  });
+
+  it("a fee-row premium settled earlier still shows after its row is deactivated", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    const feeId = await insertFee(t, {
+      feeType: "percentage",
+      value: 0.05,
+      appliesTo: "buyer",
+      isActive: true,
+    });
+    const lotId = await insertLot(t, { settledAt: 1 });
+    await settle(t, lotId, 10_000);
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch("platformFees", feeId, {
+        isActive: false,
+        deletedAt: 5,
+      });
+    });
+
+    const fees = await winnerFees(t, lotId);
+    expect(fees.buyerFees).toHaveLength(1);
+    expect(fees.buyerFees[0]).toMatchObject({ calculatedAmount: 500 });
+  });
+
+  it("a settled legacy lot with no ledger rows falls back to its snapshots", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    const auctionLot = await insertLot(t, {
+      resolvedBuyerPremiumPct: 0.1,
+      premiumSource: "auction",
+      resolvedSellerCommissionPct: 0.04,
+      settledAt: 1,
+    });
+    const platformLot = await insertLot(t, {
+      resolvedBuyerPremiumPct: 0.12,
+      premiumSource: "platform",
+      settledAt: 1,
+    });
+    const bareLot = await insertLot(t, { settledAt: 1 });
+    await setPlatformPremium(t, 30);
+
+    expect(await winnerFees(t, auctionLot)).toEqual({
+      buyerFees: [
+        {
+          feeName: "Auction Buyer Premium",
+          feeType: "percentage",
+          rate: 0.1,
+          calculatedAmount: 1000,
+        },
+      ],
+      sellerFees: [
+        {
+          feeName: "Auction Seller Commission",
+          feeType: "percentage",
+          rate: 0.04,
+          calculatedAmount: 400,
+        },
+      ],
+    });
+    expect((await winnerFees(t, platformLot)).buyerFees).toEqual([
+      {
+        feeName: "Buyer Premium",
+        feeType: "percentage",
+        rate: 0.12,
+        calculatedAmount: 1200,
+      },
+    ]);
+    // Never re-resolves the live platform default for a settled lot.
+    expect(await winnerFees(t, bareLot)).toEqual({
+      buyerFees: [],
+      sellerFees: [],
+    });
+  });
+
+  it("a lot with only a legacy fixed buyer row still gets its snapshot premium line", async () => {
+    const t = createTestContext();
+    await seedProfiles(t);
+    const feeId = await insertFee(t, {
+      feeType: "fixed",
+      value: 50,
+      appliesTo: "buyer",
+      isActive: false,
+    });
+    const lotId = await insertLot(t, {
+      resolvedBuyerPremiumPct: 0.1,
+      premiumSource: "auction",
+      settledAt: 1,
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.insert("lotFees", {
+        lotId,
+        feeId,
+        feeName: "legacy fixed",
+        appliedTo: "buyer",
+        feeType: "fixed",
+        rate: 50,
+        salePrice: 10_000,
+        calculatedAmount: 50,
+        createdAt: 1,
+      });
+    });
+
+    const fees = await winnerFees(t, lotId);
+
+    expect(fees.buyerFees.map((f) => f.calculatedAmount)).toEqual([50, 1000]);
   });
 });
 

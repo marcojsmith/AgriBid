@@ -21,7 +21,10 @@ import type { MutationCtx } from "../../_generated/server";
  *   snapshotted: from the auction with `premiumSource: "auction"`, otherwise
  *   the platform default (percent -> fraction, 4 dp) with `premiumSource:
  *   "platform"`. Settlement decides which premium actually applies (see
- *   `resolveBuyerPremium`), so the buyer is never charged twice.
+ *   `resolveBuyerPremium`), so the buyer is never charged twice. The seller
+ *   commission is snapshotted only when the auction sets one, with
+ *   `commissionSource: "auction"`; it then replaces active seller % fee rows
+ *   (see `resolveSellerCommission`).
  * - the seller's VAT status and type from their profile (unset stays
  *   undefined, i.e. unknown, which is treated as VAT-registered).
  *
@@ -76,6 +79,10 @@ export const assignLotToAuctionHandler = async (
     resolvedBuyerPremiumPct,
     premiumSource,
     resolvedSellerCommissionPct: auction.defaultSellerCommissionPct,
+    commissionSource:
+      auction.defaultSellerCommissionPct !== undefined
+        ? ("auction" as const)
+        : undefined,
     sellerVatRegistered: sellerProfile?.vatRegistered,
     sellerType: sellerProfile?.sellerType,
   });

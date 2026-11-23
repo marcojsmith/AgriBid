@@ -9,7 +9,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { internal } from "./_generated/api";
-import { BID_COUNT_BACKFILL_BATCH } from "./migrations";
+import {
+  BID_COUNT_BACKFILL_BATCH,
+  BID_COUNT_PAGE_SIZE,
+  BID_COUNT_READ_BUDGET,
+} from "./migrations";
 import { bidCounterName, getBidCount } from "./lib/lotCounters";
 import schema from "./schema";
 import type { Id } from "./_generated/dataModel";
@@ -178,6 +182,63 @@ describe("migrations:backfillBidCounts", () => {
     for (const lotId of lotIds) {
       expect(await counterTotal(t, lotId)).toBe(1);
     }
+  });
+
+  it("counts a lot with more bids than a page across bounded reschedules", async () => {
+    vi.useFakeTimers();
+    const t = createTestContext();
+    const big = await insertLot(t);
+    const small = await insertLot(t);
+    const total = BID_COUNT_READ_BUDGET + BID_COUNT_PAGE_SIZE + 7;
+    const statuses: ("valid" | "voided" | undefined)[] = Array.from(
+      { length: total },
+      (_, i) => (i % 10 === 0 ? "voided" : "valid")
+    );
+    const expectedValid = statuses.filter((s) => s !== "voided").length;
+    await insertBids(t, big, statuses);
+    await insertBids(t, small, ["valid", "valid"]);
+
+    const first = await t.mutation(internal.migrations.backfillBidCounts, {});
+
+    // The budget is spent mid-lot: nothing finished, a continuation is queued
+    // and no counter has been written with a partial value yet.
+    expect(first).toMatchObject({ processed: 0, updated: 0, isDone: false });
+    expect(first.bidsCounted).toBeLessThanOrEqual(BID_COUNT_READ_BUDGET);
+    expect(await counterTotal(t, big)).toBeNull();
+
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    expect(await counterTotal(t, big)).toBe(expectedValid);
+    expect(await counterTotal(t, small)).toBe(2);
+
+    const rerun = await t.mutation(internal.migrations.backfillBidCounts, {});
+    expect(rerun.updated).toBe(0);
+  });
+
+  it("resumes at the carried lot index with a partial total", async () => {
+    const t = createTestContext();
+    const lotId = await insertLot(t);
+    await insertBids(t, lotId, ["valid", "valid", "voided"]);
+    const afterTimestamp = await t.run(async (ctx) => {
+      const [first] = await ctx.db
+        .query("bids")
+        .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+        .take(1);
+      return first.timestamp;
+    });
+
+    // Pretend the first bid (valid) was already read and counted: 41 + the
+    // one remaining valid bid.
+    const result = await t.mutation(internal.migrations.backfillBidCounts, {
+      cursor: null,
+      lotIndex: 0,
+      afterTimestamp,
+      skipAtTimestamp: 1,
+      partialValid: 41,
+    });
+
+    expect(result.updated).toBe(1);
+    expect(await counterTotal(t, lotId)).toBe(42);
   });
 
   it("accepts an explicit cursor", async () => {

@@ -46,6 +46,7 @@ type SeedTableNames =
   | "equipmentCategories"
   | "counters"
   | "lotViewers"
+  | "engagementScores"
   | "proxy_bids"
   | "reviews"
   | "conversations"
@@ -241,8 +242,9 @@ function mockPhotoSet(urls: readonly string[]): MockPhotoSet {
 const BATCH_SIZE = 500;
 
 /**
- * Deletes the `lotNumber:*` and `watchers:*` counters, which are scoped to
- * lots and auctions that no longer exist after a lots/auctions clear.
+ * Deletes the `lotNumber:*`, `watchers:*`, `bids:*`, `views:*` and
+ * `anonviews:*` counters, which are scoped to lots and auctions that no longer
+ * exist after a lots/auctions clear.
  *
  * @param ctx - Mutation context.
  */
@@ -250,6 +252,7 @@ async function clearLotScopedCounters(ctx: MutationCtx): Promise<void> {
   for (const [from, to] of [
     ["lotNumber:", "lotNumber;"],
     ["watchers:", "watchers;"],
+    ["bids:", "bids;"],
     ["views:", "views;"],
     ["anonviews:", "anonviews;"],
   ] as const) {
@@ -1511,6 +1514,11 @@ async function performSeed(
   // 2.8. Seed Platform Fees (only when the table is empty)
   const existingFee = await ctx.db.query("platformFees").first();
   if (!existingFee) {
+    // Inserted INACTIVE on purpose. Seeded lots carry an auction-sourced 5%
+    // commission snapshot, which is the one seller commission; an active seller
+    // % row would be ignored for them anyway (and charging both would double
+    // charge). Keeping it inactive documents the rule and lets an admin switch
+    // the platform to fee-row commissions deliberately.
     await ctx.db.insert("platformFees", {
       name: "Seller Commission",
       description: "Percentage fee charged to sellers on successful sales.",
@@ -1518,7 +1526,7 @@ async function performSeed(
       // Percentage fee values are fractions (0.05 = 5%).
       value: 0.05,
       appliesTo: "seller",
-      isActive: true,
+      isActive: false,
       visibleToBuyer: true,
       visibleToSeller: true,
       sortOrder: 1,
@@ -2467,6 +2475,7 @@ async function performSeed(
       resolvedSellerCommissionPct: event
         ? MOCK_DEFAULT_SELLER_COMMISSION_PCT
         : undefined,
+      commissionSource: event ? ("auction" as const) : undefined,
     };
 
     if (!existing) {
@@ -3180,6 +3189,7 @@ export const runSeed = mutation({
         "lotFees",
         "counters",
         "lotViewers",
+        "engagementScores",
         "equipmentMetadata",
         "equipmentCategories",
       ];
@@ -3230,6 +3240,7 @@ export const clearAuctions = mutation({
     // Watch rows and per-lot / per-sale counters belong to the lots just deleted.
     await clearTable(ctx, "watchlist");
     await clearTable(ctx, "lotViewers");
+    await clearTable(ctx, "engagementScores");
     await clearLotScopedCounters(ctx);
     const auctionsCount = await clearAuctionsTableWithStorage(ctx);
     const lotFeesCount = await clearTable(ctx, "lotFees");
@@ -3270,6 +3281,7 @@ export const clearAllData = mutation({
       "watchlist",
       "counters",
       "lotViewers",
+      "engagementScores",
       "equipmentMetadata",
       "lotFees",
     ];
@@ -3344,6 +3356,7 @@ export const weeklyReset = internalMutation({
       "lotFees",
       "counters",
       "lotViewers",
+      "engagementScores",
     ];
     for (const tableName of tablesToClear) {
       const deletedCount = await clearTable(ctx, tableName);

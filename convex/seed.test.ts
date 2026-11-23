@@ -227,6 +227,41 @@ describe("Seed Coverage", () => {
     return { adminId, buyerId, sellerId };
   }
 
+  /** Inserts engagement score rows and lot-scoped counters of a deleted lot. */
+  function insertStaleEngagementData(): void {
+    mockDb.db.insert("engagementScores", {
+      lotId: "gone",
+      auctionId: "gone-auction",
+      bids: 1,
+      watchers: 1,
+      views: 1,
+      score: 5,
+      updatedAt: 1,
+    });
+    for (const name of [
+      "bids:gone",
+      "views:gone",
+      "anonviews:gone",
+      "watchers:gone",
+    ]) {
+      mockDb.db.insert("counters", { name, total: 4 });
+    }
+  }
+
+  /** Asserts the data from `insertStaleEngagementData` was removed. */
+  function expectStaleEngagementDataGone(): void {
+    expect(mockDb.rows("engagementScores")).toEqual([]);
+    const names = mockDb.rows("counters").map((c) => c.name);
+    for (const name of [
+      "bids:gone",
+      "views:gone",
+      "anonviews:gone",
+      "watchers:gone",
+    ]) {
+      expect(names).not.toContain(name);
+    }
+  }
+
   function snapshotCounts(): Record<string, number> {
     const tables = [
       "auctions",
@@ -554,6 +589,7 @@ describe("Seed Coverage", () => {
         viewerKey: "s:stale-session",
         lastViewedAt: 1,
       });
+      insertStaleEngagementData();
 
       await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {
         clear: true,
@@ -564,6 +600,7 @@ describe("Seed Coverage", () => {
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("stale-report");
       expect(mockCtx.storage.delete).toHaveBeenCalledWith("stale-video");
       expect(mockDb.rows("lotViewers")).toEqual([]);
+      expect(mockDb.rows("engagementScores")).toEqual([]);
 
       // Tables listed for clearing end up repopulated by the seed itself.
       expect(mockDb.rows("equipmentCategories").length).toBeGreaterThan(0);
@@ -604,6 +641,25 @@ describe("Seed Coverage", () => {
       for (const lot of saleLots) {
         expect(lot.resolvedBuyerPremiumPct).toBe(0.12);
         expect(lot.premiumSource).toBe("auction");
+      }
+    });
+
+    it("keeps the seeded seller commission to one 5% rule: inactive fee row, auction-sourced lot snapshots", async () => {
+      vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+      seedExistingProfiles();
+
+      await handlerOf(runSeed)(mockCtx as unknown as MutationCtx, {});
+
+      const sellerRow = mockDb
+        .rows("platformFees")
+        .find((f) => f.appliesTo === "seller");
+      expect(sellerRow?.isActive).toBe(false);
+
+      const saleLots = mockDb.rows("lots").filter((l) => l.auctionId);
+      expect(saleLots.length).toBeGreaterThan(0);
+      for (const lot of saleLots) {
+        expect(lot.resolvedSellerCommissionPct).toBe(0.05);
+        expect(lot.commissionSource).toBe("auction");
       }
     });
 
@@ -748,6 +804,15 @@ describe("Seed Coverage", () => {
       await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
 
       expect(mockDb.rows("lotViewers")).toEqual([]);
+    });
+
+    it("clears stale engagement scores and every lot-scoped counter", async () => {
+      seedExistingProfiles();
+      insertStaleEngagementData();
+
+      await handlerOf(weeklyReset)(mockCtx as unknown as MutationCtx, {});
+
+      expectStaleEngagementDataGone();
     });
 
     it("sweeps KYC document blobs when deleting non-admin profiles", async () => {
@@ -964,6 +1029,18 @@ describe("Seed Coverage", () => {
         expect(mockDb.rows("counters")).toEqual([]);
       });
 
+      it("clears bid counters and engagement scores with the lots", async () => {
+        process.env.NODE_ENV = "production";
+        delete process.env.ALLOW_DEV_SEED;
+        vi.mocked(auth.getCallerRole).mockResolvedValue("admin");
+        insertStaleEngagementData();
+
+        await handlerOf(clearAuctions)(mockCtx as unknown as MutationCtx, {});
+
+        expect(mockDb.rows("counters")).toEqual([]);
+        expectStaleEngagementDataGone();
+      });
+
       it("denies non-admin", async () => {
         process.env.NODE_ENV = "development";
         delete process.env.ALLOW_DEV_SEED;
@@ -1030,6 +1107,7 @@ describe("Seed Coverage", () => {
 
         expect(typeof deleted).toBe("number");
         expect(mockDb.rows("lotViewers")).toEqual([]);
+        expect(mockDb.rows("engagementScores")).toEqual([]);
         expect(mockDb.rows("profiles").length).toBe(0);
         expect(mockDb.rows("auctions").length).toBe(0);
         expect(mockDb.rows("lots").length).toBe(0);

@@ -266,7 +266,7 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
     ]);
   });
 
-  it("excludes fees tied to an inactive platform fee", async () => {
+  it("keeps ledger rows tied to an inactive platform fee and never resolves live settings", async () => {
     vi.mocked(auth.getAuthUser).mockResolvedValue({
       _id: sellerId,
       userId: sellerId,
@@ -312,18 +312,19 @@ describe("getLotFeesForUser (IDOR regression, #295)", () => {
 
     const result = await getLotFeesForUserHandler(ctx, { lotId });
 
-    // The inactive seller row is dropped; the lot has no snapshot and no active
-    // buyer % rows, so only the (zero-value at price 0) platform premium remains.
+    // The lot has ledger rows, so it is settled: the persisted row is shown as
+    // charged (its platform fee is inactive/absent) and no live platform
+    // premium is resolved.
     expect(result).toEqual({
-      buyerFees: [
+      buyerFees: [],
+      sellerFees: [
         {
-          feeName: "Buyer Premium",
-          feeType: "percentage",
-          rate: 0.12,
-          calculatedAmount: 0,
+          feeName: "Stale Fee",
+          feeType: "fixed",
+          rate: 100,
+          calculatedAmount: 100,
         },
       ],
-      sellerFees: [],
     });
   });
 

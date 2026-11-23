@@ -93,10 +93,17 @@ export default defineSchema({
     // Snapshot of the parent auction's fee defaults at assignment time, so later auction edits don't change an already-assigned lot's fees.
     resolvedBuyerPremiumPct: v.optional(v.number()),
     resolvedSellerCommissionPct: v.optional(v.number()),
+    // Where `resolvedSellerCommissionPct` came from. Only "auction" exists: the
+    // snapshot is the single seller commission (active seller % platformFees
+    // rows are ignored). Undefined on legacy lots (their snapshot also came
+    // from the auction). There is no platform commission default.
+    commissionSource: v.optional(v.literal("auction")),
     // Where `resolvedBuyerPremiumPct` came from. "auction": the snapshot is the
     // single buyer premium (active buyer % platformFees rows are ignored).
-    // "platform": informational only; settlement uses active buyer % fee rows
-    // if any, else the platform default read at settlement time. Undefined on
+    // "platform": informational only (kept for audit and as the display
+    // fallback for legacy settled lots with no ledger row); live estimates and
+    // settlement use active buyer % fee rows if any, else the platform default
+    // read at that moment, and settlement persists it to `lotFees`. Undefined on
     // legacy lots (a legacy snapshot always came from the auction).
     premiumSource: v.optional(
       v.union(v.literal("auction"), v.literal("platform"))
@@ -569,9 +576,19 @@ export default defineSchema({
     .index("by_sortOrder", ["sortOrder"]),
 
   // Lot Fee Ledger - records fees calculated per lot at settlement
+  // Settlement ledger: exactly what was charged on a settled lot. Fee reads of
+  // a settled lot use ONLY these rows (never live fee settings).
+  // `source` says where a row came from: "fee_row" (an active `platformFees`
+  // row; `feeId` set), "auction" (the lot's auction snapshot premium or
+  // commission) or "platform" (the platform default premium read at
+  // settlement). Auction/platform rows have no `feeId`. Rows written before
+  // `source` existed have it undefined and are always fee rows.
   lotFees: defineTable({
     lotId: v.id("lots"),
-    feeId: v.id("platformFees"),
+    feeId: v.optional(v.id("platformFees")),
+    source: v.optional(
+      v.union(v.literal("auction"), v.literal("fee_row"), v.literal("platform"))
+    ),
     feeName: v.string(),
     appliedTo: v.union(v.literal("buyer"), v.literal("seller")),
     feeType: v.union(v.literal("percentage"), v.literal("fixed")),
