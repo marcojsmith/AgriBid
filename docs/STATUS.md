@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-11-21
+Last updated: 2026-11-23
 
 ## How to keep this file useful
 
@@ -14,6 +14,7 @@ Last updated: 2026-11-21
 
 ## In progress
 
+- Branch `feat/ds-foundations-v2` (track `improve-screen-mockups`, phase 2 D1): design foundations from the confirmed kit: token updates, date format without SAST, relative close helper, new and changed `ds/` components, `/design-system` demos, design-system.md + decisions.md. No backend change, nothing to deploy. D2 (data and settings) is next; pages follow.
 - Branch `feat/legal-pages` (track `improve-screen-mockups`, WP4c): new `legalPages` table (run `bunx convex deploy`), `/terms`, `/privacy`, `/paia` and the admin editor at `/admin/legal`. Starter drafts are created by `seed:weeklyReset` (or the "Create starter drafts" button) and stay **unpublished**: an admin must complete the text, have it legally reviewed, then publish it; the footer links appear only after that. Adds `react-markdown` 10.1.0. WP4b (#403) is merged.
 - Branch `feat/closing-soon-strip` (track `improve-screen-mockups`, WP4b): public query `getClosingSoonLots` (new index `auctions.by_status_endTime`, run `bunx convex deploy`) and the Home "Closing in the next 24 hours" lot strip. No migration; run `seed:weeklyReset` only to refresh local demo data. WP4 (#402) is merged; categories on Home are still a follow-up.
 - Branch `feat/lot-number-province-watchers` (track `improve-screen-mockups`, WP3b): `lots.lotNumber` + `lots.province`, `profiles.sellerResponseTime`, per-lot watcher counters, two backfill migrations (`migrations:backfillLotNumbers`, `migrations:backfillWatcherCounts`; run once after deploy), wizard province field, admin controls. **Run both migrations immediately after deploy**: until `backfillLotNumbers` runs, existing lots have no number and new assignments start at 1 ahead of older lots (breaking creation order); until `backfillWatcherCounts` runs, watcher counts for already-watched lots are 0. WP2 (#398) and WP3a (#399) are merged.

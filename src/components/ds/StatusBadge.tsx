@@ -1,5 +1,5 @@
 import { cva } from "class-variance-authority";
-import { CheckCircle2, Clock, MinusCircle } from "lucide-react";
+import { CheckCircle2, Clock, Info, MinusCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { formatSastDate } from "@/lib/dates";
@@ -79,15 +79,22 @@ function describeStatus(status: DisplayStatus): {
     case "passed":
       return {
         tone: "passed",
-        label: "Passed in",
+        label: "Not sold",
         icon: <MinusCircle aria-hidden="true" />,
+      };
+    case "under-consideration":
+      return {
+        tone: "passed",
+        label: "Under consideration",
+        icon: <Info aria-hidden="true" />,
       };
   }
 }
 
 /**
  * The single status indicator for auctions and lots: Live, Opens {date},
- * Closing soon (urgent inside the last hour), Sold, Passed in.
+ * Closing soon (urgent inside the last 10 minutes), Sold, Not sold, Under
+ * consideration.
  *
  * Use it anywhere an auction or lot shows its state. Do not hand-roll badges
  * from `Badge` colours for status.

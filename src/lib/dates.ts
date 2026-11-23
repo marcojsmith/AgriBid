@@ -16,11 +16,12 @@ const MONTHS = [
 ] as const;
 
 /**
- * Formats a timestamp as an absolute South African time: `Sat 22 Nov, 10:00 SAST`.
+ * Formats a timestamp as an absolute South African time: `Tue 25 Nov, 11:00`.
  *
  * South Africa (Africa/Johannesburg) is UTC+2 all year with no daylight
  * saving, so the conversion is a fixed offset. That keeps the output
- * identical on every platform and ICU build. No seconds are shown.
+ * identical on every platform and ICU build. No seconds and no "SAST" suffix
+ * are shown: everything on AgriBid is South African time.
  *
  * @param timestamp - Milliseconds since the Unix epoch
  * @returns The formatted string, or an empty string for a non-finite input
@@ -32,7 +33,7 @@ export function formatSastDate(timestamp: number): string {
   const month = MONTHS[d.getUTCMonth()] ?? "";
   const hh = String(d.getUTCHours()).padStart(2, "0");
   const mm = String(d.getUTCMinutes()).padStart(2, "0");
-  return `${weekday} ${String(d.getUTCDate())} ${month}, ${hh}:${mm} SAST`;
+  return `${weekday} ${String(d.getUTCDate())} ${month}, ${hh}:${mm}`;
 }
 
 /**

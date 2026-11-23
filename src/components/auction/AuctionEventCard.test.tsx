@@ -119,8 +119,8 @@ describe("AuctionEventCard", () => {
     expect(screen.getByText("Closing soon")).toBeInTheDocument();
   });
 
-  it("uses the urgent chip colour inside the last hour", () => {
-    renderCard({ ...baseEvent, effectiveEndTime: NOW + 20 * 60 * 1000 });
+  it("uses the urgent chip colour inside the last 10 minutes", () => {
+    renderCard({ ...baseEvent, effectiveEndTime: NOW + 5 * 60 * 1000 });
     expect(screen.getByText(/Closes in/).closest("span")).toHaveClass(
       "bg-urgent-solid"
     );
@@ -133,7 +133,9 @@ describe("AuctionEventCard", () => {
       endTime: NOW + 80 * HOUR,
       effectiveEndTime: NOW + 80 * HOUR,
     });
-    expect(screen.getByText(/^Opens .*SAST$/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Opens \w{3} \d+ \w{3}, \d{2}:\d{2}$/)
+    ).toBeInTheDocument();
     expect(screen.getByText(/Opens in/)).toBeInTheDocument();
     expect(screen.queryByText("Live")).toBeNull();
   });
@@ -147,7 +149,9 @@ describe("AuctionEventCard", () => {
     });
     expect(screen.getByText("Closed")).toBeInTheDocument();
     expect(screen.queryByText(/Closes in|Opens in/)).toBeNull();
-    expect(screen.getByText(/^Sale closed .*SAST$/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Sale closed \w{3} \d+ \w{3}, \d{2}:\d{2}$/)
+    ).toBeInTheDocument();
     expect(screen.queryByText(/^From/)).toBeNull();
     expect(screen.queryByText("Live")).toBeNull();
   });
@@ -161,9 +165,11 @@ describe("AuctionEventCard", () => {
     expect(screen.getByText(/Closes in/)).toBeInTheDocument();
   });
 
-  it("states when the lots close in SAST", () => {
+  it("states when the lots close in South African time", () => {
     renderCard(baseEvent);
-    expect(screen.getByText(/^Lots close from .*SAST$/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Lots close from \w{3} \d+ \w{3}, \d{2}:\d{2}$/)
+    ).toBeInTheDocument();
   });
 
   it("has a View lots link of at least 44px on phones", () => {

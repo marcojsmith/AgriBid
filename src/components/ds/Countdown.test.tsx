@@ -17,9 +17,9 @@ describe("Countdown", () => {
     expect(screen.getByText("TBD")).toBeInTheDocument();
   });
 
-  it("shows the absolute SAST time", () => {
+  it("shows the absolute South African time", () => {
     render(<Countdown endTime={Date.UTC(2025, 10, 22, 8, 0)} absolute />);
-    expect(screen.getByText("Sat 22 Nov, 10:00 SAST")).toBeInTheDocument();
+    expect(screen.getByText("Sat 22 Nov, 10:00")).toBeInTheDocument();
   });
 
   it("is neutral with tabular figures and no monospace", () => {
@@ -30,7 +30,7 @@ describe("Countdown", () => {
     expect(el).not.toHaveClass("font-mono");
   });
 
-  it("goes amber under an hour and red under two minutes while ticking", () => {
+  it("goes amber under an hour and red under ten minutes while ticking", () => {
     render(<Countdown endTime={Date.now() + 3_601_000} />);
     expect(screen.getByText(/1h/)).toHaveAttribute("data-tone", "neutral");
     act(() => {

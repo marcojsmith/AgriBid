@@ -44,8 +44,8 @@ export function getAuctionStatusLabel(status: string): string {
 
 /** Closing-soon window: lots ending within 24 hours. */
 export const CLOSING_SOON_MS = 24 * 60 * 60 * 1000;
-/** Urgent window: lots ending within 1 hour. */
-export const URGENT_MS = 60 * 60 * 1000;
+/** Urgent window: lots ending within 10 minutes (red). */
+export const URGENT_MS = 10 * 60 * 1000;
 
 /** Display status of an auction or lot, shared by `StatusBadge`. */
 export type DisplayStatus =
@@ -53,7 +53,8 @@ export type DisplayStatus =
   | { kind: "closing-soon"; urgent: boolean }
   | { kind: "opens"; startTime: number }
   | { kind: "sold" }
-  | { kind: "passed" };
+  | { kind: "passed" }
+  | { kind: "under-consideration" };
 
 /**
  * Derives the single display status for an auction or lot.
@@ -61,7 +62,7 @@ export type DisplayStatus =
  * Callers MUST pass `outcome` for closed lots: with no outcome, an ended lot
  * is reported as "passed" because the result is not known here. Outcome wins over time. Otherwise: before `startTime` it is "opens"; after
  * `endTime` with no outcome it is "passed"; within 24h of the end it is
- * "closing-soon" (urgent inside 1h); else "live".
+ * "closing-soon" (urgent inside 10 minutes); else "live".
  *
  * @param input - Times in ms, current time, and the final outcome if known
  * @param input.startTime - When bidding opens (ms), if scheduled
@@ -74,11 +75,14 @@ export function deriveDisplayStatus(input: {
   startTime?: number | null;
   endTime?: number | null;
   now: number;
-  outcome?: "sold" | "passed" | null;
+  outcome?: "sold" | "passed" | "under-consideration" | null;
 }): DisplayStatus {
   const { startTime, endTime, now, outcome } = input;
   if (outcome === "sold") return { kind: "sold" };
   if (outcome === "passed") return { kind: "passed" };
+  if (outcome === "under-consideration") {
+    return { kind: "under-consideration" };
+  }
   if (typeof startTime === "number" && now < startTime) {
     return { kind: "opens", startTime };
   }

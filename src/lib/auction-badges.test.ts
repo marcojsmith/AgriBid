@@ -81,6 +81,7 @@ describe("getAuctionStatusLabel", () => {
 describe("deriveDisplayStatus", () => {
   const now = Date.UTC(2026, 10, 21, 10, 0);
   const H = 3_600_000;
+  const TEN_MIN = 600_000;
 
   it("outcome wins over time", () => {
     expect(
@@ -89,6 +90,12 @@ describe("deriveDisplayStatus", () => {
     expect(deriveDisplayStatus({ now, outcome: "passed" })).toEqual({
       kind: "passed",
     });
+  });
+
+  it("reports a lot under consideration from its outcome", () => {
+    expect(
+      deriveDisplayStatus({ now, outcome: "under-consideration" })
+    ).toEqual({ kind: "under-consideration" });
   });
 
   it("is opens before the start time", () => {
@@ -103,16 +110,16 @@ describe("deriveDisplayStatus", () => {
     });
   });
 
-  it("is closing soon under 24h and urgent under 1h", () => {
+  it("is closing soon under 24h and urgent under 10 minutes", () => {
     expect(deriveDisplayStatus({ now, endTime: now + 24 * H - 1 })).toEqual({
       kind: "closing-soon",
       urgent: false,
     });
-    expect(deriveDisplayStatus({ now, endTime: now + H - 1 })).toEqual({
+    expect(deriveDisplayStatus({ now, endTime: now + TEN_MIN - 1 })).toEqual({
       kind: "closing-soon",
       urgent: true,
     });
-    expect(deriveDisplayStatus({ now, endTime: now + H })).toEqual({
+    expect(deriveDisplayStatus({ now, endTime: now + TEN_MIN })).toEqual({
       kind: "closing-soon",
       urgent: false,
     });
