@@ -177,7 +177,7 @@ Notes:
 - `Countdown` ticks every second; a `className` text colour (e.g. `text-white` on a photo overlay) overrides the tone colour. The older `CountdownTimer` is kept for existing callers and delegates to `Countdown`; new code uses `Countdown`.
 - Pages that use `StickyBar` add bottom padding (about 5rem) to the page, and must keep the footer reachable. Standalone links have a 44px tap area on phone.
 - `LotCard` states: sold shows "Sold for", not sold shows "Highest bid", under consideration shows "Top bid". Watch hearts appear only on open lots.
-- Built in D1 (2026-11-23): everything marked Built (D1). Not built yet, left to the page work packages: `Header` states, `BackLink`, `LotNav`, `BidHistory`, `BidPanel`, `ConfirmBidSheet`, `Gallery`, `GalleryViewer`, `SortRow`, `BeforeYouBid`, `Footer`, `RemindMe`, `AddToHomeScreenSheet`, the 48px `Button`, and the `ConditionReport` / `FilterChips` / `SectionHeader` adoption of the new rows.
+- Built in D1 (2026-11-23): everything marked Built (D1). Built in D5 (2026-11-23): `BackLink`, `LotNav`, `BidHistory`, `BidPanel`, `ConfirmBidSheet` (`src/components/ds`), `Gallery` and `GalleryViewer` (`src/components/lot/LotGallery`). Not built yet, left to the page work packages: `Header` states, `SortRow`, `BeforeYouBid`, `Footer`, `RemindMe`, `AddToHomeScreenSheet`, the 48px `Button`, and the `ConditionReport` / `FilterChips` / `SectionHeader` adoption of the new rows.
 
 ### Formatters
 

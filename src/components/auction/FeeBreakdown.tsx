@@ -7,7 +7,11 @@ import { Receipt, Users, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVatRate } from "@/hooks/useVatRate";
 import { formatCurrency, formatRand } from "@/lib/currency";
-import { calculateBuyerTotal } from "@/lib/vat";
+import {
+  calculateBuyerTotal,
+  vatBaseForSeller,
+  type SellerVatKind,
+} from "@/lib/vat";
 
 /**
  * Component displaying fee breakdown for auction participants.
@@ -15,24 +19,27 @@ import { calculateBuyerTotal } from "@/lib/vat";
  * @param isWinner - Whether the user won the lot
  * @param isSeller - Whether the user is the seller
  * @param hammerPrice - The winning bid; enables the VAT and estimated total rows for the buyer
+ * @param sellerVatKind - The lot's seller VAT kind; a private seller charges VAT on the premium only
  */
 interface FeeBreakdownProps {
   lotId: Id<"lots"> | undefined;
   isWinner: boolean;
   isSeller: boolean;
   hammerPrice?: number;
+  sellerVatKind?: SellerVatKind;
 }
 
 /**
  * Displays the fee breakdown for a sold lot to the winner or seller.
  *
  * When `hammerPrice` is given the buyer section also shows VAT (on the hammer
- * price plus buyer fees, at the admin-set rate) and an estimated total.
+ * price plus buyer fees, or on the fees alone for a private seller, at the admin-set rate) and an estimated total.
  * @param props - The component props.
  * @param props.lotId - The ID of the lot.
  * @param props.isWinner - Whether the user is the lot winner.
  * @param props.isSeller - Whether the user is the lot seller.
  * @param props.hammerPrice - The winning bid, when known.
+ * @param props.sellerVatKind - The seller's VAT kind (default: VAT on bid plus fees).
  * @returns The FeeBreakdown React component or null if no fees.
  */
 export function FeeBreakdown({
@@ -40,6 +47,7 @@ export function FeeBreakdown({
   isWinner,
   isSeller,
   hammerPrice,
+  sellerVatKind = "vat",
 }: FeeBreakdownProps): React.JSX.Element | null {
   const vatRatePct = useVatRate();
   const fees = useQuery(
@@ -83,6 +91,7 @@ export function FeeBreakdown({
           bid: hammerPrice,
           premium: roundedBuyerFees.reduce((sum, n) => sum + n, 0),
           vatRatePct,
+          vatBase: vatBaseForSeller(sellerVatKind),
         })
       : null;
 
@@ -133,7 +142,8 @@ export function FeeBreakdown({
                 <>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
-                      VAT ({vatRatePct}% on bid + fees)
+                      VAT ({vatRatePct}% on{" "}
+                      {sellerVatKind === "private" ? "fees" : "bid + fees"})
                     </span>
                     <span className="font-medium">
                       {formatRand(estimate.vat)}

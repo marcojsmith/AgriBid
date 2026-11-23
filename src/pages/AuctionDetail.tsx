@@ -1,114 +1,170 @@
 // app/src/pages/AuctionDetail.tsx
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
-import { Flag, FileText, Download, CalendarClock } from "lucide-react";
-import { toast } from "sonner";
 import type { Id } from "convex/_generated/dataModel";
 import { Helmet } from "react-helmet-async";
+import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { AuctionHeader } from "@/components/AuctionHeader";
-import { ImageGallery } from "@/components/ImageGallery";
-import { BiddingPanel } from "@/components/bidding/BiddingPanel";
-import { MobileBidBar } from "@/components/bidding/MobileBidBar";
-import { BidHistory } from "@/components/bidding/BidHistory";
-import { SellerInfo } from "@/components/SellerInfo";
-import { LoadingIndicator } from "@/components/LoadingIndicator";
-import { Breadcrumb } from "@/components/Breadcrumb";
-import { AuctionCard } from "@/components/auction/AuctionCard";
 import { FeeBreakdown } from "@/components/auction/FeeBreakdown";
-import { useSession } from "@/lib/auth-client";
-import { useLotLiveWindow } from "@/hooks/useLotLiveWindow";
+import { BidHistory, type BidHistoryRow } from "@/components/ds/BidHistory";
+import { BidPanel } from "@/components/ds/BidPanel";
+import { Banner } from "@/components/ds/Banner";
+import { ConfirmBidSheet } from "@/components/ds/ConfirmBidSheet";
+import { CostBox } from "@/components/ds/CostBox";
+import { DepositLines } from "@/components/ds/DepositLines";
+import { FeesRulesSheet } from "@/components/ds/FeesRulesSheet";
+import { LotChip } from "@/components/ds/LotChip";
+import { BackLink, LotNav } from "@/components/ds/LotNav";
+import { Money } from "@/components/ds/Money";
+import { ReservePill, type ReserveState } from "@/components/ds/ReservePill";
+import { SectionHeader } from "@/components/ds/SectionHeader";
+import { SellerStrip } from "@/components/ds/SellerStrip";
+import { ShareButton } from "@/components/ds/ShareButton";
+import { StatusPill } from "@/components/ds/StatusPill";
+import { WatchButton } from "@/components/ds/WatchButton";
+import { showToast } from "@/components/ds/showToast";
+import { HomeLotGrid } from "@/components/home/HomeLotGrid";
+import { FlagLotDialog } from "@/components/lot/FlagLotDialog";
+import { LotGallery } from "@/components/lot/LotGallery";
 import {
-  buildTitle,
-  buildCanonical,
+  ConditionSection,
+  IfYouWinSection,
+  LotSection,
+  SpecsSection,
+  ViewCollect,
+} from "@/components/lot/LotSections";
+import {
+  LotStickyBar,
+  type LotStickyAction,
+} from "@/components/lot/LotStickyBar";
+import { LoadingPage } from "@/components/LoadingIndicator";
+import { Button } from "@/components/ui/button";
+import { useBranding } from "@/hooks/useBranding";
+import { useLotBid } from "@/hooks/useLotBid";
+import { useLotLiveWindow } from "@/hooks/useLotLiveWindow";
+import { useNow } from "@/hooks/useNow";
+import { useScrolledPast } from "@/hooks/useScrolledPast";
+import { useVatRate } from "@/hooks/useVatRate";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { WATCHING_SAVED_MESSAGE } from "@/lib/auctionRules";
+import { formatSastDate } from "@/lib/dates";
+import { formatLotCount, telLink, whatsappLink } from "@/lib/homeSales";
+import {
+  buildSlides,
+  confirmBreakdown,
+  isInExtension,
+  lotKeyFacts,
+  lotPlace,
+  meterPhotoIndex,
+  nextMinimumBid,
+  premiumPct,
+  quickBidAmounts,
+  viewerState,
+} from "@/lib/lotPage";
+import { PROVINCE_LABELS } from "@/lib/provinces";
+import {
   buildAuctionDescription,
+  buildCanonical,
+  buildTitle,
   DEFAULT_OG_IMAGE,
   SITE_NAME,
   SITE_URL,
 } from "@/lib/seo";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-
-type FlagReason = "misleading" | "inappropriate" | "suspicious" | "other";
+import type { ShareResult } from "@/lib/share";
+import { isValidCallbackUrl } from "@/lib/utils";
+import { getViewSessionId } from "@/lib/viewSession";
 
 /**
- * Flatten an auction's images object or array into a plain string URL array.
+ * Maps the server's reserve state to the pill state.
  *
- * @param images - The auction images value (array or object with named fields)
- * @returns Filtered array of resolved image URL strings
+ * @param state - `none`, `applies`, `met` or `not_met`
+ * @returns The pill state
  */
-function getAuctionImageUrls(
-  images:
-    | string[]
-    | {
-        front?: string;
-        engine?: string;
-        cabin?: string;
-        rear?: string;
-        additional?: string[];
-      }
-): string[] {
-  if (Array.isArray(images)) {
-    return images.filter((url): url is string => !!url);
-  }
-  return [
-    images.front,
-    images.engine,
-    images.cabin,
-    images.rear,
-    ...(images.additional ?? []),
-  ].filter((url): url is string => !!url);
+function reserveOf(
+  state: "none" | "applies" | "met" | "not_met"
+): ReserveState {
+  return state === "not_met" ? "not-met" : state;
 }
 
 /**
- * Render the auction detail page for the auction referenced by the current route `id`.
+ * The lot page (`/auction/:lotId`, design `lot-r4`): back link and lot
+ * navigation, the gallery, the title block, the bid panel, bid history,
+ * condition, "If you win", specs, "View & collect" and "More in this sale".
+ * On desktop the gallery and details sit on the left and the title block, key
+ * facts and bid panel stay in a sticky right column. Every bid goes through
+ * the confirm sheet; the server validates it. A sticky bar carries the price,
+ * time left and the call to action on phones. Records one view per page view.
  *
- * Renders an "Invalid Auction ID" screen when `id` is undefined, a loading indicator while the auction is being fetched, an "Auction Not Found" screen when no auction exists for `id`, and the full auction UI (header, image gallery, equipment description, bidding panel, bid history and seller information) when the auction is found. Also provides UI to report (flag) a listing and to view or download a condition report when available.
- *
- * @returns The JSX element for the auction detail page.
+ * @returns The lot page.
  */
 export default function AuctionDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data: session, isPending: sessionLoading } = useSession();
-  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
-  const [flagReason, setFlagReason] = useState<FlagReason | "">("");
-  const [flagDetails, setFlagDetails] = useState("");
-  const [conditionReportOpen, setConditionReportOpen] = useState(false);
+  // Local state (amount, sheets, expanded history) belongs to one lot.
+  return <LotPage key={id} id={id} />;
+}
 
-  const auction = useQuery(
+/**
+ * The page body for one lot. See {@link AuctionDetail}.
+ *
+ * @param props - Component props
+ * @param props.id - The lot id from the URL
+ * @returns The page
+ */
+function LotPage({ id }: { id: string | undefined }) {
+  const lotId = id as Id<"lots"> | undefined;
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useConvexAuth();
+  const branding = useBranding();
+  const profile = useUserProfile();
+  const now = useNow(5000);
+
+  const lot = useQuery(
     api.auctions.queries.browse.getLotById,
-    id ? { lotId: id as Id<"lots"> } : "skip"
+    lotId ? { lotId } : "skip"
   );
-
-  const relatedAuctions = useQuery(
-    api.auctions.getRelatedLots,
-    auction?.make ? { make: auction.make, excludeId: auction._id } : "skip"
+  const settings = useQuery(
+    api.admin.platformSettings.getPlatformSettings,
+    lotId ? {} : "skip"
   );
+  const vatRatePct = useVatRate();
+  const sale = useQuery(
+    api.auctions.getPublishedAuction,
+    lot?.auctionId ? { auctionId: lot.auctionId } : "skip"
+  );
+  const facets = useQuery(
+    api.auctions.getEventFacets,
+    lot?.auctionId ? { auctionId: lot.auctionId } : "skip"
+  );
+  const neighbours = useQuery(
+    api.auctions.getLotNeighbours,
+    lot && lotId ? { lotId } : "skip"
+  );
+  const moreLots = useQuery(
+    api.auctions.getEventLots,
+    lot?.auctionId
+      ? { auctionId: lot.auctionId, sort: "lot_number", limit: 5 }
+      : "skip"
+  );
+  const history = useQuery(
+    api.auctions.getLotBidHistory,
+    lot && lotId ? { lotId } : "skip"
+  );
+  const myBidState = useQuery(
+    api.auctions.getMyLotBidState,
+    lot && lotId && isAuthenticated ? { lotId } : "skip"
+  );
+  const watchedIds = useQuery(
+    api.watchlist.getWatchedLotIds,
+    isAuthenticated ? {} : "skip"
+  );
+  const toggleWatchlist = useMutation(api.watchlist.toggleWatchlist);
+  const recordLotView = useMutation(api.engagement.recordLotView);
 
-  const watchedLotIds = useQuery(api.watchlist.getWatchedLotIds, {});
-
-  const flagLot = useMutation(api.auctions.mutations.publish.flagLot);
-
-  const isOwner = session?.user.id === auction?.sellerId;
   const liveWindow = useLotLiveWindow(
-    auction ?? {
+    lot ?? {
       status: "draft",
       auctionStatus: undefined,
       auctionStartTime: undefined,
@@ -117,422 +173,555 @@ export default function AuctionDetail() {
     }
   );
 
-  const handleFlagAuction = async () => {
-    if (!flagReason) {
-      toast.error("Please select a reason for flagging");
+  const [viewerAt, setViewerAt] = useState<number | null>(null);
+  const [feesOpen, setFeesOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [ctaRef, ctaGone] = useScrolledPast();
+
+  // One view per page view: the server dedupes repeats within the hour.
+  useEffect(() => {
+    if (!lotId) return;
+    void recordLotView({ lotId, sessionId: getViewSessionId() }).catch(() => {
+      // A view is a counter; never bother the visitor if it fails.
+    });
+  }, [lotId, recordLotView]);
+
+  const minimum = lot
+    ? nextMinimumBid({
+        currentPrice: lot.currentPrice,
+        minIncrement: lot.minIncrement,
+        bidCount: lot.bidCount,
+      })
+    : 0;
+  const bid = useLotBid({
+    lotId,
+    minimum,
+    window: lot ?? null,
+  });
+
+  const watchedSet = useMemo(
+    () => new Set<string>(watchedIds ?? []),
+    [watchedIds]
+  );
+
+  if (!lotId) {
+    return <NotFound />;
+  }
+  if (lot === undefined || settings === undefined || vatRatePct === undefined) {
+    return <LoadingPage message="Loading lot..." />;
+  }
+  if (lot === null) {
+    return <NotFound />;
+  }
+
+  const callbackUrl = isValidCallbackUrl(
+    `${location.pathname}${location.search}`
+  )
+    ? encodeURIComponent(`${location.pathname}${location.search}`)
+    : "%2F";
+  const registerHref = `/login?callbackUrl=${callbackUrl}`;
+
+  const title = `${lot.make} ${lot.model}`;
+  const provinceLabel = lot.province
+    ? PROVINCE_LABELS[lot.province]
+    : undefined;
+  const place = lotPlace(lot.location, provinceLabel);
+  const keyFacts = lotKeyFacts({
+    year: lot.year,
+    operatingHours: lot.operatingHours,
+    drive: lot.drive,
+    powerKw: lot.powerKw,
+    location: lot.location,
+    province: provinceLabel,
+  });
+  const slides = buildSlides(lot.photos, lot.coldStartVideoUrl);
+  const meterAt = meterPhotoIndex(slides);
+
+  const telephone = branding?.businessInfo?.telephone?.trim() ?? "";
+  const telHref = telLink(telephone);
+  const phone = telHref ? { text: telephone, tel: telHref } : undefined;
+  const waHref = whatsappLink(branding?.businessInfo?.whatsapp);
+  const finance = settings.financeContact;
+  const financeTel = telLink(finance.phone);
+
+  const canonical = buildCanonical(`/auction/${lot._id}`);
+  const pageTitle = buildTitle(title);
+  const description = buildAuctionDescription(
+    lot.title,
+    lot.year,
+    lot.make,
+    lot.model,
+    place || lot.location
+  );
+  const ogImage = lot.photos.at(0)?.url ?? DEFAULT_OG_IMAGE;
+
+  const isLive = liveWindow.isLive;
+  const isUpcoming = liveWindow.isUpcoming;
+  const isEnded = liveWindow.isEnded;
+  const isSold = lot.status === "sold";
+  const closesAt = liveWindow.effectiveEndTime ?? 0;
+  const viewer = viewerState(isAuthenticated, myBidState?.state);
+  const extended = isLive && isInExtension(lot, now);
+  const premium = premiumPct(lot.buyerPremiumFraction);
+  const profileLoading = profile === undefined;
+  const verified = profile?.profile?.isVerified ?? false;
+  const eligibility = profileLoading
+    ? "ok"
+    : verified
+      ? "ok"
+      : profile?.profile?.kycStatus === "pending"
+        ? "verification-pending"
+        : "needs-verification";
+  const reserve = reserveOf(lot.reserveState);
+  const deposit = settings.deposit.enabled
+    ? {
+        amount: settings.deposit.amount,
+        refundDays: settings.deposit.refundDays,
+      }
+    : undefined;
+  const hasBids = lot.bidCount > 0;
+  const quick = quickBidAmounts(minimum, lot.minIncrement);
+
+  const historyRows: BidHistoryRow[] = (history?.bids ?? []).map((row) => ({
+    id: row._id,
+    label: row.label,
+    amount: row.amount,
+    timestamp: row.timestamp,
+    isMine: row.isMine,
+  }));
+
+  const handleToggleWatch = async (targetId: Id<"lots">) => {
+    if (!isAuthenticated) {
+      toast.info("Please sign in to watch a lot");
+      void navigate(registerHref);
       return;
     }
-
     try {
-      const normalizedDetails = flagDetails.trim() || undefined;
-      const result = await flagLot({
-        lotId: id as Id<"lots">,
-        reason: flagReason,
-        details: normalizedDetails,
-      });
-
-      if (result.hideTriggered) {
-        toast.success("Auction has been flagged and hidden for review");
-      } else {
-        toast.success("Thank you for your report");
-      }
-      setFlagDialogOpen(false);
-      setFlagReason("");
-      setFlagDetails("");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to flag auction"
-      );
+      const watching = await toggleWatchlist({ lotId: targetId });
+      if (watching) showToast(WATCHING_SAVED_MESSAGE);
+      else toast.success("Removed from watchlist");
+    } catch {
+      toast.error("Failed to update watchlist");
     }
   };
-
-  const handleViewConditionReport = () => {
-    if (!auction?.conditionReportUrl) return;
-    setConditionReportOpen(true);
+  const handleShare = (result: ShareResult) => {
+    if (result === "copied") toast.success("Link copied");
+    else if (result === "failed") toast.error("Couldn't share this link");
   };
 
-  if (id === undefined) {
-    return (
-      <div className="flex flex-col h-[80vh] items-center justify-center bg-background gap-4">
-        <h2 className="text-2xl font-bold">Invalid Auction ID</h2>
-        <Button asChild>
-          <Link to="/">Return to Home</Link>
-        </Button>
-      </div>
-    );
-  }
+  const scrollToPanel = () => {
+    document
+      .getElementById("bidding-panel")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
-  if (auction === undefined) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center bg-background">
-        <LoadingIndicator />
-      </div>
-    );
-  }
+  const stickyAction: LotStickyAction | null =
+    viewer === "guest"
+      ? { kind: "link", href: registerHref, label: "Register to bid" }
+      : eligibility === "needs-verification"
+        ? { kind: "link", href: "/kyc", label: "Verify to bid" }
+        : eligibility === "verification-pending"
+          ? null
+          : viewer === "leading"
+            ? { kind: "raise", onRaise: scrollToPanel }
+            : {
+                kind: "bid",
+                amount: minimum,
+                onBid: () => {
+                  bid.startBid(minimum);
+                },
+              };
 
-  if (auction === null) {
-    return (
-      <div className="flex flex-col h-[80vh] items-center justify-center bg-background gap-4">
-        <h2 className="text-2xl font-bold">Auction Not Found</h2>
-        <Button asChild>
-          <Link to="/">Return to Home</Link>
-        </Button>
-      </div>
-    );
-  }
+  const breakdown = confirmBreakdown({
+    bid: bid.amount,
+    premiumFraction: lot.buyerPremiumFraction,
+    vatRatePct,
+    seller: lot.sellerVatKind,
+  });
 
-  const metaDescription = buildAuctionDescription(
-    auction.title,
-    auction.year,
-    auction.make,
-    auction.model,
-    auction.location
+  const moreCards = (moreLots?.lots ?? [])
+    .filter((row) => row._id !== lot._id)
+    .slice(0, 4);
+
+  const watchActions = (
+    <>
+      <WatchButton
+        watching={watchedSet.has(lot._id)}
+        subject={`lot ${String(lot.lotNumber ?? "")}, ${title}`.replace(
+          "lot , ",
+          "this lot, "
+        )}
+        onToggle={() => {
+          void handleToggleWatch(lot._id);
+        }}
+      />
+      <ShareButton
+        title={title}
+        text={keyFacts}
+        url={canonical}
+        onResult={handleShare}
+        className="mt-0.5 mr-[7px] size-[34px] rounded-full border-0 shadow-[0_1px_3px_rgb(0_0_0/.3)]"
+      />
+    </>
   );
-  const pageTitle = buildTitle(auction.title);
-  const canonical = buildCanonical(`/auction/${id}`);
 
-  const auctionImageUrls = getAuctionImageUrls(auction.images);
-  const auctionNotYetStarted = liveWindow.isUpcoming;
-  const ogImage = auctionImageUrls.at(0) ?? DEFAULT_OG_IMAGE;
+  const titleBlock = (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        {lot.lotNumber !== undefined ? (
+          <LotChip number={lot.lotNumber} />
+        ) : null}
+        {isSold ? (
+          <StatusPill outcome="sold" />
+        ) : isEnded ? (
+          <StatusPill outcome="not-sold" />
+        ) : (
+          <ReservePill state={reserve} />
+        )}
+      </div>
+      <h1 className="mt-2 font-display text-[28px] leading-tight font-semibold lg:text-[32px]">
+        {title}
+      </h1>
+      {keyFacts ? (
+        <p className="mt-1 text-[15px] text-muted-foreground">{keyFacts}</p>
+      ) : null}
+    </div>
+  );
 
-  const productSchema = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: auction.title,
-    description: auction.description ?? metaDescription,
-    image: auctionImageUrls,
-    brand: auction.make ? { "@type": "Brand", name: auction.make } : undefined,
-    offers: {
-      "@type": "Offer",
-      url: canonical,
-      priceCurrency: "ZAR",
-      price: auction.currentPrice,
-      availability: liveWindow.isLive
-        ? "https://schema.org/InStock"
-        : "https://schema.org/SoldOut",
-      validThrough: liveWindow.effectiveEndTime
-        ? new Date(liveWindow.effectiveEndTime).toISOString()
-        : undefined,
-      seller: { "@type": "Organization", name: SITE_NAME },
-      ...(auction.location
-        ? {
-            availableAtOrFrom: {
-              "@type": "Place",
-              name: auction.location,
-              address: {
-                "@type": "PostalAddress",
-                addressCountry: "ZA",
-              },
-            },
-          }
-        : {}),
-    },
-  };
+  const panel = isLive ? (
+    <div className="scroll-mt-20">
+      <BidPanel
+        id="bidding-panel"
+        viewer={viewer}
+        price={lot.currentPrice}
+        bidCount={lot.bidCount}
+        watchers={lot.watcherCount}
+        closesAt={closesAt}
+        extended={extended}
+        reserve={reserve}
+        cost={{
+          bid: minimum,
+          seller: lot.sellerVatKind,
+          premiumPct: premium,
+          vatRatePct,
+          onFeesClick: () => {
+            setFeesOpen(true);
+          },
+        }}
+        deposit={deposit}
+        minimum={minimum}
+        quickAmounts={quick}
+        amount={bid.amount}
+        onAmountChange={bid.setAmount}
+        onBid={() => {
+          bid.startBid();
+        }}
+        registerHref={registerHref}
+        eligibility={eligibility}
+        ctaRef={ctaRef}
+      />
+    </div>
+  ) : isUpcoming ? (
+    <section aria-label="Bidding" className="flex flex-col gap-3">
+      <Money amount={lot.startingPrice} label="Opening bid" display />
+      <p className="text-[15px]">
+        <b className="font-bold">
+          Opens {formatSastDate(liveWindow.effectiveStartTime ?? 0)}
+        </b>
+      </p>
+      <CostBox
+        bid={lot.startingPrice}
+        seller={lot.sellerVatKind}
+        premiumPct={premium}
+        vatRatePct={vatRatePct}
+        onFeesClick={() => {
+          setFeesOpen(true);
+        }}
+      />
+      {deposit && !isAuthenticated ? (
+        <DepositLines amount={deposit.amount} refundDays={deposit.refundDays} />
+      ) : null}
+    </section>
+  ) : isEnded ? (
+    <section aria-label="Result" className="flex flex-col gap-3">
+      {lot.isWinner ? <Banner kind="ok">You won this lot</Banner> : null}
+      {isSold || hasBids ? (
+        <Money
+          amount={lot.currentPrice}
+          label={isSold ? "Sold for" : "Highest bid"}
+          display
+        />
+      ) : (
+        <p className="text-[15px] text-muted-foreground">
+          No bids were placed.
+        </p>
+      )}
+      {hasBids ? (
+        <p className="text-sm text-muted-foreground">
+          {String(lot.bidCount)} {lot.bidCount === 1 ? "bid" : "bids"} ·{" "}
+          {String(lot.watcherCount)} watching
+        </p>
+      ) : null}
+      <Button asChild variant="outline" className="w-full">
+        <Link to="/auctions">See current auctions</Link>
+      </Button>
+    </section>
+  ) : (
+    <section aria-label="Availability" className="flex flex-col gap-3">
+      <Banner kind="info">This lot isn&apos;t open for bidding yet.</Banner>
+      <Button asChild variant="outline" className="w-full">
+        <Link to="/auctions">See current auctions</Link>
+      </Button>
+    </section>
+  );
 
-  const eventSchema = liveWindow.effectiveStartTime
-    ? {
-        "@context": "https://schema.org",
-        "@type": "Event",
-        name: auction.title,
-        description: auction.description ?? metaDescription,
-        startDate: new Date(liveWindow.effectiveStartTime).toISOString(),
-        ...(liveWindow.effectiveEndTime
-          ? { endDate: new Date(liveWindow.effectiveEndTime).toISOString() }
-          : {}),
-        eventStatus: "https://schema.org/EventScheduled",
-        eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
-        location: { "@type": "VirtualLocation", url: canonical },
-        organizer: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
-        image: auctionImageUrls,
-      }
-    : null;
+  const showViewCollect = !isEnded;
+  const backLink = sale ? (
+    <BackLink to={`/auctions/${sale._id}`}>
+      {facets
+        ? `${sale.title} · ${formatLotCount(facets.total, facets.capped)}`
+        : sale.title}
+    </BackLink>
+  ) : (
+    <BackLink to="/auctions">Auctions</BackLink>
+  );
 
   return (
     <>
       <Helmet>
         <title>{pageTitle}</title>
-        <meta name="description" content={metaDescription} />
+        <meta name="description" content={description} />
         <link rel="canonical" href={canonical} />
         <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={metaDescription} />
+        <meta property="og:description" content={description} />
         <meta property="og:type" content="product" />
         <meta property="og:url" content={canonical} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:locale" content="en_ZA" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={pageTitle} />
-        <meta name="twitter:description" content={metaDescription} />
-        <meta name="twitter:image" content={ogImage} />
-        <meta
-          name="robots"
-          content={liveWindow.isLive ? "index, follow" : "noindex"}
-        />
+        <meta name="robots" content={isLive ? "index, follow" : "noindex"} />
         <script type="application/ld+json">
-          {JSON.stringify(productSchema)}
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: title,
+            description,
+            image: lot.photos.map((photo) => photo.url),
+            brand: { "@type": "Brand", name: lot.make },
+            offers: {
+              "@type": "Offer",
+              url: canonical,
+              priceCurrency: "ZAR",
+              price: lot.currentPrice,
+              availability: isLive
+                ? "https://schema.org/InStock"
+                : "https://schema.org/SoldOut",
+              seller: {
+                "@type": "Organization",
+                name: SITE_NAME,
+                url: SITE_URL,
+              },
+            },
+          })}
         </script>
-        {eventSchema && (
-          <script type="application/ld+json">
-            {JSON.stringify(eventSchema)}
-          </script>
-        )}
       </Helmet>
 
-      <Breadcrumb
-        crumbs={[{ label: "Home", href: "/" }, { label: auction.title }]}
-      />
+      <div className="container mx-auto max-w-[1200px] px-4 pb-24 md:pb-12">
+        <div className="flex flex-col pt-1">
+          {backLink}
+          <LotNav
+            prev={
+              neighbours?.prev
+                ? {
+                    to: `/auction/${neighbours.prev._id}`,
+                    number: neighbours.prev.lotNumber,
+                  }
+                : null
+            }
+            next={
+              neighbours?.next
+                ? {
+                    to: `/auction/${neighbours.next._id}`,
+                    number: neighbours.next.lotNumber,
+                  }
+                : null
+            }
+          />
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 pb-12 lg:pb-0">
-        {/* Left Column: Images & Info */}
-        <div className="lg:col-span-8 space-y-4 sm:space-y-6 lg:space-y-8">
-          <AuctionHeader auction={auction} />
-
-          {auctionNotYetStarted && auction.auctionStartTime && (
-            <div className="flex items-center gap-2 text-sm font-medium bg-primary/5 border border-primary/20 rounded-md px-4 py-3">
-              <CalendarClock className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-xs text-primary">
-                Auction Starts:{" "}
-                {new Date(auction.auctionStartTime).toLocaleString("en-ZA", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-              </span>
-            </div>
-          )}
-
-          <ImageGallery
-            images={getAuctionImageUrls(auction.images)}
-            title={auction.title}
+        <div className="mt-1 grid gap-y-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-x-8">
+          <LotGallery
+            className="lg:col-start-1"
+            slides={slides}
+            title={title}
+            actions={watchActions}
+            viewerAt={viewerAt}
+            onViewerChange={setViewerAt}
           />
 
-          {/* Description Section */}
-          <section
-            aria-label="Equipment Description"
-            className="bg-card border rounded-md p-4 sm:p-8 space-y-4 sm:space-y-6"
-          >
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="text-lg font-semibold">Equipment Description</h2>
-
-              {auction.conditionReportUrl && (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-md font-medium gap-2 border-primary/20 hover:bg-primary/5"
-                    onClick={handleViewConditionReport}
-                  >
-                    <FileText className="h-4 w-4 text-primary" />
-                    View Report
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-md font-medium gap-2 border-primary/20 hover:bg-primary/5"
-                    asChild
-                  >
-                    <a
-                      href={auction.conditionReportUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Download className="h-4 w-4 text-primary" />
-                      Download PDF
-                    </a>
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-              {(auction.description ?? "").trim().length
-                ? auction.description
-                : "No description provided."}
-            </p>
-          </section>
-
-          {/* Flag Button (for non-owners) */}
-          {!sessionLoading && session && !isOwner && (
-            <div className="bg-card border border-destructive/20 rounded-md p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <h4 className="font-bold text-sm">See something wrong?</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Report this listing if it violates our terms of service
-                  </p>
-                </div>
-                <Dialog open={flagDialogOpen} onOpenChange={setFlagDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="destructive" size="sm" className="gap-2">
-                      <Flag className="h-4 w-4" />
-                      Report
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Report this Listing</DialogTitle>
-                      <DialogDescription>
-                        Help us understand what's wrong with this listing
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="flag-reason"
-                          className="text-sm font-medium"
-                        >
-                          Reason
-                        </label>
-                        <Select
-                          value={flagReason}
-                          onValueChange={(v) => {
-                            setFlagReason(v as FlagReason);
-                          }}
-                        >
-                          <SelectTrigger id="flag-reason">
-                            <SelectValue placeholder="Select a reason" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="misleading">
-                              Misleading information
-                            </SelectItem>
-                            <SelectItem value="inappropriate">
-                              Inappropriate content
-                            </SelectItem>
-                            <SelectItem value="suspicious">
-                              Suspicious activity
-                            </SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="flag-details"
-                          className="text-sm font-medium"
-                        >
-                          Additional details (optional)
-                        </label>
-                        <Textarea
-                          id="flag-details"
-                          name="flag-details"
-                          placeholder="Provide more context..."
-                          value={flagDetails}
-                          onChange={(e) => {
-                            setFlagDetails(e.target.value);
-                          }}
-                          rows={3}
-                        />
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setFlagDialogOpen(false);
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={handleFlagAuction}
-                        >
-                          Submit Report
-                        </Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </div>
-          )}
-
-          {/* Related Auctions */}
-          {relatedAuctions && relatedAuctions.length > 0 && (
-            <section aria-label={`More ${auction.make} Equipment`}>
-              <h2 className="text-lg font-semibold mb-3 sm:mb-4">
-                More {auction.make} Equipment
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {relatedAuctions.map((related) => (
-                  <AuctionCard
-                    key={related._id}
-                    auction={related}
-                    viewMode="compact"
-                    isWatched={watchedLotIds?.includes(related._id) ?? false}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-
-        {/* Right Column: Bidding Panel */}
-        <div className="lg:col-span-4">
-          <div className="space-y-4 sm:space-y-6 lg:top-24 lg:[@media(min-height:900px)]:sticky">
-            <aside
-              aria-label="Bidding"
-              id="bidding-panel"
-              className="bg-card border border-primary/20 rounded-md p-4 sm:p-6"
-            >
-              <BiddingPanel auction={auction} />
-            </aside>
-
-            {auction.status === "sold" &&
-              session?.user &&
-              (auction.winnerId === session.user.id ||
-                auction.sellerId === session.user.id) && (
-                <FeeBreakdown
-                  lotId={auction._id}
-                  isWinner={auction.winnerId === session.user.id}
-                  isSeller={auction.sellerId === session.user.id}
-                  hammerPrice={auction.currentPrice}
+          <aside className="flex flex-col gap-5 lg:sticky lg:top-20 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
+            {titleBlock}
+            {panel}
+            {showViewCollect ? (
+              <div className="hidden lg:block">
+                <ViewCollect
+                  heading={false}
+                  place={place}
+                  phone={phone}
+                  finance={{
+                    name: finance.name,
+                    phone: finance.phone,
+                    tel: financeTel,
+                  }}
                 />
-              )}
+              </div>
+            ) : null}
+          </aside>
 
-            <section
-              aria-label="Bid History"
-              className="bg-card border rounded-md p-4 sm:p-6"
-            >
-              {/* The accordion trigger carries the "Bid History" label; a
-                  section heading above it duplicated the same words. */}
-              <BidHistory lotId={auction._id} />
-            </section>
+          <div className="flex min-w-0 flex-col gap-6 lg:col-start-1">
+            <LotSection title="Bid history">
+              <BidHistory
+                rows={historyRows}
+                total={history?.total ?? lot.bidCount}
+                now={now}
+                expanded={historyOpen}
+                onToggle={() => {
+                  setHistoryOpen((open) => !open);
+                }}
+              />
+            </LotSection>
 
-            <SellerInfo
-              sellerId={auction.sellerId}
-              lotId={auction._id}
-              isOwnListing={isOwner}
+            <ConditionSection
+              sellerNotes={lot.conditionChecklist?.notes}
+              sellerVatKind={lot.sellerVatKind}
+              sellerTypeLabel={lot.sellerTypeLabel}
+              reportHref={lot.conditionReportUrl}
+              phone={phone}
             />
+
+            {isEnded ? null : <IfYouWinSection deposit={deposit?.amount} />}
+
+            <SpecsSection
+              lot={lot}
+              onSeeMeter={
+                meterAt >= 0
+                  ? () => {
+                      setViewerAt(meterAt);
+                    }
+                  : undefined
+              }
+            />
+
+            {showViewCollect ? (
+              <div className="lg:hidden">
+                <ViewCollect
+                  place={place}
+                  phone={phone}
+                  finance={{
+                    name: finance.name,
+                    phone: finance.phone,
+                    tel: financeTel,
+                  }}
+                />
+              </div>
+            ) : null}
+
+            {isSold && (lot.isWinner || lot.isSeller) ? (
+              <FeeBreakdown
+                lotId={lot._id}
+                isWinner={lot.isWinner}
+                isSeller={lot.isSeller}
+                hammerPrice={lot.currentPrice}
+                sellerVatKind={lot.sellerVatKind}
+              />
+            ) : null}
           </div>
         </div>
+
+        {isEnded && waHref ? (
+          <SellerStrip
+            href={waHref}
+            commissionPct={settings.sellerCosts.commissionPct}
+            className="-mx-4 mt-8 w-auto border-t md:mx-0 md:rounded-md"
+          />
+        ) : null}
+
+        {moreCards.length > 0 ? (
+          <section aria-label="More in this sale" className="mt-10">
+            <SectionHeader title="More in this sale" className="mb-3" />
+            <HomeLotGrid
+              layout="strip"
+              lots={moreCards}
+              watchedIds={watchedSet}
+              onToggleWatch={(targetId) => {
+                void handleToggleWatch(targetId as Id<"lots">);
+              }}
+              showCloses={false}
+              now={now}
+            />
+          </section>
+        ) : null}
+
+        {isAuthenticated && !lot.isSeller ? (
+          <div className="mt-8 flex justify-center">
+            <FlagLotDialog lotId={lot._id} />
+          </div>
+        ) : null}
       </div>
 
-      <MobileBidBar auction={auction} />
+      {isLive && stickyAction ? (
+        <LotStickyBar
+          price={lot.currentPrice}
+          hasBids={hasBids}
+          closesAt={closesAt}
+          viewer={viewer}
+          action={stickyAction}
+          whatsappHref={waHref}
+          hidden={!ctaGone}
+        />
+      ) : null}
 
-      {/* Condition Report Viewer Dialog */}
-      <Dialog open={conditionReportOpen} onOpenChange={setConditionReportOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Condition Report</DialogTitle>
-            <DialogDescription>
-              Detailed condition and inspection report for this equipment.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {auction.conditionReportUrl ? (
-              <iframe
-                src={auction.conditionReportUrl}
-                className="w-full h-[70vh] rounded border"
-                title="Condition Report"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[40vh] text-muted-foreground">
-                <FileText className="h-16 w-16 mb-4" />
-                <p>No condition report available</p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ConfirmBidSheet
+        open={bid.confirmOpen}
+        onOpenChange={(open) => {
+          if (!open) bid.closeConfirm();
+        }}
+        lotLabel={`${title}${lot.lotNumber !== undefined ? ` · Lot ${String(lot.lotNumber)}` : ""}`}
+        breakdown={breakdown}
+        onConfirm={() => {
+          void bid.confirm();
+        }}
+        onReviseBid={bid.reviseBid}
+        busy={bid.busy}
+        error={bid.error}
+      />
+      <FeesRulesSheet
+        open={feesOpen}
+        onOpenChange={setFeesOpen}
+        premiumPct={premium}
+        vatRatePct={vatRatePct}
+        deposit={settings.deposit}
+        exampleBid={minimum}
+      />
     </>
+  );
+}
+
+/**
+ * The state for a lot that doesn't exist or isn't public.
+ *
+ * @returns The not-found message
+ */
+function NotFound() {
+  return (
+    <div className="mx-auto max-w-lg space-y-4 px-4 py-24 text-center">
+      <h1 className="font-display text-2xl font-semibold">Lot not found</h1>
+      <p className="text-muted-foreground">
+        This lot may not exist or is not yet published.
+      </p>
+      <Button asChild variant="outline">
+        <Link to="/auctions">See all auctions</Link>
+      </Button>
+    </div>
   );
 }

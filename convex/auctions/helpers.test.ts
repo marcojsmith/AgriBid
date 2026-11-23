@@ -5,9 +5,34 @@ import {
   toLotSummary,
   toLotDetail,
   toLotSummaries,
+  resolveLotPhotos,
 } from "./helpers";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
+
+const viewer = vi.hoisted(() => ({
+  current: null as null | {
+    userId: string;
+    profile: { role: string } | null;
+  },
+}));
+
+vi.mock("../lib/auth", () => ({
+  getAuthWithProfile: vi.fn(() => Promise.resolve(viewer.current)),
+}));
+vi.mock("../lib/buyerPremium", () => ({
+  percentToFraction: (pct: number) => Math.round(pct * 100) / 10000,
+  resolveBuyerPremium: vi.fn(() =>
+    Promise.resolve({ source: "snapshot", rate: 0.12 })
+  ),
+}));
+vi.mock("../admin/platformSettings", () => ({
+  getBuyerPremiumPct: vi.fn(() => Promise.resolve(10)),
+}));
+vi.mock("../lib/lotCounters", () => ({
+  getWatcherCount: vi.fn(() => Promise.resolve(3)),
+  getBidCount: vi.fn(() => Promise.resolve(2)),
+}));
 
 // Mock the image_cache module
 vi.mock("../image_cache", () => ({
@@ -282,7 +307,8 @@ describe("toLotDetail", () => {
   let mockCtx: QueryCtx;
 
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
+    viewer.current = null;
   });
 
   const setupMockCtx = (
@@ -351,7 +377,7 @@ describe("toLotDetail", () => {
     },
   });
 
-  it("should transform auction to detail format with seller email for authenticated users", async () => {
+  it("should transform auction to detail format", async () => {
     const category = { _id: "cat_123", name: "Tractors", isActive: true };
     mockCtx = setupMockCtx(category, true, createMockSellerProfile());
     const auction = createMockLot();
@@ -362,31 +388,75 @@ describe("toLotDetail", () => {
     expect(result.title).toBe("Test Auction");
     expect(result.make).toBe("John Deere");
     expect(result.categoryName).toBe("Tractors");
-    expect(result.sellerEmail).toBe("seller@example.com");
+    expect(result.bidCount).toBe(2);
+    expect(result.watcherCount).toBe(3);
+    expect(result.buyerPremiumFraction).toBe(0.12);
   });
 
-  it("should not include seller email for unauthenticated users", async () => {
-    const category = { _id: "cat_123", name: "Tractors", isActive: true };
-    mockCtx = setupMockCtx(category, false, createMockSellerProfile());
-    const auction = createMockLot();
-
-    const result = await toLotDetail(mockCtx, auction);
-
-    expect(result.sellerEmail).toBeUndefined();
-  });
-
-  it("should handle seller found but missing email", async () => {
-    const category = { _id: "cat_123", name: "Tractors", isActive: true };
-    mockCtx = setupMockCtx(category, true, {
-      _id: "seller_123",
-      userId: "seller_123",
-      name: "Test Seller",
+  it("never returns the seller id, winner id or seller email", async () => {
+    mockCtx = setupMockCtx(null, true, createMockSellerProfile());
+    const result = await toLotDetail(mockCtx, {
+      ...createMockLot(),
+      winnerId: "winner_1",
     });
-    const auction = createMockLot();
 
-    const result = await toLotDetail(mockCtx, auction);
+    expect(result).not.toHaveProperty("sellerId");
+    expect(result).not.toHaveProperty("winnerId");
+    expect(result).not.toHaveProperty("sellerEmail");
+  });
 
-    expect(result.sellerEmail).toBeUndefined();
+  it("hides the reserve amount from buyers and signed-out visitors", async () => {
+    mockCtx = setupMockCtx(null, false);
+    viewer.current = null;
+    const signedOut = await toLotDetail(mockCtx, createMockLot());
+    viewer.current = { userId: "buyer_1", profile: { role: "user" } };
+    const buyer = await toLotDetail(mockCtx, createMockLot());
+
+    for (const result of [signedOut, buyer]) {
+      expect(result.reservePrice).toBeUndefined();
+      expect(result.isSeller).toBe(false);
+      expect(result.isWinner).toBe(false);
+      // 2 bids at 50 000 against a 45 000 reserve.
+      expect(result.reserveState).toBe("met");
+    }
+  });
+
+  it("shows the reserve amount to the seller and to admins", async () => {
+    mockCtx = setupMockCtx(null, true);
+    viewer.current = { userId: "seller_123", profile: { role: "user" } };
+    const seller = await toLotDetail(mockCtx, createMockLot());
+    viewer.current = { userId: "admin_1", profile: { role: "admin" } };
+    const admin = await toLotDetail(mockCtx, createMockLot());
+
+    expect(seller.reservePrice).toBe(45000);
+    expect(seller.isSeller).toBe(true);
+    expect(admin.reservePrice).toBe(45000);
+    expect(admin.isSeller).toBe(false);
+  });
+
+  it("flags the winner for the winning user only", async () => {
+    mockCtx = setupMockCtx(null, true);
+    const lot = { ...createMockLot(), winnerId: "winner_1" };
+    viewer.current = { userId: "winner_1", profile: { role: "user" } };
+    const winner = await toLotDetail(mockCtx, lot);
+    viewer.current = { userId: "other", profile: null };
+    const other = await toLotDetail(mockCtx, lot);
+
+    expect(winner.isWinner).toBe(true);
+    expect(other.isWinner).toBe(false);
+  });
+
+  it("falls back to the platform premium when the lot has no rate", async () => {
+    const buyerPremium = await import("../lib/buyerPremium");
+    vi.mocked(buyerPremium.resolveBuyerPremium).mockResolvedValueOnce({
+      source: "feeRows",
+      rate: undefined,
+    });
+    mockCtx = setupMockCtx(null, true);
+
+    const result = await toLotDetail(mockCtx, createMockLot());
+
+    expect(result.buyerPremiumFraction).toBe(0.1);
   });
 
   it("should handle missing category", async () => {
@@ -415,7 +485,7 @@ describe("toLotDetail", () => {
     expect(result).toHaveProperty("operatingHours");
     expect(result).toHaveProperty("location");
     expect(result).toHaveProperty("startingPrice");
-    expect(result).toHaveProperty("reservePrice");
+    expect(result).toHaveProperty("reserveState");
     expect(result).toHaveProperty("currentPrice");
     expect(result).toHaveProperty("status");
     expect(result).toHaveProperty("images");
@@ -443,7 +513,7 @@ describe("toLotDetail", () => {
 
     const result = await toLotDetail(mockCtx, auction);
 
-    expect(result.sellerEmail).toBeUndefined();
+    expect(result.sellerVatKind).toBe("vat");
   });
 
   it("looks the seller profile up by userId index", async () => {
@@ -530,5 +600,37 @@ describe("toLotSummaries", () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.categoryName).toBe("Unknown");
     expect(result[0]?.auctionStatus).toBeUndefined();
+  });
+});
+
+describe("resolveLotPhotos", () => {
+  const storage = {} as QueryCtx["storage"];
+  const url = (id: string) => `https://example.com/images/${id}`;
+
+  it("lists photos in gallery order with the angle keyed by storage ref", async () => {
+    const photos = await resolveLotPhotos(
+      storage,
+      { front: "f", cabin: "c", additional: ["a1", "a2"] },
+      { f: "front", a2: "hour_meter", a1: "not-an-angle" }
+    );
+
+    expect(photos).toEqual([
+      { url: url("f"), angle: "front" },
+      { url: url("c") },
+      { url: url("a1") },
+      { url: url("a2"), angle: "hour_meter" },
+    ]);
+  });
+
+  it("accepts the legacy array form and no angles", async () => {
+    expect(await resolveLotPhotos(storage, ["x", "y"], undefined)).toEqual([
+      { url: url("x") },
+      { url: url("y") },
+    ]);
+  });
+
+  it("returns nothing for empty or unknown image values", async () => {
+    expect(await resolveLotPhotos(storage, null, undefined)).toEqual([]);
+    expect(await resolveLotPhotos(storage, {}, {})).toEqual([]);
   });
 });

@@ -34,6 +34,12 @@ interface HomeLotGridProps {
   /** Show "Closes in …" on each card (the multi-sale state). */
   showCloses: boolean;
   now: number;
+  /**
+   * `grid` (default): two columns on phones, three from md. `strip`: one
+   * swipeable row on phones with the next card peeking, four columns from lg
+   * ("More in this sale" on the lot page).
+   */
+  layout?: "grid" | "strip";
   className?: string;
 }
 
@@ -83,6 +89,7 @@ function stateOf(lot: HomeGridLot): LotCardState {
  * @param props.onToggleWatch - Toggles a lot's heart
  * @param props.showCloses - Show "Closes in …" on each card
  * @param props.now - Current time (ms)
+ * @param props.layout - grid or strip
  * @param props.className - Extra classes merged onto the list
  * @returns The grid
  */
@@ -92,13 +99,16 @@ export function HomeLotGrid({
   onToggleWatch,
   showCloses,
   now,
+  layout = "grid",
   className,
 }: HomeLotGridProps) {
   return (
     <ul
       data-slot="home-lot-grid"
       className={cn(
-        "grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-3 md:gap-x-5 md:gap-y-8",
+        layout === "strip"
+          ? "-mx-4 flex snap-x gap-3 overflow-x-auto px-4 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-x-5 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
+          : "grid grid-cols-2 gap-x-3 gap-y-6 md:grid-cols-3 md:gap-x-5 md:gap-y-8",
         className
       )}
     >
@@ -107,7 +117,13 @@ export function HomeLotGrid({
         const isOpen = state === "open" || state === "current-bid";
         const remaining = lot.effectiveEndTime - now;
         return (
-          <li key={lot._id} className="flex">
+          <li
+            key={lot._id}
+            className={cn(
+              "flex",
+              layout === "strip" && "w-[46%] shrink-0 snap-start lg:w-auto"
+            )}
+          >
             <LotCard
               className="w-full"
               lot={{

@@ -74,6 +74,23 @@ describe("FeeBreakdown VAT and estimated total", () => {
     expect(screen.getAllByText(/R\s*10\s*000/)).toHaveLength(2);
   });
 
+  it("a private seller's lot charges VAT on the fees only", () => {
+    mockQueries(buyerPremiumFees, { vatRatePct: 15 });
+    render(
+      <FeeBreakdown
+        lotId={mockLotId}
+        isWinner={true}
+        isSeller={false}
+        hammerPrice={100_000}
+        sellerVatKind="private"
+      />
+    );
+    expect(screen.getByText("VAT (15% on fees)")).toBeInTheDocument();
+    // VAT = 10 000 * 15% = 1 500; total = 111 500.
+    expect(screen.getByText(/R\s*1\s*500/)).toBeInTheDocument();
+    expect(screen.getByText(/R\s*111\s*500/)).toBeInTheDocument();
+  });
+
   it("still shows VAT and the total for a winner when there are no buyer fees", () => {
     mockQueries({ buyerFees: [], sellerFees: [] }, { vatRatePct: 15 });
     render(

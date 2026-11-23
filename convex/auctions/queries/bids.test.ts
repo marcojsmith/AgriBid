@@ -14,6 +14,7 @@ import type { Id } from "../../_generated/dataModel";
 
 vi.mock("../../_generated/server", () => ({
   query: vi.fn((q: unknown) => q),
+  mutation: vi.fn((m: unknown) => m),
   internalMutation: vi.fn((m: unknown) => m),
 }));
 
