@@ -104,6 +104,18 @@ describe("event page queries", () => {
       expect(header).not.toHaveProperty("lots");
     });
 
+    it("ignores soft-close extensions of hidden lots", async () => {
+      const sale = await insertAuction(t);
+      await insertLot(t, sale, {
+        hiddenByFlags: true,
+        extendedEndTime: NOW + 9 * HOUR,
+      });
+      const header = await t.query(api.auctions.getPublishedAuction, {
+        auctionId: sale,
+      });
+      expect(header?.effectiveEndTime).toBe(NOW + 2 * HOUR);
+    });
+
     it("returns null for a draft sale", async () => {
       const draft = await insertAuction(t, { status: "draft" });
       expect(
@@ -195,6 +207,18 @@ describe("event page queries", () => {
       expect(await titles({ search: "jx4" })).toEqual(["Case"]);
       expect(await titles({ search: "  FORD " })).toEqual(["Ford"]);
       expect(await titles({ search: "zzz" })).toEqual([]);
+    });
+
+    it("measures the search before lowercasing it", async () => {
+      const sale = await insertAuction(t);
+      await insertLot(t, sale);
+      // "İ" lowercases to two UTF-16 units; 31 of them must not trip the limit.
+      await expect(
+        t.query(api.auctions.getEventLots, {
+          auctionId: sale,
+          search: "İ".repeat(31),
+        })
+      ).resolves.toMatchObject({ matched: 0 });
     });
 
     it("rejects a search longer than the limit", async () => {

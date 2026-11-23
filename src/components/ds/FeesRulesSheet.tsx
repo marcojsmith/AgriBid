@@ -78,7 +78,7 @@ export function FeesRulesSheet({
       }).total
     );
   const rows: [string, ReactNode][] = [
-    ["Buyer's premium", `${pct(premiumPct)}% of the bid, plus VAT`],
+    ["Buyer's premium", `${pct(premiumPct)}% of the bid`],
     [
       "VAT",
       `${pct(vatRatePct)}% on the premium. Also on the bid when the seller is VAT registered; each lot shows which`,
@@ -112,9 +112,12 @@ export function FeesRulesSheet({
     <BottomSheet open={open} onOpenChange={onOpenChange} title="Fees & rules">
       <dl className="divide-y divide-border">
         {rows.map(([term, text]) => (
-          <div key={term} className="py-2.5">
-            <dt className="text-sm font-semibold">{term}</dt>
-            <dd className="text-sm text-muted-foreground">{text}</dd>
+          <div
+            key={term}
+            className="grid grid-cols-[7.5rem_1fr] gap-x-4 py-3 text-[15px]"
+          >
+            <dt className="text-muted-foreground">{term}</dt>
+            <dd className="num font-medium">{text}</dd>
           </div>
         ))}
       </dl>

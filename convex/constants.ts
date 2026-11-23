@@ -269,8 +269,9 @@ export const HOME_LOTS_DEFAULT_LIMIT = 6;
 export const EVENT_LOTS_READ_PER_STATUS = 100;
 
 // Largest page served ("Show 24 more" grows the limit; each returned lot costs
-// an image resolve and two counter reads). Equal to the read cap.
-export const EVENT_LOTS_MAX_LIMIT = 100;
+// an image resolve and two counter reads). Equal to the three read caps together
+// so "Show more" can reach every lot that was read.
+export const EVENT_LOTS_MAX_LIMIT = 3 * EVENT_LOTS_READ_PER_STATUS;
 
 // Page size when the caller gives none.
 export const EVENT_LOTS_DEFAULT_LIMIT = 24;

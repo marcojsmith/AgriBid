@@ -184,12 +184,13 @@ export const getEventLotsHandler = async (
   ctx: QueryCtx,
   args: EventLotsArgs
 ) => {
-  const search = args.search?.trim().toLowerCase() ?? "";
-  if (search.length > EVENT_LOTS_MAX_SEARCH_LENGTH) {
+  const typed = args.search?.trim() ?? "";
+  if (typed.length > EVENT_LOTS_MAX_SEARCH_LENGTH) {
     throw new ConvexError(
       `Search is limited to ${String(EVENT_LOTS_MAX_SEARCH_LENGTH)} characters`
     );
   }
+  const search = typed.toLowerCase();
   const limit = Math.max(
     1,
     Math.min(

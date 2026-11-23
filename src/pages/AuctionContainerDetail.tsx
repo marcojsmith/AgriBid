@@ -81,6 +81,18 @@ const NO_FILTERS: Filters = {
  */
 export default function AuctionContainerDetail() {
   const { id } = useParams<{ id: string }>();
+  // Filters and the page count belong to one sale: remount when it changes.
+  return <EventPage key={id} id={id} />;
+}
+
+/**
+ * The page body for one sale. See {@link AuctionContainerDetail}.
+ *
+ * @param props - Component props
+ * @param props.id - The auction id from the URL
+ * @returns The page
+ */
+function EventPage({ id }: { id: string | undefined }) {
   const auctionId = id as Id<"auctions"> | undefined;
   const navigate = useNavigate();
   const { isAuthenticated } = useConvexAuth();
@@ -88,7 +100,15 @@ export default function AuctionContainerDetail() {
   // Ticks every 5 s so the seconds in the last 10 minutes stay current.
   const now = useNow(5000);
   const [searchParams, setSearchParams] = useSearchParams();
-  const search = searchParams.get("q") ?? "";
+  const urlSearch = searchParams.get("q") ?? "";
+  // The box is typed into without waiting for the URL (a slow router update
+  // would drop characters); a search sent from the header arrives as `?q=`.
+  const [search, setSearchText] = useState(urlSearch);
+  const [seenUrlSearch, setSeenUrlSearch] = useState(urlSearch);
+  if (urlSearch !== seenUrlSearch) {
+    setSeenUrlSearch(urlSearch);
+    setSearchText(urlSearch);
+  }
 
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [pages, setPages] = useState({ key: "", count: 1 });
@@ -114,7 +134,16 @@ export default function AuctionContainerDetail() {
   );
 
   const searchText = search.trim().slice(0, 60);
-  const filterKey = JSON.stringify([filters, searchText]);
+  // A sale that closes while the page is open swaps its category, make and
+  // price chips for outcome chips; the hidden filters must stop applying.
+  const closedNow =
+    auction !== undefined &&
+    auction !== null &&
+    getEventBucket(auction, now) === "closed";
+  const applied: Filters = closedNow
+    ? { ...NO_FILTERS, outcome: filters.outcome, sort: filters.sort }
+    : { ...filters, outcome: null };
+  const filterKey = JSON.stringify([applied, searchText]);
   const pageCount = pages.key === filterKey ? pages.count : 1;
   const limit = pageCount * PAGE_SIZE;
   const lotsResult = useQuery(
@@ -123,16 +152,16 @@ export default function AuctionContainerDetail() {
       ? {
           auctionId,
           search: searchText === "" ? undefined : searchText,
-          categoryId: (filters.category ?? undefined) as
+          categoryId: (applied.category ?? undefined) as
             Id<"equipmentCategories"> | undefined,
-          make: filters.make ?? undefined,
-          minPrice: filters.price.min,
-          maxPrice: filters.price.max,
+          make: applied.make ?? undefined,
+          minPrice: applied.price.min,
+          maxPrice: applied.price.max,
           outcome:
-            filters.outcome === "sold" || filters.outcome === "not_sold"
-              ? filters.outcome
+            applied.outcome === "sold" || applied.outcome === "not_sold"
+              ? applied.outcome
               : undefined,
-          sort: filters.sort,
+          sort: applied.sort,
           limit,
         }
       : "skip"
@@ -222,15 +251,21 @@ export default function AuctionContainerDetail() {
     setFilters({ ...filters, ...next });
   };
   const setSearch = (text: string) => {
-    setSearchParams(
-      (params) => {
-        const next = new URLSearchParams(params);
-        if (text === "") next.delete("q");
-        else next.set("q", text);
-        return next;
-      },
-      { replace: true }
-    );
+    setSearchText(text);
+  };
+  const clearFilters = () => {
+    setFilters(NO_FILTERS);
+    setSearchText("");
+    if (urlSearch !== "") {
+      setSearchParams(
+        (params) => {
+          const next = new URLSearchParams(params);
+          next.delete("q");
+          return next;
+        },
+        { replace: true }
+      );
+    }
   };
 
   const handleToggleWatch = async (lotId: string) => {
@@ -278,11 +313,11 @@ export default function AuctionContainerDetail() {
   const remaining = matched - shown;
   const lots = lotsResult?.lots ?? [];
   const filtersOn =
-    filters.category !== null ||
-    filters.make !== null ||
-    filters.outcome !== null ||
-    filters.price.min !== undefined ||
-    filters.price.max !== undefined ||
+    applied.category !== null ||
+    applied.make !== null ||
+    applied.outcome !== null ||
+    applied.price.min !== undefined ||
+    applied.price.max !== undefined ||
     searchText !== "";
 
   const showSticky = ctaGone && !closed;
@@ -368,9 +403,9 @@ export default function AuctionContainerDetail() {
             categories={closed ? outcomeOptions : categoryOptions}
             makes={closed ? [] : makeOptions}
             priceRange={closed ? null : facets.priceRange}
-            category={closed ? filters.outcome : filters.category}
-            make={filters.make}
-            price={filters.price}
+            category={closed ? applied.outcome : applied.category}
+            make={applied.make}
+            price={applied.price}
             onCategory={(key) => {
               if (closed) update({ outcome: key as OutcomeKey | null });
               else update({ category: key });
@@ -394,7 +429,7 @@ export default function AuctionContainerDetail() {
                 filtersOn ? matched : facets.total,
                 !filtersOn && facets.capped
               )}
-              value={filters.sort}
+              value={applied.sort}
               onChange={(sort) => {
                 update({ sort });
               }}
@@ -411,11 +446,22 @@ export default function AuctionContainerDetail() {
                 now={now}
               />
             ) : (
-              <p className="py-8 text-muted-foreground">
-                {facets.total === 0
-                  ? "No lots in this sale yet."
-                  : "No lots match these filters."}
-              </p>
+              <div className="py-8">
+                <p className="text-muted-foreground">
+                  {facets.total === 0
+                    ? "No lots in this sale yet."
+                    : "No lots match these filters."}
+                </p>
+                {facets.total > 0 && filtersOn ? (
+                  <Button
+                    variant="outline"
+                    className="mt-3"
+                    onClick={clearFilters}
+                  >
+                    Clear filters
+                  </Button>
+                ) : null}
+              </div>
             )}
             {remaining > 0 ? (
               <Button
@@ -453,12 +499,14 @@ export default function AuctionContainerDetail() {
         />
       ) : null}
 
-      <BeforeYouBid
-        className="mt-8"
-        transportHref="/support"
-        finance={settings.financeContact}
-        depositEnabled={settings.deposit.enabled}
-      />
+      {closed ? null : (
+        <BeforeYouBid
+          className="mt-8"
+          transportHref="/support"
+          finance={settings.financeContact}
+          depositEnabled={settings.deposit.enabled}
+        />
+      )}
 
       {showSticky ? <div className="h-[68px] md:hidden" /> : null}
       <FeesRulesSheet

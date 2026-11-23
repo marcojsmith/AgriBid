@@ -429,6 +429,7 @@ export const getPublishedAuctionHandler = async (
       )
       .take(EVENT_LOTS_READ_PER_STATUS),
   ]);
+  const visibleOpenLots = openLots.filter((lot) => lot.hiddenByFlags !== true);
 
   return {
     _id: auction._id,
@@ -438,7 +439,7 @@ export const getPublishedAuctionHandler = async (
     startTime: auction.startTime,
     endTime: auction.endTime,
     status: auction.status,
-    effectiveEndTime: openLots.reduce(
+    effectiveEndTime: visibleOpenLots.reduce(
       (end, lot) => Math.max(end, lot.extendedEndTime ?? 0),
       auction.endTime
     ),

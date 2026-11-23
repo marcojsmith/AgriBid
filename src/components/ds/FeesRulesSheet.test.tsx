@@ -14,7 +14,7 @@ describe("FeesRulesSheet", () => {
       />
     );
     expect(screen.getByRole("dialog", { name: "Fees & rules" })).toBeVisible();
-    expect(screen.getByText("12% of the bid, plus VAT")).toBeInTheDocument();
+    expect(screen.getByText("12% of the bid")).toBeInTheDocument();
     expect(screen.getByText(/15% on the premium/)).toBeInTheDocument();
     expect(
       screen.getByText(/refunded within 3 working days if you don't buy/)
@@ -39,7 +39,7 @@ describe("FeesRulesSheet", () => {
     );
     expect(screen.queryByText("Registration deposit")).toBeNull();
     expect(screen.queryByText(/deposit counts/)).toBeNull();
-    expect(screen.getByText("10.5% of the bid, plus VAT")).toBeInTheDocument();
+    expect(screen.getByText("10.5% of the bid")).toBeInTheDocument();
     expect(screen.getByText(/^16% on the premium/)).toBeInTheDocument();
   });
 

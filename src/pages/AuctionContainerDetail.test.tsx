@@ -304,6 +304,58 @@ describe("AuctionContainerDetail", () => {
     expect(lastLotsArgs()).toMatchObject({ limit: 48 });
   });
 
+  it("clears the filters from the empty state", () => {
+    setup({ getEventLots: { matched: 0, lots: [] } });
+    renderPage();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Tractors 48" }));
+    expect(lastLotsArgs()).toMatchObject({ categoryId: "c1" });
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(lastLotsArgs().categoryId).toBeUndefined();
+  });
+
+  it("also clears a ?q= search sent from the header", () => {
+    setup({ getEventLots: { matched: 0, lots: [] } });
+    renderPage("/auctions/a1?q=zzz");
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(lastLotsArgs().search).toBeUndefined();
+    expect(
+      screen.getByRole("searchbox", { name: "Search make or model" })
+    ).toHaveValue("");
+  });
+
+  it("types into the search box without waiting for the URL", () => {
+    renderPage();
+    const box = screen.getByRole("searchbox", { name: "Search make or model" });
+    fireEvent.change(box, { target: { value: "fo" } });
+    expect(box).toHaveValue("fo");
+    expect(lastLotsArgs()).toMatchObject({ search: "fo" });
+  });
+
+  it("drops category, make and price filters when the sale closes while open", () => {
+    setup({
+      getPublishedAuction: {
+        ...liveAuction,
+        endTime: NOW + 1000,
+        effectiveEndTime: NOW + 1000,
+      },
+    });
+    const { unmount } = renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Tractors 48" }));
+    expect(lastLotsArgs()).toMatchObject({ categoryId: "c1" });
+    unmount();
+    setup({
+      getPublishedAuction: {
+        ...liveAuction,
+        status: "closed",
+        endTime: NOW - HOUR,
+        effectiveEndTime: NOW - HOUR,
+      },
+    });
+    renderPage();
+    expect(lastLotsArgs().categoryId).toBeUndefined();
+  });
+
   it("says when no lot matches", () => {
     setup({ getEventLots: { matched: 0, lots: [] } });
     renderPage();
@@ -520,6 +572,7 @@ describe("AuctionContainerDetail", () => {
         screen.queryByRole("region", { name: "Register to bid" })
       ).toBeNull();
       expect(screen.queryByRole("link", { name: /free valuation/ })).toBeNull();
+      expect(screen.queryByText("Before you bid")).toBeNull();
 
       fireEvent.click(screen.getByRole("button", { name: "Sold 5" }));
       expect(lastLotsArgs()).toMatchObject({ outcome: "sold" });
