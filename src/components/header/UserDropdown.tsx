@@ -154,14 +154,14 @@ export function UserDropdown({
             asChild
             className="bg-warning/10 text-warning focus:bg-warning/20 focus:text-warning rounded-md mb-1 border border-warning/20 p-3"
           >
-            <Link to="/kyc" className="flex items-center gap-3 w-full">
+            <Link to="/register" className="flex items-center gap-3 w-full">
               <ShieldAlert className="h-5 w-5" />
               <div className="flex flex-col">
                 <span className="font-semibold text-xs leading-none">
-                  Identity Required
+                  Finish registration
                 </span>
                 <span className="text-[9px] font-medium opacity-80 mt-0.5">
-                  Complete KYC to start selling
+                  Needed to bid and to sell
                 </span>
               </div>
             </Link>

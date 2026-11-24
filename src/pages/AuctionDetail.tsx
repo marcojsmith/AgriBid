@@ -335,7 +335,11 @@ function LotPage({ id }: { id: string | undefined }) {
     : viewer === "guest"
       ? { kind: "link", href: registerHref, label: "Register to bid" }
       : eligibility === "needs-verification"
-        ? { kind: "link", href: "/kyc", label: "Verify to bid" }
+        ? {
+            kind: "link",
+            href: `/register?callbackUrl=${callbackUrl}`,
+            label: "Verify to bid",
+          }
         : eligibility === "verification-pending"
           ? null
           : viewer === "leading"

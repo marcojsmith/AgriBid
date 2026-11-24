@@ -43,7 +43,7 @@ export function CopyRow({
     try {
       await navigator.clipboard.writeText(value);
     } catch {
-      showToast("Couldn't copy");
+      showToast("Couldn't copy", "error");
       return;
     }
     if (onCopied) onCopied();

@@ -226,7 +226,7 @@ export function BidPanel({
             </Banner>
             {eligibility === "needs-verification" ? (
               <Button asChild className="w-full">
-                <Link to="/kyc">Verify to bid</Link>
+                <Link to="/register">Verify to bid</Link>
               </Button>
             ) : null}
           </>

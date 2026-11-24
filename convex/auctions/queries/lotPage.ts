@@ -255,9 +255,12 @@ export const getLotNeighbours = query({
  */
 export async function getLotHeadlineHandler(
   ctx: QueryCtx,
-  args: { lotId: Id<"lots"> }
+  args: { lotId: string }
 ) {
-  const lot = await ctx.db.get("lots", args.lotId);
+  // Accepts any string (it can come from a URL): not a lot id means no lot.
+  const lotId = ctx.db.normalizeId("lots", args.lotId);
+  if (!lotId) return null;
+  const lot = await ctx.db.get("lots", lotId);
   if (!lot || lot.hiddenByFlags === true || lot.auctionId === undefined) {
     return null;
   }
@@ -279,7 +282,7 @@ export async function getLotHeadlineHandler(
 
 /** Public query: a lot's headline (number, title, close time, photo). */
 export const getLotHeadline = query({
-  args: { lotId: v.id("lots") },
+  args: { lotId: v.string() },
   returns: v.union(
     v.null(),
     v.object({

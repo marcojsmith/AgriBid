@@ -55,7 +55,7 @@ describe("CopyRow", () => {
     render(<CopyRow label="Bank" value="FNB" onCopied={onCopied} />);
     fireEvent.click(screen.getByRole("button", { name: "Copy Bank" }));
     await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith("Couldn't copy");
+      expect(showToast).toHaveBeenCalledWith("Couldn't copy", "error");
     });
     expect(onCopied).not.toHaveBeenCalled();
   });
@@ -65,7 +65,7 @@ describe("CopyRow", () => {
     render(<CopyRow label="Bank" value="FNB" />);
     fireEvent.click(screen.getByRole("button", { name: "Copy Bank" }));
     await waitFor(() => {
-      expect(showToast).toHaveBeenCalledWith("Couldn't copy");
+      expect(showToast).toHaveBeenCalledWith("Couldn't copy", "error");
     });
   });
 

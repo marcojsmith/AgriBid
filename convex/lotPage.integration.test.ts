@@ -442,4 +442,16 @@ describe("getLotHeadline", () => {
       await t.query(api.auctions.getLotHeadline, { lotId: loose })
     ).toBeNull();
   });
+
+  it("returns null for a string that is not a lot id", async () => {
+    const t = createTestContext();
+    expect(
+      await t.query(api.auctions.getLotHeadline, { lotId: "not-an-id" })
+    ).toBeNull();
+    // A real id from another table is not a lot either.
+    const saleId = await insertSale(t, "published");
+    expect(
+      await t.query(api.auctions.getLotHeadline, { lotId: saleId })
+    ).toBeNull();
+  });
 });
