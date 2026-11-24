@@ -556,7 +556,7 @@ export default function DesignSystem() {
           Open Fees &amp; rules
         </Button>
         <BeforeYouBid
-          transportHref="/support"
+          onTransportClick={() => undefined}
           finance={{
             name: "Lee-Anne Vermeulen",
             company: null,

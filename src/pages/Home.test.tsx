@@ -74,6 +74,8 @@ vi.mock("convex/_generated/api", () => ({
       getMostEngagedLotAcrossSales: "featuredAcross",
     },
     watchlist: { getWatchedLotIds: "watched", toggleWatchlist: "toggle" },
+    transport: { requestQuote: "requestQuote" },
+    users: { getMyKYCDetails: "kyc" },
   },
 }));
 
@@ -367,6 +369,18 @@ describe("Home page", () => {
     renderHome();
     fireEvent.click(screen.getByRole("button", { name: "Fees & rules" }));
     expect(screen.getByRole("dialog", { name: "Fees & rules" })).toBeVisible();
+  });
+
+  it("opens the transport quote sheet from Before you bid", () => {
+    renderHome();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Request a transport quote/ })
+    );
+    const sheet = screen.getByRole("dialog", {
+      name: "Request a transport quote",
+    });
+    expect(sheet).toBeVisible();
+    expect(screen.getByLabelText("Collect from")).toBeInTheDocument();
   });
 
   it("sends a guest to sign in when they tap the heart", () => {

@@ -87,6 +87,7 @@ import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
 import type * as storageCleanup from "../storageCleanup.js";
 import type * as support from "../support.js";
+import type * as transport from "../transport.js";
 import type * as userActivity from "../userActivity.js";
 import type * as userPreferences from "../userPreferences.js";
 import type * as users from "../users.js";
@@ -180,6 +181,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   storageCleanup: typeof storageCleanup;
   support: typeof support;
+  transport: typeof transport;
   userActivity: typeof userActivity;
   userPreferences: typeof userPreferences;
   users: typeof users;

@@ -29,6 +29,7 @@ function renderHeader(
     deposit: { enabled: true, amount: 5000, refundDays: 3 },
     signedIn: false,
     onFeesClick: vi.fn(),
+    onTransportClick: vi.fn(),
     shareUrl: "https://agribid.example/auctions/a1",
     onShareResult: vi.fn(),
     ...over,
@@ -135,5 +136,16 @@ describe("EventHeader", () => {
     expect(screen.queryByRole("link", { name: "Register to bid" })).toBeNull();
     expect(screen.queryByText(/^e\.g\./)).toBeNull();
     expect(screen.queryByText(/add 2 minutes/)).toBeNull();
+  });
+
+  it("opens the transport quote sheet from a button", () => {
+    const props = renderHeader();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Request a transport quote" })
+    );
+    expect(props.onTransportClick).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("link", { name: "Request a transport quote" })
+    ).toBeNull();
   });
 });

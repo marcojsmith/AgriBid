@@ -50,6 +50,8 @@ interface EventHeaderProps {
   /** Shown as the Remind me button on an upcoming sale; left out when the feature is off. */
   onRemind?: () => void;
   onFeesClick: () => void;
+  /** Opens the transport quote sheet. */
+  onTransportClick: () => void;
   /** Absolute link the share button shares. */
   shareUrl: string;
   onShareResult: (result: ShareResult) => void;
@@ -79,6 +81,7 @@ interface EventHeaderProps {
  * @param props.closed - Totals for a closed sale
  * @param props.onRemind - Called by Remind me; the button is hidden without it
  * @param props.onFeesClick - Opens the Fees & rules sheet
+ * @param props.onTransportClick - Opens the transport quote sheet
  * @param props.shareUrl - Link the share button shares
  * @param props.onShareResult - Called with the share outcome
  * @param props.ctaRef - Ref for the primary call to action
@@ -96,6 +99,7 @@ export function EventHeader({
   closed,
   onRemind,
   onFeesClick,
+  onTransportClick,
   shareUrl,
   onShareResult,
   ctaRef,
@@ -263,12 +267,13 @@ export function EventHeader({
               </IconRow>
               <IconRow onDark icon={Truck}>
                 Collect within {COLLECTION_WINDOW_DAYS} days ·{" "}
-                <Link
-                  to="/support"
+                <button
+                  type="button"
                   className="text-hero-foreground underline underline-offset-2"
+                  onClick={onTransportClick}
                 >
                   Request a transport quote
-                </Link>
+                </button>
               </IconRow>
               <IconRow onDark icon={Wallet}>
                 Pay by EFT within {PAYMENT_WINDOW_HOURS} hours.

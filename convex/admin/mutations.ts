@@ -246,6 +246,46 @@ export const resolveTicket = mutation({
   },
 });
 
+// --- Transport quote requests ---
+
+/**
+ * Mark a transport quote request as handled.
+ *
+ * Records the admin and time, and writes an audit log. Marking an already
+ * handled request is a no-op. Only accessible to admin users.
+ */
+export const markTransportQuoteHandled = mutation({
+  args: { requestId: v.id("transportQuoteRequests") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const authUser = await getAuthUser(ctx);
+    if (!authUser) {
+      throw new Error("Admin identity not found or invalid");
+    }
+
+    const request = await ctx.db.get("transportQuoteRequests", args.requestId);
+    if (!request) {
+      throw new Error("Transport quote request not found");
+    }
+    if (request.status === "handled") return null;
+
+    await ctx.db.patch("transportQuoteRequests", args.requestId, {
+      status: "handled",
+      handledBy: authUser.userId ?? authUser._id,
+      handledAt: Date.now(),
+    });
+
+    await logAudit(ctx, {
+      action: "HANDLE_TRANSPORT_QUOTE",
+      targetId: args.requestId,
+      targetType: "transportQuote",
+    });
+    return null;
+  },
+});
+
 // --- Communication / Announcements ---
 
 /**

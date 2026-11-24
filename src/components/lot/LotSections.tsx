@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
 import {
   BadgeDollarSign,
   ChevronRight,
@@ -266,6 +265,8 @@ interface ViewCollectProps {
     phone: string | null;
     tel?: string;
   };
+  /** Opens the transport quote sheet. */
+  onTransportClick: () => void;
   className?: string;
   /** Draw the divider and title (phone) or just the rows (the desktop column). */
   heading?: boolean;
@@ -273,13 +274,14 @@ interface ViewCollectProps {
 
 /**
  * "View & collect": where the machine stands and how to book a viewing,
- * "Request a transport quote" (to the support page for now), and the finance
+ * "Request a transport quote" (opens the quote sheet), and the finance
  * contact (tap to call). Rows with no data are hidden.
  *
  * @param props - Component props
  * @param props.place - Town and province
  * @param props.phone - The viewing phone number
  * @param props.finance - The finance contact
+ * @param props.onTransportClick - Opens the transport quote sheet
  * @param props.className - Extra classes merged onto the root element
  * @param props.heading - Show the section heading
  * @returns The rows, wrapped in a section when `heading` is set
@@ -288,6 +290,7 @@ export function ViewCollect({
   place,
   phone,
   finance,
+  onTransportClick,
   className,
   heading = true,
 }: ViewCollectProps) {
@@ -310,9 +313,10 @@ export function ViewCollect({
         </IconRow>
       ) : null}
       <li className="border-t border-border">
-        <Link
-          to="/support"
-          className="flex min-h-12 items-center gap-2.5 py-1.5 text-[15px] font-medium"
+        <button
+          type="button"
+          onClick={onTransportClick}
+          className="flex min-h-12 w-full items-center gap-2.5 py-1.5 text-left text-[15px] font-medium"
         >
           <Truck
             aria-hidden="true"
@@ -320,7 +324,7 @@ export function ViewCollect({
           />
           <span className="flex-1">Request a transport quote</span>
           <ChevronRight aria-hidden="true" className="size-4" />
-        </Link>
+        </button>
       </li>
       {finance?.phone && finance.tel ? (
         <li className="border-t border-border">

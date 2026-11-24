@@ -282,3 +282,20 @@ export const EVENT_LOTS_DEFAULT_LIMIT = 24;
 
 // Longest search text accepted by `getEventLots`.
 export const EVENT_LOTS_MAX_SEARCH_LENGTH = 60;
+
+/**
+ * Transport quote requests (public form, guests allowed — see convex/transport.ts).
+ */
+// Rate-limit window for transport quote requests.
+export const TRANSPORT_QUOTE_RATE_LIMIT_WINDOW_MS = MS_PER_HOUR;
+// Max requests per phone number within the window.
+export const MAX_TRANSPORT_QUOTES_PER_PHONE = 3;
+// Max requests per signed-in user within the window.
+export const MAX_TRANSPORT_QUOTES_PER_USER = 5;
+// Max requests across everyone within the window.
+export const MAX_TRANSPORT_QUOTES_GLOBAL = 100;
+// Field length caps.
+export const TRANSPORT_QUOTE_MAX_NAME_LENGTH = 80;
+export const TRANSPORT_QUOTE_MAX_TOWN_LENGTH = 80;
+export const TRANSPORT_QUOTE_MAX_PICKUP_LENGTH = 120;
+export const TRANSPORT_QUOTE_MAX_NOTES_LENGTH = 500;

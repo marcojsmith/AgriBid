@@ -58,6 +58,8 @@ vi.mock("convex/_generated/api", () => {
         getWatchedLotIds: ref("getWatchedLotIds"),
         toggleWatchlist: ref("toggleWatchlist"),
       },
+      transport: { requestQuote: ref("requestQuote") },
+      users: { getMyKYCDetails: ref("getMyKYCDetails") },
     },
   };
 });
@@ -262,6 +264,18 @@ describe("AuctionContainerDetail", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Fees & rules" })[0]);
     expect(screen.getByRole("dialog", { name: "Fees & rules" })).toBeVisible();
     expect(screen.getByText("Example")).toBeVisible();
+  });
+
+  it("opens the transport quote sheet from the header and Before you bid", () => {
+    renderPage();
+    const buttons = screen.getAllByRole("button", {
+      name: /Request a transport quote/,
+    });
+    expect(buttons.length).toBeGreaterThan(0);
+    fireEvent.click(buttons[0]);
+    expect(
+      screen.getByRole("dialog", { name: "Request a transport quote" })
+    ).toBeVisible();
   });
 
   it("filters by category, make, price and search and sorts", () => {

@@ -28,6 +28,8 @@ vi.mock("convex/_generated/api", () => ({
       getAdminStats: "admin:getAdminStats",
       getTickets: "admin:getTickets",
       resolveTicket: "admin:resolveTicket",
+      getTransportQuotes: "admin:getTransportQuotes",
+      markTransportQuoteHandled: "admin:markTransportQuoteHandled",
     },
   },
 }));
@@ -145,6 +147,30 @@ describe("AdminSupport Page", () => {
     expect(screen.getByText("Account access")).toBeInTheDocument();
     expect(screen.getByText("high")).toBeInTheDocument();
     expect(screen.getByText("resolved")).toBeInTheDocument();
+  });
+
+  it("switches to the transport quotes list", () => {
+    (useQuery as Mock).mockImplementation((queryApi) => {
+      if (queryApi === "admin:getAdminStats") return mockAdminStatsValue;
+      if (queryApi === "admin:getTickets") return mockPaginatedTickets;
+      if (queryApi === "admin:getTransportQuotes")
+        return {
+          page: [],
+          isDone: true,
+          continueCursor: "",
+          totalCount: 0,
+          pageStatus: null,
+          splitCursor: null,
+        };
+      return undefined;
+    });
+    renderPage();
+    expect(screen.getByRole("radio", { name: "Tickets" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: "Transport quotes" }));
+    expect(screen.getByText("No transport quote requests")).toBeVisible();
+    expect(screen.queryByText("Help with bidding")).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: "Tickets" }));
+    expect(screen.getByText("Help with bidding")).toBeVisible();
   });
 
   it("handles ticket resolution successfully", async () => {

@@ -1,13 +1,14 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 
 import { BeforeYouBid } from "./BeforeYouBid";
 
 describe("BeforeYouBid", () => {
-  it("shows the five rows with the transport link", () => {
+  it("shows the five rows with the transport button", () => {
+    const onTransportClick = vi.fn();
     render(
       <BeforeYouBid
-        transportHref="/support"
+        onTransportClick={onTransportClick}
         finance={{
           name: "Lee-Anne",
           company: "com-fin",
@@ -19,9 +20,13 @@ describe("BeforeYouBid", () => {
       screen.getByRole("heading", { name: "Before you bid" })
     ).toBeInTheDocument();
     expect(screen.getByText("Viewing and collection")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Request a transport quote/ })
+    );
+    expect(onTransportClick).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByRole("link", { name: /Request a transport quote/ })
-    ).toHaveAttribute("href", "/support");
+      screen.queryByRole("link", { name: /Request a transport quote/ })
+    ).toBeNull();
     expect(screen.getByText("Reserve")).toBeInTheDocument();
     expect(
       screen.getByText(/EFT within 48 hours\. Your deposit counts/)
@@ -31,7 +36,7 @@ describe("BeforeYouBid", () => {
   it("links the finance contact to a call", () => {
     render(
       <BeforeYouBid
-        transportHref="/support"
+        onTransportClick={() => undefined}
         finance={{
           name: "Lee-Anne",
           company: "com-fin",
@@ -45,11 +50,13 @@ describe("BeforeYouBid", () => {
   });
 
   it("hides the finance row until a phone is set", () => {
-    const { rerender } = render(<BeforeYouBid transportHref="/support" />);
+    const { rerender } = render(
+      <BeforeYouBid onTransportClick={() => undefined} />
+    );
     expect(screen.queryByText("Need finance?")).toBeNull();
     rerender(
       <BeforeYouBid
-        transportHref="/support"
+        onTransportClick={() => undefined}
         finance={{ name: "A", company: null, phone: null }}
       />
     );
@@ -57,7 +64,9 @@ describe("BeforeYouBid", () => {
   });
 
   it("leaves the deposit sentence out when there is no deposit", () => {
-    render(<BeforeYouBid transportHref="/support" depositEnabled={false} />);
+    render(
+      <BeforeYouBid onTransportClick={() => undefined} depositEnabled={false} />
+    );
     expect(screen.queryByText(/deposit/)).toBeNull();
   });
 });

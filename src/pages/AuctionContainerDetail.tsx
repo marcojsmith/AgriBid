@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { AddToHomeScreenSheet } from "@/components/ds/AddToHomeScreenSheet";
 import { BeforeYouBid } from "@/components/ds/BeforeYouBid";
 import { FeesRulesSheet } from "@/components/ds/FeesRulesSheet";
+import { TransportQuoteSheet } from "@/components/ds/TransportQuoteSheet";
 import { PermissionPrompt } from "@/components/ds/PermissionPrompt";
 import { SellerStrip } from "@/components/ds/SellerStrip";
 import { StickyBar } from "@/components/ds/StickyBar";
@@ -29,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { useBranding } from "@/hooks/useBranding";
 import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
+import { useTransportQuote } from "@/hooks/useTransportQuote";
 import { URGENT_MS } from "@/lib/auction-badges";
 import { getEventBucket } from "@/lib/auction-utils";
 import { WATCHING_MESSAGE } from "@/lib/auctionRules";
@@ -114,6 +116,7 @@ function EventPage({ id }: { id: string | undefined }) {
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [pages, setPages] = useState({ key: "", count: 1 });
   const [feesOpen, setFeesOpen] = useState(false);
+  const transport = useTransportQuote();
   const [sheet, setSheet] = useState<"home-screen" | "permission" | null>(null);
   const [ctaRef, ctaGone] = useScrolledPast();
 
@@ -406,6 +409,9 @@ function EventPage({ id }: { id: string | undefined }) {
         onFeesClick={() => {
           setFeesOpen(true);
         }}
+        onTransportClick={() => {
+          transport.setOpen(true);
+        }}
         shareUrl={canonical}
         onShareResult={handleShare}
         ctaRef={ctaRef}
@@ -521,7 +527,9 @@ function EventPage({ id }: { id: string | undefined }) {
       {closed ? null : (
         <BeforeYouBid
           className="mt-8"
-          transportHref="/support"
+          onTransportClick={() => {
+            transport.setOpen(true);
+          }}
           finance={settings.financeContact}
           depositEnabled={settings.deposit.enabled}
         />
@@ -535,6 +543,7 @@ function EventPage({ id }: { id: string | undefined }) {
         deposit={settings.deposit}
         exampleBid={example?.bid}
       />
+      <TransportQuoteSheet {...transport.sheetProps} />
       <AddToHomeScreenSheet
         open={sheet === "home-screen"}
         onOpenChange={(open) => {
