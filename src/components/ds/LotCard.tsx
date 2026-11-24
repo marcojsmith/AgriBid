@@ -63,13 +63,13 @@ const PRICE_LABEL: Record<LotCardState, string> = {
 };
 
 /**
- * Groups thousands with a narrow no-break space, as `formatRand` does.
+ * Groups thousands with a no-break space, as `formatRand` does.
  *
  * @param n - A whole number
  * @returns The grouped digits
  */
 function groupDigits(n: number): string {
-  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }
 
 /**
@@ -110,8 +110,10 @@ export function LotCard({
     lot.year ? String(lot.year) : null,
     lot.hours ? `${groupDigits(lot.hours)} hrs` : null,
   ].filter((part): part is string => part !== null);
+  // "0 watching" is noise: show nothing until someone watches. Bid counts
+  // (closed states) keep their zero.
   const countText =
-    count === undefined
+    count === undefined || (state === "open" && count === 0)
       ? null
       : state === "open"
         ? `${String(count)} watching`

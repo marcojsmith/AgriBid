@@ -81,13 +81,23 @@ function matchesLotFilter(
   if (args.auctionId !== undefined && lot.auctionId !== args.auctionId)
     return false;
   if (args.make !== undefined && lot.make !== args.make) return false;
+  // A stored year or hours value of 0 means "unknown" (imported lots, drafts):
+  // it never matches a year range or an hours cap.
+  if (
+    (args.minYear !== undefined || args.maxYear !== undefined) &&
+    lot.year === 0
+  )
+    return false;
   if (args.minYear !== undefined && lot.year < args.minYear) return false;
   if (args.maxYear !== undefined && lot.year > args.maxYear) return false;
   if (args.minPrice !== undefined && lot.currentPrice < args.minPrice)
     return false;
   if (args.maxPrice !== undefined && lot.currentPrice > args.maxPrice)
     return false;
-  if (args.maxHours !== undefined && lot.operatingHours > args.maxHours)
+  if (
+    args.maxHours !== undefined &&
+    (lot.operatingHours === 0 || lot.operatingHours > args.maxHours)
+  )
     return false;
   return true;
 }
@@ -156,13 +166,18 @@ export const getActiveLotsHandler = async (
           if (args.minYear !== undefined && args.maxYear !== undefined) {
             return q
               .eq("status", statuses[0])
-              .gte("year", args.minYear)
+              .gte("year", Math.max(1, args.minYear))
               .lte("year", args.maxYear);
           }
           if (args.minYear !== undefined) {
-            return q.eq("status", statuses[0]).gte("year", args.minYear);
+            return q
+              .eq("status", statuses[0])
+              .gte("year", Math.max(1, args.minYear));
           }
-          return q.eq("status", statuses[0]).lte("year", args.maxYear ?? 0);
+          return q
+            .eq("status", statuses[0])
+            .gte("year", 1)
+            .lte("year", args.maxYear ?? 0);
         });
       }
       return lotsQuery.order("desc");
@@ -205,8 +220,10 @@ export const getActiveLotsHandler = async (
         expressions.push(f.eq(f.field("make"), args.make));
       }
 
-      if (args.minYear !== undefined)
-        expressions.push(f.gte(f.field("year"), args.minYear));
+      if (args.minYear !== undefined || args.maxYear !== undefined)
+        expressions.push(
+          f.gte(f.field("year"), Math.max(1, args.minYear ?? 1))
+        );
       if (args.maxYear !== undefined)
         expressions.push(f.lte(f.field("year"), args.maxYear));
       if (args.minPrice !== undefined)

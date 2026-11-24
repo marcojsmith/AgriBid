@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 
-import { PhotoFrame } from "@/components/ds/PhotoFrame";
 import { StatusBadge } from "@/components/ds/StatusBadge";
 import { formatClosesIn } from "@/lib/countdown";
+import { formatSastDate } from "@/lib/dates";
+import { formatLotCount } from "@/lib/homeSales";
 import { cn } from "@/lib/utils";
 
 /** One live or upcoming sale in the list. */
@@ -13,9 +14,9 @@ export interface SaleListItem {
   startTime: number;
   effectiveEndTime: number;
   lotCount: number;
+  /** True when `lotCount` is a lower bound (the sale held more lots than were read). */
+  lotCountCapped?: boolean;
   bucket: "live" | "upcoming";
-  /** First lead photo of the sale, if any. */
-  imageUrl?: string;
 }
 
 interface SaleListProps {
@@ -25,9 +26,10 @@ interface SaleListProps {
 }
 
 /**
- * The multi-sale state of Home (two or more live or upcoming sales): one row
- * per sale with a photo, its status, title and "Closes in … · n lots". Each row
- * opens the sale. Live sales come first, then upcoming ones.
+ * The compact sale rows inside the multi-sale hero band (home-r8): status
+ * pill, sale name, "Closes in 1d 3h · 5 lots" (upcoming: "Opens Wed 25 Nov,
+ * 11:00 · 4 lots") and a chevron. Each row opens the sale. Meant for the dark
+ * hero band; live sales come first, then upcoming ones.
  *
  * @param props - Component props
  * @param props.sales - The sales in display order
@@ -41,42 +43,46 @@ export function SaleList({ sales, now, className }: SaleListProps) {
       data-slot="sale-list"
       aria-label="Auctions"
       className={cn(
-        "container mx-auto max-w-[1200px] divide-y divide-border px-4",
+        "divide-y divide-hero-muted/30 border-y border-hero-muted/30",
         className
       )}
     >
       {sales.map((sale) => {
-        const lots = `${String(sale.lotCount)} ${sale.lotCount === 1 ? "lot" : "lots"}`;
+        const lots = formatLotCount(sale.lotCount, sale.lotCountCapped);
         return (
           <li key={sale._id}>
             <Link
               to={`/auctions/${sale._id}`}
-              className="flex items-center gap-3.5 py-3"
+              className="flex min-h-12 items-center gap-3 py-2.5"
             >
-              <div className="w-[88px] shrink-0 md:w-[120px]">
-                <PhotoFrame src={sale.imageUrl} alt="" className="rounded-md" />
-              </div>
-              <div className="min-w-0 flex-1 space-y-1">
+              {sale.bucket === "live" ? (
                 <StatusBadge
-                  variant="soft"
-                  status={
-                    sale.bucket === "live"
-                      ? { kind: "live" }
-                      : { kind: "opens", startTime: sale.startTime }
-                  }
+                  variant="solid"
+                  status={{ kind: "live" }}
+                  className="w-20 shrink-0 justify-center"
                 />
-                <p className="font-display text-lg leading-tight font-semibold">
+              ) : (
+                <span
+                  data-slot="status-badge"
+                  data-tone="soon"
+                  className="inline-flex w-20 shrink-0 items-center justify-center rounded-sm bg-soon-solid px-2 py-0.5 text-xs font-semibold text-white"
+                >
+                  Upcoming
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-hero-foreground">
                   {sale.title}
-                </p>
-                <p className="num text-sm text-muted-foreground">
+                </span>
+                <span className="num block text-sm text-hero-muted">
                   {sale.bucket === "live"
                     ? `${formatClosesIn(sale.effectiveEndTime - now)} · ${lots}`
-                    : lots}
-                </p>
-              </div>
+                    : `Opens ${formatSastDate(sale.startTime)} · ${lots}`}
+                </span>
+              </span>
               <ChevronRight
                 aria-hidden="true"
-                className="size-5 shrink-0 text-muted-foreground"
+                className="size-5 shrink-0 text-hero-muted"
               />
             </Link>
           </li>

@@ -3,14 +3,14 @@ import { describe, it, expect } from "vitest";
 
 import { DepositLines } from "./DepositLines";
 
-const NNBSP = " ";
+const NBSP = " ";
 
 describe("DepositLines", () => {
   it("renders the default deposit and ID lines", () => {
     const { container } = render(<DepositLines />);
     const el = container.querySelector("[data-slot=deposit-lines]");
     expect(el?.textContent).toBe(
-      `R${NNBSP}5${NNBSP}000 deposit, refunded within 3 working days if you don't buyHave ready: ID + proof of address`
+      `R${NBSP}5${NBSP}000 deposit, refunded within 3 working days if you don't buyHave ready: ID + proof of address`
     );
     expect(el).toHaveClass("text-muted-foreground");
   });
@@ -19,7 +19,7 @@ describe("DepositLines", () => {
     const { container } = render(
       <DepositLines amount={10000} refundDays={5} />
     );
-    expect(container.textContent).toContain(`R${NNBSP}10${NNBSP}000 deposit`);
+    expect(container.textContent).toContain(`R${NBSP}10${NBSP}000 deposit`);
     expect(container.textContent).toContain("within 5 working days");
   });
 

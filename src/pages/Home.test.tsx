@@ -14,6 +14,7 @@ interface MockData {
   salesStatus: string;
   settings: unknown;
   featured: unknown[];
+  featuredAcross: unknown;
   home: unknown;
   facets: unknown;
   watched: string[];
@@ -29,6 +30,7 @@ const data = vi.hoisted<MockData>(() => ({
   salesStatus: "Exhausted",
   settings: undefined,
   featured: [],
+  featuredAcross: null,
   home: undefined,
   facets: undefined,
   watched: [],
@@ -49,6 +51,7 @@ vi.mock("convex/react", () => ({
     if (args === "skip") return undefined;
     if (ref === "settings") return data.settings;
     if (ref === "featured") return data.featured;
+    if (ref === "featuredAcross") return data.featuredAcross;
     if (ref === "homeLots") return data.home;
     if (ref === "facets") return data.facets;
     if (ref === "watched") return data.watched;
@@ -66,7 +69,10 @@ vi.mock("convex/_generated/api", () => ({
       getHomeFacets: "facets",
     },
     admin: { platformSettings: { getPlatformSettings: "settings" } },
-    engagement: { getMostEngagedLots: "featured" },
+    engagement: {
+      getMostEngagedLots: "featured",
+      getMostEngagedLotAcrossSales: "featuredAcross",
+    },
     watchlist: { getWatchedLotIds: "watched", toggleWatchlist: "toggle" },
   },
 }));
@@ -124,6 +130,7 @@ const sale = (id: string, over: Record<string, unknown> = {}) => ({
 
 const lot = (id: string, over: Record<string, unknown> = {}) => ({
   _id: id,
+  title: "New Holland T6070",
   make: "New Holland",
   model: "T6070",
   year: 2016,
@@ -178,6 +185,7 @@ describe("Home page", () => {
         bids: 0,
         lot: {
           _id: "l9",
+          title: "x",
           year: 2016,
           make: "John Deere",
           model: "8370RT",
@@ -242,15 +250,42 @@ describe("Home page", () => {
         lotCount: 4,
       }),
     ];
+    data.featuredAcross = {
+      bids: 3,
+      lot: {
+        _id: "l9",
+        title: "x",
+        year: 2016,
+        make: "John Deere",
+        model: "8370RT",
+        location: "Wolmaranstad",
+        startingPrice: 2000000,
+        currentPrice: 2100000,
+        images: { front: "https://img/jd.jpg", additional: [] },
+      },
+    };
     renderHome();
     expect(screen.getByRole("list", { name: "Auctions" })).toBeVisible();
-    // The page keeps one h1 for screen readers.
     expect(
       screen.getByRole("heading", { level: 1, name: /auctions/i })
-    ).toHaveClass("sr-only");
+    ).toBeVisible();
+    expect(screen.getByText(/^1 live · 1 opens /)).toBeVisible();
+    // The featured lot is the most engaged across the live sales.
     expect(
-      screen.getAllByRole("link", { name: "View all 85 lots" })[0]
-    ).toHaveAttribute("href", "/auctions");
+      screen.getByRole("link", { name: /2016 John Deere 8370RT/ })
+    ).toHaveTextContent("Current bid R 2 100 000");
+    // Lots are grouped per live sale, with its own "View all" and no filters.
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Sale a" })
+    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "View all" })).toHaveAttribute(
+      "href",
+      "/auctions/a"
+    );
+    expect(screen.queryByRole("button", { name: "All 85" })).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /^View all \d+ lots/ })
+    ).toBeNull();
   });
 
   it("shows an empty state when no sale is open", () => {

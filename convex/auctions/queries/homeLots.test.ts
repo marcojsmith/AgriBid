@@ -11,6 +11,7 @@ import {
   HOME_LOTS_MAX_LIMIT,
   HOME_LOTS_READ_PER_AUCTION,
 } from "../../constants";
+import { isRealMake, tally } from "./homeLots";
 
 /** See bids.paging.test.ts: the glob must cover all of `convex/`. */
 const globbedModules = import.meta.glob("../../**/*.*s");
@@ -401,5 +402,23 @@ describe("getHomeLots and getHomeFacets", () => {
       limit: HOME_LOTS_MAX_LIMIT,
     });
     expect(grid.matched).toBe(HOME_LOTS_READ_PER_AUCTION);
+  });
+});
+
+describe("isRealMake", () => {
+  it("rejects blank and placeholder makes but keeps real ones", () => {
+    for (const make of ["", "  ", "Other", "other", "Unknown", "N/A"]) {
+      expect(isRealMake(make)).toBe(false);
+    }
+    expect(isRealMake("John Deere")).toBe(true);
+  });
+});
+
+describe("tally", () => {
+  it("counts largest first and skips blank values", () => {
+    expect(tally(["Ford", "", "John Deere", "Ford", "  "])).toEqual([
+      ["Ford", 2],
+      ["John Deere", 1],
+    ]);
   });
 });

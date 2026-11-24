@@ -486,3 +486,65 @@ export const getMostEngagedLots = query({
     }));
   },
 });
+
+/** The most sales `getMostEngagedLotAcrossSales` considers. */
+const FEATURED_MAX_SALES = 4;
+
+/**
+ * Public: the single most engaged lot across several live sales (the multi-
+ * sale Home hero). Reads the top precomputed `engagementScores` row of each
+ * sale (at most {@link FEATURED_MAX_SALES}), takes the highest score (ties go
+ * to the lower lot number, then the lower id) and returns that lot's summary,
+ * or null when no sale has a ranked lot yet.
+ */
+export const getMostEngagedLotAcrossSales = query({
+  args: { auctionIds: v.array(v.id("auctions")) },
+  returns: v.union(
+    v.null(),
+    v.object({
+      lot: LotSummaryValidator,
+      watchers: v.number(),
+      bids: v.number(),
+      views: v.number(),
+      score: v.number(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const rows: Doc<"engagementScores">[] = [];
+    for (const auctionId of args.auctionIds.slice(0, FEATURED_MAX_SALES)) {
+      const top = await ctx.db
+        .query("engagementScores")
+        .withIndex("by_auctionId_and_score", (q) =>
+          q.eq("auctionId", auctionId)
+        )
+        .order("desc")
+        .take(3);
+      rows.push(...top);
+    }
+    rows.sort(
+      (a, b) =>
+        b.score - a.score ||
+        (a.lotNumber ?? Number.MAX_SAFE_INTEGER) -
+          (b.lotNumber ?? Number.MAX_SAFE_INTEGER) ||
+        a.lotId.localeCompare(b.lotId)
+    );
+    for (const row of rows) {
+      const lot = await ctx.db.get("lots", row.lotId);
+      if (
+        lot?.status === "assigned" &&
+        lot.auctionId === row.auctionId &&
+        lot.hiddenByFlags !== true
+      ) {
+        const [summary] = await toLotSummaries(ctx, [lot]);
+        return {
+          lot: summary,
+          watchers: row.watchers,
+          bids: row.bids,
+          views: row.views,
+          score: row.score,
+        };
+      }
+    }
+    return null;
+  },
+});

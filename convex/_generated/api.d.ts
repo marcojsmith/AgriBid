@@ -69,10 +69,12 @@ import type * as lib_lotSpecs from "../lib/lotSpecs.js";
 import type * as lib_pagination from "../lib/pagination.js";
 import type * as lib_provinces from "../lib/provinces.js";
 import type * as lib_reserve from "../lib/reserve.js";
+import type * as lib_seedCounters from "../lib/seedCounters.js";
 import type * as lib_sellerCommission from "../lib/sellerCommission.js";
 import type * as lib_sellerVat from "../lib/sellerVat.js";
 import type * as lib_storage from "../lib/storage.js";
 import type * as lib_userNames from "../lib/userNames.js";
+import type * as lib_wbtImport from "../lib/wbtImport.js";
 import type * as lots_mutations_helpers from "../lots/mutations/helpers.js";
 import type * as lots_mutations_lifecycle from "../lots/mutations/lifecycle.js";
 import type * as messages from "../messages.js";
@@ -88,6 +90,8 @@ import type * as userActivity from "../userActivity.js";
 import type * as userPreferences from "../userPreferences.js";
 import type * as users from "../users.js";
 import type * as watchlist from "../watchlist.js";
+import type * as wbtDemo from "../wbtDemo.js";
+import type * as wbtImport from "../wbtImport.js";
 
 import type {
   ApiFromModules,
@@ -157,10 +161,12 @@ declare const fullApi: ApiFromModules<{
   "lib/pagination": typeof lib_pagination;
   "lib/provinces": typeof lib_provinces;
   "lib/reserve": typeof lib_reserve;
+  "lib/seedCounters": typeof lib_seedCounters;
   "lib/sellerCommission": typeof lib_sellerCommission;
   "lib/sellerVat": typeof lib_sellerVat;
   "lib/storage": typeof lib_storage;
   "lib/userNames": typeof lib_userNames;
+  "lib/wbtImport": typeof lib_wbtImport;
   "lots/mutations/helpers": typeof lots_mutations_helpers;
   "lots/mutations/lifecycle": typeof lots_mutations_lifecycle;
   messages: typeof messages;
@@ -176,6 +182,8 @@ declare const fullApi: ApiFromModules<{
   userPreferences: typeof userPreferences;
   users: typeof users;
   watchlist: typeof watchlist;
+  wbtDemo: typeof wbtDemo;
+  wbtImport: typeof wbtImport;
 }>;
 
 /**
