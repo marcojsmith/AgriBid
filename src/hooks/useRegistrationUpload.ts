@@ -64,12 +64,16 @@ export function useRegistrationUpload(): RegistrationUpload {
       try {
         const token = await getToken({ template: "convex" });
         if (!token) throw new Error("Sign in again to upload documents.");
-        const query = new URLSearchParams({ kind, fileName: file.name });
+        const query = new URLSearchParams({ kind });
         const response = await fetch(
           `${getConvexSiteUrl()}/documents/upload?${query.toString()}`,
           {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `Bearer ${token}`,
+              // In a header, not the URL, so it stays out of access logs.
+              "X-File-Name": encodeURIComponent(file.name),
+            },
             body: file,
           }
         );

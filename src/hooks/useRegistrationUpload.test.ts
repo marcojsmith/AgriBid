@@ -60,10 +60,13 @@ describe("useRegistrationUpload", () => {
     expect(ok).toBe(true);
     expect(getToken).toHaveBeenCalledWith({ template: "convex" });
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://site.test/documents/upload?kind=id_front&fileName=front+card.jpg",
+      "https://site.test/documents/upload?kind=id_front",
       {
         method: "POST",
-        headers: { Authorization: "Bearer clerk-token" },
+        headers: {
+          Authorization: "Bearer clerk-token",
+          "X-File-Name": "front%20card.jpg",
+        },
         body: photo,
       }
     );
