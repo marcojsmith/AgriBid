@@ -21,8 +21,56 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { useProtectedDocument } from "@/hooks/useDocumentPreview";
 import { DetailItem } from "@/components/admin/DetailItem";
 import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
+
+/**
+ * One legacy KYC file, read through the auth-checked document route. Images
+ * show as a thumbnail that opens full size; a PDF shows an "Open" link.
+ *
+ * @param props - Component props
+ * @param props.userId - The owner of the file
+ * @param props.index - The file's position in the owner's list
+ * @returns The document row
+ */
+function LegacyDocument({ userId, index }: { userId: string; index: number }) {
+  const preview = useProtectedDocument({ kind: "legacy", userId, index });
+  const label = `View Document ${String(index + 1)}`;
+  if (preview.loading) {
+    return (
+      <p className="flex h-10 items-center gap-2 text-xs text-muted-foreground">
+        <LoadingIndicator size="sm" /> Loading document {index + 1}…
+      </p>
+    );
+  }
+  if (preview.error !== undefined || preview.href === undefined) {
+    return (
+      <p role="alert" className="text-xs text-destructive">
+        Document {index + 1}: {preview.error ?? "Couldn't load that document."}
+      </p>
+    );
+  }
+  return (
+    <a
+      href={preview.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex w-full items-center gap-2 rounded-md border p-2 text-xs font-medium hover:bg-muted"
+    >
+      {preview.src ? (
+        <img
+          src={preview.src}
+          alt={`Document ${String(index + 1)}`}
+          className="h-12 w-12 rounded object-cover"
+        />
+      ) : (
+        <FileText className="h-4 w-4" />
+      )}
+      <Eye className="h-3 w-3" /> {preview.isPdf ? "Open PDF" : label}
+    </a>
+  );
+}
 
 /**
  * Dialog component for reviewing a user's KYC (Know Your Customer) submission.
@@ -151,20 +199,17 @@ export function KycReviewDialog({
                   <FileText className="h-3 w-3" /> Submitted Documents
                 </h3>
                 <div className="space-y-2">
-                  {user.kycDocumentUrls?.map((url: string, i: number) => (
-                    <Button
-                      key={url}
-                      variant="outline"
-                      className="w-full justify-start font-medium text-xs h-10 border gap-2"
-                      onClick={() => {
-                        window.open(url, "_blank", "noopener,noreferrer");
-                      }}
-                    >
-                      <Eye className="h-3 w-3" /> View Document {i + 1}
-                    </Button>
-                  ))}
-                  {(!user.kycDocumentUrls ||
-                    user.kycDocumentUrls.length === 0) && (
+                  {Array.from(
+                    { length: user.kycDocumentCount ?? 0 },
+                    (_, i) => (
+                      <LegacyDocument
+                        key={`${user.userId}:${String(i)}`}
+                        userId={user.userId}
+                        index={i}
+                      />
+                    )
+                  )}
+                  {(user.kycDocumentCount ?? 0) === 0 && (
                     <p className="text-xs text-muted-foreground font-medium italic">
                       No documents uploaded.
                     </p>

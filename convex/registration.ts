@@ -7,7 +7,7 @@
 
 import { ConvexError, v } from "convex/values";
 
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 import {
   mutation,
   query,
@@ -19,12 +19,12 @@ import { getDepositSetting } from "./admin/platformSettings";
 import {
   MAX_COUNTRY_OF_ISSUE_LENGTH,
   MAX_PROFILE_FIELD_LENGTH,
-  MAX_REG_DOC_BYTES,
 } from "./constants";
 import { requireAuth, requireProfile } from "./lib/auth";
 import { bidEligibilityValidator, hasAllDetails } from "./lib/bidEligibility";
 import { getBidEligibility } from "./lib/bidGuard";
 import {
+  cleanRequired,
   generateReference,
   isValidPassportNumber,
   isValidPostalCode,
@@ -59,22 +59,6 @@ const depositStatusValidator = v.union(
 /** E.164 phone number, e.g. +27825550147. */
 const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
 
-/** Longest accepted uploaded file name. */
-const MAX_FILE_NAME_LENGTH = 200;
-
-/** MIME types accepted for registration documents (no SVG: it can carry script). */
-const ALLOWED_DOC_TYPES: ReadonlySet<string> = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-  "application/pdf",
-]);
-
-/** An upload can be attached for this long after it was stored. */
-const UPLOAD_FRESH_MS = 60 * 60 * 1000;
-
 /** How many times a unique deposit reference is retried before giving up. */
 const REFERENCE_ATTEMPTS = 5;
 
@@ -98,25 +82,6 @@ async function loadCaller(
 ): Promise<{ profile: Doc<"profiles">; userId: string }> {
   await requireAuth(ctx);
   return await requireProfile(ctx);
-}
-
-/**
- * Trims a required text field and enforces a length cap.
- *
- * @param label - Field label for errors
- * @param value - Raw input
- * @param max - Maximum length
- * @returns The trimmed value
- */
-function cleanRequired(label: string, value: string, max: number): string {
-  const trimmed = value.trim();
-  if (trimmed === "") throw new ConvexError(`${label} is required.`);
-  if (trimmed.length > max) {
-    throw new ConvexError(
-      `${label} must be at most ${String(max)} characters.`
-    );
-  }
-  return trimmed;
 }
 
 /**
@@ -151,7 +116,8 @@ const DetailsValidator = v.object({
 
 /**
  * Buyer: everything the register screens need in one query: eligibility,
- * decrypted details, documents with signed URLs, the deposit and its settings.
+ * decrypted details, document metadata (no URLs: files are served by the
+ * auth-checked `/documents/file` route), the deposit and its settings.
  * Null when the caller has no profile yet.
  */
 export const getMyRegistration = query({
@@ -163,13 +129,14 @@ export const getMyRegistration = query({
       details: DetailsValidator,
       documents: v.array(
         v.object({
+          id: v.id("registrationDocuments"),
           kind: docKindValidator,
           status: docStatusValidator,
           fileName: v.string(),
           fileSize: v.number(),
+          contentType: v.string(),
           rejectionReason: v.optional(v.string()),
           reviewedAt: v.optional(v.number()),
-          url: v.union(v.string(), v.null()),
         })
       ),
       deposit: v.union(
@@ -234,17 +201,18 @@ export const getMyRegistration = query({
     ]);
 
     const prefill = [firstName, lastName].filter(Boolean).join(" ");
-    const docRows = await Promise.all(
-      documents.map(async (doc) => ({
-        kind: doc.kind,
-        status: doc.status,
-        fileName: doc.fileName,
-        fileSize: doc.fileSize,
-        rejectionReason: doc.rejectionReason,
-        reviewedAt: doc.reviewedAt,
-        url: await ctx.storage.getUrl(doc.storageId),
-      }))
-    );
+    // Never a URL or storage id: files are read only through the
+    // auth-checked `/documents/file` route, by document id.
+    const docRows = documents.map((doc) => ({
+      id: doc._id,
+      kind: doc.kind,
+      status: doc.status,
+      fileName: doc.fileName,
+      fileSize: doc.fileSize,
+      contentType: doc.contentType ?? "application/octet-stream",
+      rejectionReason: doc.rejectionReason,
+      reviewedAt: doc.reviewedAt,
+    }));
 
     return {
       eligibility,
@@ -438,111 +406,6 @@ export const saveMyDetails = mutation({
 
     await ctx.db.patch("profiles", profile._id, patch);
     return { success: true };
-  },
-});
-
-/** Buyer: a one-time URL to upload a registration document to. */
-export const generateDocumentUploadUrl = mutation({
-  args: {},
-  returns: v.string(),
-  handler: async (ctx) => {
-    await requireAuth(ctx);
-    return await ctx.storage.generateUploadUrl();
-  },
-});
-
-/**
- * Buyer: attach an uploaded file as a registration document. A replacement
- * overwrites the row, resets it to pending and deletes the old file, with no
- * limit on tries. An invalid file is rejected (and left for the orphan sweep,
- * because deleting it here would be rolled back along with the error).
- */
-export const attachMyDocument = mutation({
-  args: {
-    kind: docKindValidator,
-    storageId: v.id("_storage"),
-    fileName: v.string(),
-  },
-  returns: v.object({ documentId: v.id("registrationDocuments") }),
-  handler: async (ctx, args) => {
-    const { profile, userId } = await loadCaller(ctx);
-    if (profile.idType === undefined) {
-      throw new ConvexError("Save your details before uploading documents.");
-    }
-    if (!requiredKinds(profile.idType).includes(args.kind)) {
-      throw new ConvexError("That document isn't needed for your ID type.");
-    }
-
-    const meta = await ctx.db.system.get("_storage", args.storageId);
-    if (!meta) throw new ConvexError("The uploaded file was not found.");
-    if (!ALLOWED_DOC_TYPES.has(meta.contentType ?? "")) {
-      throw new ConvexError("Upload a photo (JPG, PNG) or a PDF.");
-    }
-    // Only a file uploaded just now can be attached: stops a caller pointing a
-    // document at someone else's older file (and later deleting or reading it).
-    if (Date.now() - meta._creationTime > UPLOAD_FRESH_MS) {
-      throw new ConvexError("That upload has expired. Please upload it again.");
-    }
-    if (meta.size > MAX_REG_DOC_BYTES) {
-      throw new ConvexError("That file is too large. The limit is 10 MB.");
-    }
-    const fileName = cleanRequired(
-      "File name",
-      args.fileName,
-      MAX_FILE_NAME_LENGTH
-    );
-
-    const now = Date.now();
-    // A file can back one document only, across all users: a caller can never
-    // attach, read or (by replacing) delete a file someone else already holds.
-    // Lot images and profile documents have no storage-id index, so they rely
-    // on the freshness check above instead.
-    const claimed = await ctx.db
-      .query("registrationDocuments")
-      .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
-      .first();
-    if (claimed) {
-      throw new ConvexError("That file is already attached to a document.");
-    }
-    const existing = await ctx.db
-      .query("registrationDocuments")
-      .withIndex("by_userId_and_kind", (q) =>
-        q.eq("userId", userId).eq("kind", args.kind)
-      )
-      .unique();
-
-    let documentId: Id<"registrationDocuments">;
-    if (existing) {
-      documentId = existing._id;
-      await ctx.db.patch("registrationDocuments", existing._id, {
-        storageId: args.storageId,
-        fileName,
-        fileSize: meta.size,
-        status: "pending",
-        rejectionReason: undefined,
-        uploadedAt: now,
-        reviewedAt: undefined,
-        reviewedBy: undefined,
-      });
-      if (existing.storageId !== args.storageId) {
-        await safeDelete(ctx, existing.storageId, "replaced document");
-      }
-    } else {
-      documentId = await ctx.db.insert("registrationDocuments", {
-        userId,
-        kind: args.kind,
-        storageId: args.storageId,
-        fileName,
-        fileSize: meta.size,
-        status: "pending",
-        uploadedAt: now,
-      });
-    }
-
-    if (profile.registrationSubmittedAt !== undefined) {
-      await syncKycStatus(ctx, profile);
-    }
-    return { documentId };
   },
 });
 

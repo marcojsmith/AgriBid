@@ -156,11 +156,12 @@ export function makeDoc(
   extra: Partial<Registration["documents"][number]> = {}
 ): Registration["documents"][number] {
   return {
+    id: `doc_${kind}` as Registration["documents"][number]["id"],
     kind,
     status,
     fileName: `${kind}.jpg`,
     fileSize: 1_200_000,
-    url: `https://files.test/${kind}`,
+    contentType: "image/jpeg",
     rejectionReason: undefined,
     reviewedAt: undefined,
     ...extra,

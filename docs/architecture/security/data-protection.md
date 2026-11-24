@@ -162,6 +162,16 @@ export const getUserProfile = query({
 
 ---
 
+## Uploaded Personal Documents (ID, passport, proof of address)
+
+Convex serves every stored file at `/api/storage/<id>` with no access check, so a document is never left readable in storage:
+
+- **Encrypted at rest.** The server encrypts each file with AES-256-GCM (`convex/lib/documentCrypto.ts`; layout `IV(12) || ciphertext || tag`) before `ctx.storage.store`. The key is `DOCUMENT_ENCRYPTION_KEY` (base64, exactly 32 bytes, separate from `PII_ENCRYPTION_KEY`); production fails closed without it.
+- **Upload** goes through `POST /documents/upload` (Clerk bearer token, raw body, 10 MB cap, type taken from the file's magic bytes: JPEG, PNG, WebP, HEIC/HEIF, PDF), never a client-held upload URL.
+- **Download** goes through `GET /documents/file` only: the owner or an admin gets the decrypted bytes (`Cache-Control: private, no-store`, `nosniff`); everyone else, and every unknown id, gets the same 404. An admin reading someone else's file writes an audit row (`view_registration_document` / `view_legacy_kyc_document`).
+- **No addresses leave the server.** No query returns a storage id or a signed URL for a personal document; clients get a document id (or, for legacy KYC files, a user id and index).
+- Lot photos and videos stay public on purpose.
+
 ## Data Retention
 
 ### Retention Periods

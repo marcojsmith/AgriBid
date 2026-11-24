@@ -8,9 +8,7 @@ import {
   getProfileForKYCHandler,
   verifyUserHandler,
   promoteToAdminHandler,
-  submitKYCHandler,
   getMyKYCDetailsHandler,
-  deleteMyKYCDocumentHandler,
   updateMyProfileHandler,
 } from "./users";
 import * as auth from "./lib/auth";
@@ -278,6 +276,29 @@ describe("Users Coverage", () => {
       });
     });
 
+    it("never returns stored-file references on the profile", async () => {
+      vi.mocked(auth.getAuthUser).mockResolvedValue({
+        _id: "u1",
+        userId: "user123",
+      });
+      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
+      queryMock.unique.mockResolvedValue({
+        _id: "p1",
+        userId: "user123",
+        role: "buyer",
+        kycDocuments: ["s1"],
+        kycDocumentsEncrypted: true,
+      });
+
+      const result = await getMyProfileHandler(mockCtx as unknown as QueryCtx);
+
+      expect(result?.profile).toEqual({
+        _id: "p1",
+        userId: "user123",
+        role: "buyer",
+      });
+    });
+
     it("should return null if not authenticated", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue(null);
       const result = await getMyProfileHandler(mockCtx as unknown as QueryCtx);
@@ -410,7 +431,7 @@ describe("Users Coverage", () => {
   });
 
   describe("getProfileForKYCHandler", () => {
-    it("should return profile with decrypted PII and storage URLs", async () => {
+    it("should return profile with decrypted PII and a document count, never storage ids", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue(mockAdminUser);
       const mockProfile = {
         _id: "p1",
@@ -421,13 +442,13 @@ describe("Users Coverage", () => {
         phoneNumber: "enc_555",
         kycEmail: "enc_john@example.com",
         kycDocuments: ["s1", "s2"],
+        kycDocumentsEncrypted: true,
       };
       queryMock.unique.mockResolvedValue(mockProfile);
       mockCtx.runQuery.mockResolvedValue({
         name: "John Doe",
         email: "john@example.com",
       });
-      mockCtx.storage.getUrl.mockResolvedValue("http://storage/s1");
 
       const result = await getProfileForKYCHandler(
         mockCtx as unknown as MutationCtx,
@@ -440,8 +461,11 @@ describe("Users Coverage", () => {
         idNumber: "123",
         phoneNumber: "555",
         kycEmail: "john@example.com",
-        kycDocumentUrls: ["http://storage/s1", "http://storage/s1"],
+        kycDocumentCount: 2,
       });
+      expect(result).not.toHaveProperty("kycDocuments");
+      expect(result).not.toHaveProperty("kycDocumentsEncrypted");
+      expect(result).not.toHaveProperty("kycDocumentUrls");
       expect(adminUtils.logAudit).toHaveBeenCalled();
     });
 
@@ -457,7 +481,7 @@ describe("Users Coverage", () => {
         mockCtx as unknown as MutationCtx,
         { userId: "user123" }
       );
-      expect(result?.kycDocumentUrls).toEqual([]);
+      expect(result?.kycDocumentCount).toBe(0);
     });
 
     it("should return null if profile not found", async () => {
@@ -727,121 +751,6 @@ describe("Users Coverage", () => {
     });
   });
 
-  describe("submitKYCHandler", () => {
-    it("should submit KYC and update counter", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({ _id: "p1", kycStatus: "rejected" });
-      mockCtx.storage.getUrl.mockResolvedValue("http://url");
-
-      const args = {
-        documents: ["s1" as Id<"_storage">],
-        firstName: "John",
-        lastName: "Doe",
-        phoneNumber: "555",
-        idNumber: "123",
-        email: "john@example.com",
-      };
-
-      const result = await submitKYCHandler(
-        mockCtx as unknown as MutationCtx,
-        args
-      );
-
-      expect(result).toEqual({ success: true });
-      expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "profiles",
-        "p1",
-        expect.objectContaining({
-          kycStatus: "pending",
-          firstName: "enc_John",
-        })
-      );
-      expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "userActivity",
-        expect.objectContaining({
-          userId: "user123",
-          type: "verification_requested",
-          description: "Identity documents submitted for review",
-          createdAt: expect.any(Number) as number,
-        })
-      );
-      expect(adminUtils.updateCounter).toHaveBeenCalledWith(
-        mockCtx as unknown as MutationCtx,
-        "profiles",
-        "pending",
-        1
-      );
-    });
-
-    it("should throw if storage ID is invalid", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      mockCtx.storage.getUrl.mockResolvedValue(null);
-      await expect(
-        submitKYCHandler(
-          mockCtx as unknown as MutationCtx,
-          { documents: ["s1" as Id<"_storage">] } as unknown as Parameters<
-            typeof submitKYCHandler
-          >[1]
-        )
-      ).rejects.toThrow("Invalid storage ID");
-    });
-
-    it("should throw if resolveUserId fails", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue(null);
-      await expect(
-        submitKYCHandler(
-          mockCtx as unknown as MutationCtx,
-          { documents: [] } as unknown as Parameters<typeof submitKYCHandler>[1]
-        )
-      ).rejects.toThrow("Unable to determine user ID");
-    });
-
-    it("should throw if profile not found", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue(null);
-      await expect(
-        submitKYCHandler(
-          mockCtx as unknown as MutationCtx,
-          { documents: [] } as unknown as Parameters<typeof submitKYCHandler>[1]
-        )
-      ).rejects.toThrow("Profile not found");
-    });
-
-    it("should not increment counter if already pending, but still log the resubmission", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({ _id: "p1", kycStatus: "pending" });
-
-      await submitKYCHandler(
-        mockCtx as unknown as MutationCtx,
-        { documents: [] } as unknown as Parameters<typeof submitKYCHandler>[1]
-      );
-
-      expect(adminUtils.updateCounter).not.toHaveBeenCalled();
-      expect(mockCtx.db.insert).toHaveBeenCalledWith(
-        "userActivity",
-        expect.objectContaining({
-          userId: "user123",
-          type: "verification_requested",
-        })
-      );
-    });
-  });
-
   describe("getMyKYCDetailsHandler", () => {
     it("should return decrypted KYC details", async () => {
       vi.mocked(auth.getAuthUser).mockResolvedValue({
@@ -861,8 +770,10 @@ describe("Users Coverage", () => {
 
       expect(result).toMatchObject({
         firstName: "John",
-        kycDocumentIds: ["s1"],
+        kycDocumentCount: 1,
       });
+      expect(result).not.toHaveProperty("kycDocumentIds");
+      expect(result).not.toHaveProperty("kycDocumentUrls");
     });
 
     it("should handle profile with no documents in getMyKYCDetails", async () => {
@@ -880,8 +791,7 @@ describe("Users Coverage", () => {
         mockCtx as unknown as QueryCtx
       );
 
-      expect(result?.kycDocumentIds).toBeUndefined();
-      expect(result?.kycDocumentUrls).toEqual([]);
+      expect(result?.kycDocumentCount).toBe(0);
     });
 
     it("should return null if not authenticated", async () => {
@@ -904,124 +814,6 @@ describe("Users Coverage", () => {
       );
       expect(result).toBeNull();
       expect(spy).not.toHaveBeenCalled();
-      spy.mockRestore();
-    });
-  });
-
-  describe("deleteMyKYCDocumentHandler", () => {
-    it("should delete a KYC document", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({
-        _id: "p1",
-        kycStatus: "verified",
-        kycDocuments: ["s1", "s2"],
-      });
-
-      const result = await deleteMyKYCDocumentHandler(
-        mockCtx as unknown as MutationCtx,
-        { storageId: "s1" as Id<"_storage"> }
-      );
-
-      expect(result).toEqual({ success: true });
-      expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "profiles",
-        "p1",
-        expect.objectContaining({ kycDocuments: ["s2"] })
-      );
-      expect(mockCtx.storage.delete).toHaveBeenCalledWith("s1");
-    });
-
-    it("should handle profile with no documents during deletion", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({
-        _id: "p1",
-        kycDocuments: undefined,
-      });
-
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow("Document not found in your profile");
-    });
-
-    it("should throw if resolveUserId fails", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue(null);
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow("Unable to determine user ID");
-    });
-
-    it("should throw if profile not found", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue(null);
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow(ConvexError);
-    });
-
-    it("should throw if KYC is pending", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({ _id: "p1", kycStatus: "pending" });
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow("Cannot delete document while KYC is pending");
-    });
-
-    it("should throw if document not in profile", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({ _id: "p1", kycDocuments: ["s2"] });
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow("Document not found in your profile");
-    });
-
-    it("should handle storage deletion failure gracefully", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({ _id: "p1", kycDocuments: ["s1"] });
-      mockCtx.storage.delete.mockRejectedValue(
-        new Error("Storage Delete Fail")
-      );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {
-        // intentional no-op: silences the expected storage-delete error
-      });
-
-      const result = await deleteMyKYCDocumentHandler(
-        mockCtx as unknown as MutationCtx,
-        { storageId: "s1" as Id<"_storage"> }
-      );
-
-      expect(result).toEqual({ success: true });
-      expect(spy).toHaveBeenCalled();
       spy.mockRestore();
     });
   });

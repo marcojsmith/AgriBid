@@ -1,10 +1,15 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import type { ReactNode, ComponentProps } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
 
 import { KycReviewDialog } from "./KycReviewDialog";
+
+const protectedDocument = vi.hoisted(() => vi.fn());
+vi.mock("@/hooks/useDocumentPreview", () => ({
+  useProtectedDocument: protectedDocument,
+}));
 
 type DialogProps = ComponentProps<"div"> & {
   open?: boolean;
@@ -44,11 +49,17 @@ describe("KycReviewDialog", () => {
     idNumber: "1234567890",
     phoneNumber: "+1234567890",
     kycEmail: "john@example.com",
-    kycDocumentUrls: [
-      "https://example.com/doc1.pdf",
-      "https://example.com/doc2.pdf",
-    ],
+    kycDocumentCount: 2,
   };
+
+  beforeEach(() => {
+    protectedDocument.mockReset().mockReturnValue({
+      isPdf: false,
+      loading: false,
+      src: "blob:thumb",
+      href: "blob:full",
+    });
+  });
 
   const defaultProps = {
     user: mockUser,
@@ -100,31 +111,61 @@ describe("KycReviewDialog", () => {
     expect(setShowFullId).toHaveBeenCalledWith(true);
   });
 
-  it("should display document URLs", () => {
+  it("shows one link per legacy file, read through the protected route", () => {
     render(<KycReviewDialog {...defaultProps} />);
 
-    expect(screen.getByText("View Document 1")).toBeInTheDocument();
-    expect(screen.getByText("View Document 2")).toBeInTheDocument();
+    const links = screen.getAllByRole("link", { name: /View Document/ });
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute("href", "blob:full");
+    expect(links[0]).toHaveAttribute("target", "_blank");
+    expect(links[0]).toHaveAttribute("rel", "noopener noreferrer");
+    expect(protectedDocument).toHaveBeenCalledWith({
+      kind: "legacy",
+      userId: "user123",
+      index: 1,
+    });
+    // The thumbnail is the object URL, never a storage address.
+    expect(screen.getAllByRole("img")[0]).toHaveAttribute("src", "blob:thumb");
   });
 
-  it("should open document URL in new window when View Document is clicked", () => {
-    const windowOpenSpy = vi
-      .spyOn(window, "open")
-      .mockImplementation(() => null);
+  it("shows an Open PDF link for a PDF", () => {
+    protectedDocument.mockReturnValue({
+      isPdf: true,
+      loading: false,
+      href: "blob:pdf",
+    });
     render(<KycReviewDialog {...defaultProps} />);
+    expect(screen.getAllByRole("link", { name: /Open PDF/ })).toHaveLength(2);
+  });
 
-    fireEvent.click(screen.getByText("View Document 1"));
+  it("shows a loading line while a file is fetched", () => {
+    protectedDocument.mockReturnValue({ isPdf: false, loading: true });
+    render(<KycReviewDialog {...defaultProps} />);
+    expect(screen.getByText(/Loading document 1/)).toBeInTheDocument();
+  });
 
-    expect(windowOpenSpy).toHaveBeenCalledWith(
-      "https://example.com/doc1.pdf",
-      "_blank",
-      "noopener,noreferrer"
+  it("shows the reason when a file can't be loaded", () => {
+    protectedDocument.mockReturnValue({
+      isPdf: false,
+      loading: false,
+      error: "That document isn't available.",
+    });
+    render(<KycReviewDialog {...defaultProps} />);
+    expect(screen.getAllByRole("alert")[0]).toHaveTextContent(
+      "Document 1: That document isn't available."
     );
-    windowOpenSpy.mockRestore();
+  });
+
+  it("falls back to a generic reason when there is no error text", () => {
+    protectedDocument.mockReturnValue({ isPdf: false, loading: false });
+    render(<KycReviewDialog {...defaultProps} />);
+    expect(screen.getAllByRole("alert")[0]).toHaveTextContent(
+      "Couldn't load that document."
+    );
   });
 
   it("should display message when no documents uploaded", () => {
-    const userWithoutDocs = { ...mockUser, kycDocumentUrls: [] };
+    const userWithoutDocs = { ...mockUser, kycDocumentCount: 0 };
     render(<KycReviewDialog {...defaultProps} user={userWithoutDocs} />);
 
     expect(screen.getByText("No documents uploaded.")).toBeInTheDocument();
@@ -254,8 +295,8 @@ describe("KycReviewDialog", () => {
     expect(rejectButton?.disabled).toBe(true);
   });
 
-  it("should display message when kycDocumentUrls is undefined", () => {
-    const userWithoutDocs = { ...mockUser, kycDocumentUrls: undefined };
+  it("should display message when kycDocumentCount is undefined", () => {
+    const userWithoutDocs = { ...mockUser, kycDocumentCount: undefined };
     render(<KycReviewDialog {...defaultProps} user={userWithoutDocs} />);
 
     expect(screen.getByText("No documents uploaded.")).toBeInTheDocument();

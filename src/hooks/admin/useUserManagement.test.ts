@@ -78,7 +78,7 @@ describe("useUserManagement hook", () => {
 
       mockGetProfileForKYC.mockResolvedValue({
         userId: "u1",
-        kycDocumentIds: "not array",
+        kycDocumentCount: "not a number",
       });
       await act(async () => {
         await result.current.handleReviewKYCClick("u1");
@@ -116,8 +116,7 @@ describe("useUserManagement hook", () => {
       await act(async () => {
         resolveMutation({
           userId: "u1",
-          kycDocumentIds: [],
-          kycDocumentUrls: [],
+          kycDocumentCount: 0,
         });
         await p1;
       });
@@ -186,8 +185,7 @@ describe("useUserManagement hook", () => {
       act(() => {
         result.current.setKycReviewUser({
           userId: "u1",
-          kycDocumentIds: [],
-          kycDocumentUrls: [],
+          kycDocumentCount: 0,
         });
         result.current.setKycRejectionReason("   ");
       });

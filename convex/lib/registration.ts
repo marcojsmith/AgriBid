@@ -6,6 +6,8 @@
  * `src/`); this module also pulls in server code.
  */
 
+import { ConvexError } from "convex/values";
+
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { updateCounter } from "../admin_utils";
@@ -117,4 +119,31 @@ export async function syncKycStatus(
   } else if (kycStatus !== "pending" && wasPending) {
     await updateCounter(ctx, "profiles", "pending", -1);
   }
+}
+
+/** Longest accepted uploaded file name. */
+export const MAX_FILE_NAME_LENGTH = 200;
+
+/**
+ * Trims a required text field and enforces a length cap.
+ *
+ * @param label - Field label for errors
+ * @param value - Raw input
+ * @param max - Maximum length
+ * @returns The trimmed value
+ * @throws ConvexError when empty or too long
+ */
+export function cleanRequired(
+  label: string,
+  value: string,
+  max: number
+): string {
+  const trimmed = value.trim();
+  if (trimmed === "") throw new ConvexError(`${label} is required.`);
+  if (trimmed.length > max) {
+    throw new ConvexError(
+      `${label} must be at most ${String(max)} characters.`
+    );
+  }
+  return trimmed;
 }

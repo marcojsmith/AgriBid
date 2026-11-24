@@ -17,8 +17,8 @@ export interface KycReviewUser {
   idNumber?: string;
   phoneNumber?: string;
   kycEmail?: string;
-  kycDocumentIds?: string[];
-  kycDocumentUrls?: string[];
+  /** How many legacy KYC files the user has (read via `/documents/file`). */
+  kycDocumentCount?: number;
 }
 
 /**
@@ -98,8 +98,7 @@ export function useUserManagement() {
     const candidate = obj as Record<string, unknown>;
     return (
       typeof candidate.userId === "string" &&
-      Array.isArray(candidate.kycDocumentIds) &&
-      Array.isArray(candidate.kycDocumentUrls)
+      typeof candidate.kycDocumentCount === "number"
     );
   };
 
