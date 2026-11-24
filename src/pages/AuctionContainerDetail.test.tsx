@@ -15,8 +15,13 @@ interface MockState {
   authed: boolean;
   pastCta: boolean;
   toggle: ReturnType<typeof vi.fn>;
-  needsInstall: boolean;
-  permission: "granted" | "denied" | "unsupported";
+  push: {
+    reminded: boolean;
+    step: string;
+    result: string;
+    enable: ReturnType<typeof vi.fn>;
+    disable: ReturnType<typeof vi.fn>;
+  };
 }
 
 const h = vi.hoisted(() => {
@@ -26,8 +31,13 @@ const h = vi.hoisted(() => {
     authed: false,
     pastCta: false,
     toggle: vi.fn(),
-    needsInstall: false,
-    permission: "granted",
+    push: {
+      reminded: false,
+      step: "permission",
+      result: "granted",
+      enable: vi.fn(),
+      disable: vi.fn(),
+    },
   };
   return state;
 });
@@ -71,11 +81,13 @@ vi.mock("@/hooks/useMediaQuery", () => ({ useMediaQuery: () => false }));
 vi.mock("@/hooks/useBranding", () => ({
   useBranding: () => ({ businessInfo: { whatsapp: "+27 83 700 0000" } }),
 }));
-vi.mock("@/lib/homeScreen", () => ({
-  browserNeedsHomeScreenInstall: () => h.needsInstall,
-}));
-vi.mock("@/lib/reminders", () => ({
-  requestReminderPermission: () => Promise.resolve(h.permission),
+vi.mock("@/hooks/usePushReminders", () => ({
+  usePushReminders: () => ({
+    reminded: h.push.reminded,
+    nextStep: () => h.push.step,
+    enable: h.push.enable,
+    disable: h.push.disable,
+  }),
 }));
 const toast = vi.hoisted(() => ({
   info: vi.fn(),
@@ -198,8 +210,11 @@ describe("AuctionContainerDetail", () => {
     h.calls = [];
     h.authed = false;
     h.pastCta = false;
-    h.needsInstall = false;
-    h.permission = "granted";
+    h.push.reminded = false;
+    h.push.step = "permission";
+    h.push.enable.mockImplementation(() => Promise.resolve(h.push.result));
+    h.push.result = "granted";
+    h.push.disable.mockResolvedValue(undefined);
     setup();
   });
 
@@ -515,45 +530,59 @@ describe("AuctionContainerDetail", () => {
       expect(screen.queryByRole("button", { name: "Remind me" })).toBeNull();
     });
 
-    it("asks for permission on Remind me, then reports it", async () => {
+    const remindOn = () => {
       setup({
         getPublishedAuction: upcoming,
         getPlatformSettings: { ...settings, pushRemindersEnabled: true },
       });
+    };
+
+    it("asks for permission on Remind me, then reports each outcome", async () => {
+      remindOn();
+      renderPage();
+      const outcomes = [
+        [
+          "granted",
+          "success",
+          "Reminder set. We'll notify you when this sale opens.",
+        ],
+        [
+          "denied",
+          "error",
+          "Notifications are blocked in your browser settings.",
+        ],
+        ["unsupported", "error", "This browser can't show notifications."],
+        ["failed", "error", "Couldn't set the reminder. Try again."],
+      ] as const;
+      for (const [result, kind, message] of outcomes) {
+        h.push.result = result;
+        fireEvent.click(screen.getByRole("button", { name: "Remind me" }));
+        expect(screen.getByText("Allow notifications?")).toBeVisible();
+        fireEvent.click(screen.getByRole("button", { name: "Allow" }));
+        await waitFor(() => {
+          expect(toast[kind]).toHaveBeenCalledWith(message);
+        });
+        expect(screen.queryByText("Allow notifications?")).toBeNull();
+      }
+    });
+
+    it("skips the prompt when notifications are already allowed", async () => {
+      h.push.step = "subscribe";
+      remindOn();
       renderPage();
       fireEvent.click(screen.getByRole("button", { name: "Remind me" }));
-      expect(screen.getByText("Allow notifications?")).toBeVisible();
-      fireEvent.click(screen.getByRole("button", { name: "Allow" }));
-      await waitFor(() => {
-        expect(toast.success).toHaveBeenCalled();
-      });
       expect(screen.queryByText("Allow notifications?")).toBeNull();
-
-      h.permission = "denied";
-      fireEvent.click(screen.getByRole("button", { name: "Remind me" }));
-      fireEvent.click(screen.getByRole("button", { name: "Allow" }));
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(
-          "Notifications are blocked in your browser settings."
+        expect(toast.success).toHaveBeenCalledWith(
+          "Reminder set. We'll notify you when this sale opens."
         );
       });
-
-      h.permission = "unsupported";
-      fireEvent.click(screen.getByRole("button", { name: "Remind me" }));
-      fireEvent.click(screen.getByRole("button", { name: "Allow" }));
-      await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith(
-          "This browser can't show notifications."
-        );
-      });
+      expect(h.push.enable).toHaveBeenCalledTimes(1);
     });
 
     it("shows the Add to Home Screen guide first on iPhone Safari", () => {
-      h.needsInstall = true;
-      setup({
-        getPublishedAuction: upcoming,
-        getPlatformSettings: { ...settings, pushRemindersEnabled: true },
-      });
+      h.push.step = "home-screen";
+      remindOn();
       renderPage();
       fireEvent.click(screen.getByRole("button", { name: "Remind me" }));
       expect(screen.getByText("Get reminders on iPhone")).toBeVisible();
@@ -562,11 +591,55 @@ describe("AuctionContainerDetail", () => {
       expect(screen.queryByText("Get reminders on iPhone")).toBeNull();
     });
 
-    it("dismisses the permission prompt with Not now", () => {
-      setup({
-        getPublishedAuction: upcoming,
-        getPlatformSettings: { ...settings, pushRemindersEnabled: true },
+    it("sends a guest to sign in, then back to the sale", async () => {
+      h.push.step = "sign-in";
+      remindOn();
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: "Remind me" }));
+      expect(toast.info).toHaveBeenCalledWith(
+        "Please sign in to get reminders"
+      );
+      expect(await screen.findByText("login page")).toBeVisible();
+    });
+
+    it("says so when the browser can't show notifications", () => {
+      h.push.step = "unsupported";
+      remindOn();
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: "Remind me" }));
+      expect(toast.error).toHaveBeenCalledWith(
+        "This browser can't show notifications."
+      );
+    });
+
+    it("removes an existing reminder", async () => {
+      h.push.reminded = true;
+      h.push.step = "remove";
+      remindOn();
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: "Reminder set" }));
+      await waitFor(() => {
+        expect(toast.success).toHaveBeenCalledWith("Reminder removed.");
       });
+      expect(h.push.disable).toHaveBeenCalled();
+    });
+
+    it("reports a failed removal", async () => {
+      h.push.reminded = true;
+      h.push.step = "remove";
+      h.push.disable.mockRejectedValue(new Error("offline"));
+      remindOn();
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: "Reminder set" }));
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          "Couldn't set the reminder. Try again."
+        );
+      });
+    });
+
+    it("dismisses the permission prompt with Not now", () => {
+      remindOn();
       renderPage();
       fireEvent.click(screen.getByRole("button", { name: "Remind me" }));
       fireEvent.click(screen.getByRole("button", { name: "Not now" }));

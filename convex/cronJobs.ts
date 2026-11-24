@@ -22,6 +22,7 @@ import {
   refreshEngagementScoresHandler,
 } from "./engagement";
 import { requireAdmin } from "./lib/auth";
+import { sendDueSaleRemindersHandler } from "./push";
 import { runOrphanSweep } from "./storageCleanup";
 
 /**
@@ -250,6 +251,21 @@ export const refreshEngagementScores = internalMutation({
       return { auctions: 0, upserted: 0, removed: 0 };
     }
     return await refreshEngagementScoresHandler(ctx);
+  },
+});
+
+/**
+ * Cron wrapper: send due sale-open reminders unless the job is disabled. A
+ * full batch reschedules itself through this wrapper, so the gate is re-checked.
+ */
+export const sendSaleReminders = internalMutation({
+  args: {},
+  returns: v.object({ sent: v.number(), hasMore: v.boolean() }),
+  handler: async (ctx) => {
+    if (!(await isCronJobEnabled(ctx, "send_sale_reminders"))) {
+      return { sent: 0, hasMore: false };
+    }
+    return await sendDueSaleRemindersHandler(ctx, Date.now());
   },
 });
 

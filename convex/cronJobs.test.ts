@@ -59,6 +59,7 @@ describe("cronJobs", () => {
       "expire_consideration_lots",
       "purge_lot_viewers",
       "refresh_engagement_scores",
+      "send_sale_reminders",
     ]);
   });
 
@@ -417,5 +418,27 @@ describe("cronJobs", () => {
     expect(
       await t.action(internal.cronJobs.processErrorReports, {})
     ).toBeNull();
+  });
+
+  it("sendSaleReminders is a no-op while the job is off, and runs when on", async () => {
+    const t = await setup();
+    const asAdmin = t.withIdentity({ subject: ADMIN });
+    await asAdmin.mutation(api.cronJobs.setCronJobEnabled, {
+      key: "send_sale_reminders",
+      enabled: false,
+    });
+    expect(await t.mutation(internal.cronJobs.sendSaleReminders, {})).toEqual({
+      sent: 0,
+      hasMore: false,
+    });
+    await asAdmin.mutation(api.cronJobs.setCronJobEnabled, {
+      key: "send_sale_reminders",
+      enabled: true,
+    });
+    // On, but the Push reminders platform setting is still off: nothing sent.
+    expect(await t.mutation(internal.cronJobs.sendSaleReminders, {})).toEqual({
+      sent: 0,
+      hasMore: false,
+    });
   });
 });

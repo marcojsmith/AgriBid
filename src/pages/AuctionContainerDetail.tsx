@@ -29,17 +29,16 @@ import { LoadingPage } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
 import { useBranding } from "@/hooks/useBranding";
 import { useNow } from "@/hooks/useNow";
+import { usePushReminders } from "@/hooks/usePushReminders";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
 import { useTransportQuote } from "@/hooks/useTransportQuote";
 import { URGENT_MS } from "@/lib/auction-badges";
 import { getEventBucket } from "@/lib/auction-utils";
-import { WATCHING_MESSAGE } from "@/lib/auctionRules";
+import { WATCHING_SAVED_MESSAGE } from "@/lib/auctionRules";
 import { formatClosesIn, formatRemaining } from "@/lib/countdown";
 import { formatSastDate } from "@/lib/dates";
 import type { EventSort } from "@/lib/eventPage";
 import { formatLotCount, whatsappLink } from "@/lib/homeSales";
-import { browserNeedsHomeScreenInstall } from "@/lib/homeScreen";
-import { requestReminderPermission } from "@/lib/reminders";
 import {
   buildCanonical,
   buildTitle,
@@ -119,6 +118,7 @@ function EventPage({ id }: { id: string | undefined }) {
   const transport = useTransportQuote();
   const [sheet, setSheet] = useState<"home-screen" | "permission" | null>(null);
   const [ctaRef, ctaGone] = useScrolledPast();
+  const reminders = usePushReminders(auctionId);
 
   const auction = useQuery(
     api.auctions.getPublishedAuction,
@@ -300,7 +300,7 @@ function EventPage({ id }: { id: string | undefined }) {
     }
     try {
       const watching = await toggleWatchlist({ lotId: lotId as Id<"lots"> });
-      if (watching) showToast(WATCHING_MESSAGE);
+      if (watching) showToast(WATCHING_SAVED_MESSAGE);
       else toast.success("Removed from watchlist");
     } catch {
       toast.error("Failed to update watchlist");
@@ -312,22 +312,45 @@ function EventPage({ id }: { id: string | undefined }) {
     else if (result === "failed") toast.error("Couldn't share this link");
   };
 
-  const handleRemind = () => {
-    setSheet(browserNeedsHomeScreenInstall() ? "home-screen" : "permission");
+  const enableReminder = async () => {
+    const result = await reminders.enable();
+    if (result === "granted") {
+      toast.success("Reminder set. We'll notify you when this sale opens.");
+    } else if (result === "denied") {
+      toast.error("Notifications are blocked in your browser settings.");
+    } else if (result === "unsupported") {
+      toast.error("This browser can't show notifications.");
+    } else {
+      toast.error("Couldn't set the reminder. Try again.");
+    }
+  };
+  const handleRemind = async () => {
+    const step = reminders.nextStep();
+    if (step === "remove") {
+      try {
+        await reminders.disable();
+        toast.success("Reminder removed.");
+      } catch {
+        toast.error("Couldn't set the reminder. Try again.");
+      }
+    } else if (step === "home-screen") {
+      setSheet("home-screen");
+    } else if (step === "sign-in") {
+      toast.info("Please sign in to get reminders");
+      void navigate(
+        `/login?callbackUrl=${encodeURIComponent(`/auctions/${auction._id}`)}`
+      );
+    } else if (step === "unsupported") {
+      toast.error("This browser can't show notifications.");
+    } else if (step === "subscribe") {
+      await enableReminder();
+    } else {
+      setSheet("permission");
+    }
   };
   const handleAllow = () => {
     setSheet(null);
-    void requestReminderPermission().then((result) => {
-      if (result === "granted") {
-        toast.success(
-          "Notifications allowed. We'll remind you when this sale opens."
-        );
-      } else if (result === "denied") {
-        toast.error("Notifications are blocked in your browser settings.");
-      } else {
-        toast.error("This browser can't show notifications.");
-      }
-    });
+    void enableReminder();
   };
 
   const matched = lotsResult?.matched ?? 0;
@@ -404,8 +427,13 @@ function EventPage({ id }: { id: string | undefined }) {
             : null
         }
         onRemind={
-          upcoming && settings.pushRemindersEnabled ? handleRemind : undefined
+          upcoming && settings.pushRemindersEnabled
+            ? () => {
+                void handleRemind();
+              }
+            : undefined
         }
+        reminded={reminders.reminded}
         onFeesClick={() => {
           setFeesOpen(true);
         }}

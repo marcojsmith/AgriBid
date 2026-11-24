@@ -103,6 +103,20 @@ async function readBoolean(
 }
 
 /**
+ * Whether the "Remind me" sale-open push reminders feature is switched on.
+ *
+ * @param ctx - Query or mutation context
+ * @returns True when admins have enabled push reminders (default off)
+ */
+export async function isPushRemindersEnabled(ctx: QueryCtx): Promise<boolean> {
+  return await readBoolean(
+    ctx,
+    KEYS.pushRemindersEnabled,
+    constants.DEFAULT_PUSH_REMINDERS_ENABLED
+  );
+}
+
+/**
  * Reads an optional text setting; empty or non-string values read as null.
  *
  * @param ctx - Query context
@@ -515,7 +529,7 @@ export const updateFinanceContact = mutation({
 });
 
 /**
- * Admin-only: switch auction-end push reminders on or off.
+ * Admin-only: switch sale-open push reminders on or off.
  */
 export const updatePushReminders = mutation({
   args: { enabled: v.boolean() },

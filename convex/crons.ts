@@ -74,6 +74,18 @@ crons.interval(
 );
 
 /**
+ * Send the "sale is open" push to everyone who tapped Remind me. The Admin
+ * "Push reminders" setting is the real switch; this job is a cheap no-op while
+ * it is off.
+ */
+crons.interval(
+  "send sale reminders",
+  { minutes: 1 },
+  internal.cronJobs.sendSaleReminders,
+  {}
+);
+
+/**
  * Daily job to process error reports and create GitHub issues.
  * Runs at 2 AM UTC to avoid peak hours.
  */
