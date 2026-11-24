@@ -81,6 +81,53 @@ describe("LotStickyBar", () => {
     );
   });
 
+  it("registration: shows the state instead of the price, with an outline link", () => {
+    render(
+      <LotStickyBar
+        price={400_000}
+        hasBids={false}
+        closesAt={NOW + 51 * HOUR}
+        viewer="registered"
+        registration={{ kind: "under_review", depositReceived: false }}
+        action={{
+          kind: "link",
+          href: "/register/status?callbackUrl=%2Fauction%2Fl1",
+          label: "Details",
+          ctaVariant: "outline",
+        }}
+        whatsappHref="https://wa.me/27837000000"
+      />
+    );
+    const bar = screen.getByRole("region", { name: "Bidding" });
+    expect(bar).toHaveTextContent("Under review");
+    expect(bar).toHaveTextContent("Bidding opens when approved");
+    expect(clean(bar.textContent)).not.toContain("R 400 000");
+    expect(screen.getByRole("link", { name: "WhatsApp us" })).toBeVisible();
+    const cta = screen.getByRole("link", { name: "Details" });
+    expect(cta).toHaveAttribute(
+      "href",
+      "/register/status?callbackUrl=%2Fauction%2Fl1"
+    );
+    expect(cta).toHaveClass("bg-card");
+  });
+
+  it("a primary link keeps the default look", () => {
+    render(
+      <LotStickyBar
+        price={1}
+        hasBids={false}
+        closesAt={NOW + HOUR}
+        viewer="registered"
+        registration={{ kind: "incomplete", step: 2, totalSteps: 4 }}
+        action={{ kind: "link", href: "/register", label: "Continue" }}
+      />
+    );
+    expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Continue" })).not.toHaveClass(
+      "bg-card"
+    );
+  });
+
   it("can be hidden", () => {
     render(
       <LotStickyBar

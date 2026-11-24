@@ -1,26 +1,28 @@
 import { useAuth, SignIn } from "@clerk/clerk-react";
 import { Navigate, useSearchParams } from "react-router-dom";
 
-import { useBranding } from "@/hooks/useBranding";
-import { isValidCallbackUrl } from "@/lib/utils";
+import { ContinuingTo } from "@/components/auth/ContinuingTo";
 import { LoadingPage } from "@/components/LoadingIndicator";
+import { safeCallbackPath } from "@/lib/registrationCopy";
 
 /**
- * Login page rendering Clerk's embedded <SignIn> component.
+ * Sign-in page (`/login`, design `register-r2`): "Continuing to Lot 3 · New
+ * Holland T6070" when the buyer came from a lot, then Clerk's embedded
+ * sign-in form styled by `clerkAppearance`. "Create an account" goes to
+ * `/sign-up`, keeping the `callbackUrl`.
  *
- * Shows a loading indicator while Clerk auth is initialising, redirects
- * already-authenticated users to the (validated) callback URL, and renders
- * the sign-in flow for everyone else.
+ * Shows a loading indicator while Clerk initialises and sends an already
+ * signed-in user straight to the (validated) callback URL.
  *
- * @returns The login page JSX element.
+ * @returns The sign-in page
  */
 export default function Login() {
-  const branding = useBranding();
   const { isSignedIn, isLoaded } = useAuth();
   const [searchParams] = useSearchParams();
 
-  const rawCallback = searchParams.get("callbackUrl");
-  const callbackURL = isValidCallbackUrl(rawCallback) ? rawCallback : "/";
+  const callback = safeCallbackPath(searchParams.get("callbackUrl"));
+  const callbackURL = callback ?? "/";
+  const query = callback ? `?callbackUrl=${encodeURIComponent(callback)}` : "";
 
   if (!isLoaded) {
     return <LoadingPage message="Authenticating..." />;
@@ -31,19 +33,13 @@ export default function Login() {
   }
 
   return (
-    <div className="flex flex-col items-center mt-12 mb-20 space-y-8">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold text-primary mb-2 tracking-tight">
-          {branding?.appName ?? "AgriBid"} Access
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          Real-Time Bidding for Serious Farmers
-        </p>
-      </div>
+    <div className="mx-auto mt-4 mb-16 flex w-full max-w-[480px] flex-col gap-4 px-4 sm:mt-10">
+      <ContinuingTo callbackUrl={callback} />
       <SignIn
         routing="hash"
         fallbackRedirectUrl={callbackURL}
-        signUpFallbackRedirectUrl={callbackURL}
+        signUpUrl={`/sign-up${query}`}
+        signUpForceRedirectUrl={`/register${query}`}
       />
     </div>
   );

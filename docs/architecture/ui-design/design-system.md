@@ -255,3 +255,24 @@ Built from `rounds/register-r2.html` (LOCKED). Routes `/register` (redirects to 
 - **ID / Address**: `UploadSlot` per document and a checklist. "Next" stays disabled until every slot is filled. A rejected document shows its `WhyBox` above an empty slot; `?replace=1` hides "Next" and returns to the status page after the upload. The address step's button is "Next: deposit", or "Send documents" when the deposit is off.
 - **Deposit**: `CopyRow` for bank, account name, account number, branch code and the highlighted reference; a warn `Banner` replaces the bank rows when any bank field is unset; WhatsApp proof link, "I've paid" and an underlined "I'll pay later".
 - **Status ("Your registration")**: `RegStatusList` rows (details, ID or passport, proof of address, deposit when on), one banner (info while checking, warn when a document needs replacing, ok "Deposit received" or "You can bid"), a `WhyBox` per rejected document, and "Back to Lot 3" / "Bid on Lot 3" (or "See auctions" without a callback).
+
+### Lot registration states, header initials and sign-in (R5, 2026-11-25)
+
+Built from `rounds/register-r2.html` (`lot-progress`, `lot-pending`, `signin`, `signup`). The lot page reads `api.registration.getMyBidEligibility` when signed in (the client no longer works eligibility out from `isVerified` or `kycStatus`).
+
+- **`BidPanel` states** (`eligibility`: `BidEligibility | { kind: "loading" }`, type from `convex/lib/bidEligibility.ts`). A guest keeps "Register to bid" (to `/login?callbackUrl=…`) and the deposit lines. A signed-in buyer gets, under the cost box:
+
+  | State             | Banner                                                     | Button                                             |
+  | ----------------- | ---------------------------------------------------------- | -------------------------------------------------- |
+  | `incomplete`      | warn: "Finish registration to bid. Step 2 of 4."           | primary "Continue registration" → `/register`      |
+  | `under_review`    | info: "Documents under review. You can bid once approved." | outline "See my registration" → `/register/status` |
+  | `needs_replacing` | warn: "One document needs replacing."                      | primary "Replace document" → `/register/status`    |
+  | `deposit_due`     | warn: "Pay your R 5 000 deposit to bid."                   | primary "Pay deposit" → `/register/status`         |
+  | `ok`              | none: amount field, quick chips, "Bid R x"                 |                                                    |
+  | `loading`         | skeleton (no controls, no flash of the wrong state)        |                                                    |
+
+  Every link keeps `?callbackUrl=/auction/<id>` so the flow returns to the lot.
+
+- **Sticky bar** (`stickyModel({ registration })`, `LotStickyBar`): the registration state replaces the price lines: "Finish registration" / "Step 2 of 4" with a primary "Continue"; "Under review" / "Bidding opens when approved" with an outline "Details"; "Document needs replacing" with "Replace"; "Pay deposit" / "R 5 000" with "Pay". The WhatsApp icon stays. The link action takes `ctaVariant` (`primary` or `outline`).
+- **Header avatar**: a 36px circle, `bg-primary text-primary-foreground`, showing `initialsOf(name, email)` (first and last word of the name, else the first letter of the email, else the User icon). The account menu item "Finish registration" (to `/register`) shows while the buyer is not verified.
+- **Sign-in and sign-up** (`/login`, `/sign-up`): a centred column (max 480px) with "Continuing to **Lot 3 · New Holland T6070**" and a map-pin icon above Clerk's form (hidden for an unsafe callback or a path that is not a lot). Clerk's card is flat (`rounded-lg border border-border shadow-none bg-card`), inputs 52px, buttons 48px with 6px radius, the title in Lora 28px (`font-display`) and the footer link underlined in the primary colour; `src/lib/clerkAppearance.ts` holds the `appearance` (colours from the CSS tokens, so dark mode follows) and the `localization` copy: "Sign in to bid" / "Welcome back." / "New to AgriBid?" "Create an account"; "Create your account" / "Then we ask for your ID details." / "Have an account?" "Sign in"; "Email address" / "you@example.co.za". Sign-up sends a new account to `/register?callbackUrl=…`.

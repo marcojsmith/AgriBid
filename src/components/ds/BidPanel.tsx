@@ -1,9 +1,11 @@
 import type { Ref } from "react";
 import { Link } from "react-router-dom";
 import { Eye } from "lucide-react";
+import type { BidEligibility } from "convex/lib/bidEligibility";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { softCloseRule } from "@/lib/auctionRules";
 import { formatRand } from "@/lib/currency";
 import { formatSastDate } from "@/lib/dates";
@@ -18,9 +20,64 @@ import { DepositLines } from "./DepositLines";
 import { Money } from "./Money";
 import type { ReserveState } from "./ReservePill";
 
-/** Whether the viewer may bid, and what stops them. */
-export type BidEligibility =
-  "ok" | "needs-verification" | "verification-pending";
+/** Whether the viewer may bid, and what stops them; `loading` until known. */
+export type PanelEligibility = BidEligibility | { kind: "loading" };
+
+/**
+ * The banner and button for a registration state that stops a signed-in buyer
+ * from bidding (owner-approved copy).
+ *
+ * @param eligibility - The state, never `ok` or `loading`
+ * @param hrefs - Where the buttons go
+ * @param hrefs.registrationHref - The registration flow
+ * @param hrefs.statusHref - The registration status page
+ * @returns The banner kind and text, and the button
+ */
+function registrationPrompt(
+  eligibility: Exclude<BidEligibility, { kind: "ok" }>,
+  hrefs: { registrationHref: string; statusHref: string }
+): {
+  kind: "warn" | "info";
+  text: string;
+  label: string;
+  href: string;
+  variant: "default" | "outline";
+} {
+  switch (eligibility.kind) {
+    case "incomplete":
+      return {
+        kind: "warn",
+        text: `Finish registration to bid. Step ${String(eligibility.step)} of ${String(eligibility.totalSteps)}.`,
+        label: "Continue registration",
+        href: hrefs.registrationHref,
+        variant: "default",
+      };
+    case "under_review":
+      return {
+        kind: "info",
+        text: "Documents under review. You can bid once approved.",
+        label: "See my registration",
+        href: hrefs.statusHref,
+        variant: "outline",
+      };
+    case "needs_replacing":
+      return {
+        kind: "warn",
+        text: "One document needs replacing.",
+        label: "Replace document",
+        href: hrefs.statusHref,
+        variant: "default",
+      };
+    case "deposit_due":
+      return {
+        kind: "warn",
+        text: `Pay your ${formatRand(eligibility.amount)} deposit to bid.`,
+        label: "Pay deposit",
+        href: hrefs.statusHref,
+        variant: "default",
+      };
+  }
+}
 
 interface BidPanelProps {
   /** Guest, registered, leading or outbid. */
@@ -57,12 +114,39 @@ interface BidPanelProps {
   onBid: () => void;
   /** Where "Register to bid" goes (the sign-in page, back to this lot). */
   registerHref: string;
-  eligibility: BidEligibility;
+  /** Where "Continue registration" goes (`/register?callbackUrl=…`). */
+  registrationHref: string;
+  /** Where "See my registration", "Replace document" and "Pay deposit" go. */
+  registrationStatusHref: string;
+  /** Where a signed-in viewer stands on registration. */
+  eligibility: PanelEligibility;
   /** Ref for the main call to action; the sticky bar shows once it scrolls away. */
   ctaRef?: Ref<HTMLDivElement>;
   /** Id so the sticky bar can scroll here. */
   id?: string;
   className?: string;
+}
+
+/**
+ * The banner and button of a registration state.
+ *
+ * @param props - Component props
+ * @param props.prompt - The copy and link from {@link registrationPrompt}
+ * @returns The banner and the button
+ */
+function RegistrationPrompt({
+  prompt,
+}: {
+  prompt: ReturnType<typeof registrationPrompt>;
+}) {
+  return (
+    <>
+      <Banner kind={prompt.kind}>{prompt.text}</Banner>
+      <Button asChild variant={prompt.variant} className="w-full">
+        <Link to={prompt.href}>{prompt.label}</Link>
+      </Button>
+    </>
+  );
 }
 
 /**
@@ -105,7 +189,9 @@ function reserveNote(reserve: ReserveState): string | null {
  * @param props.onAmountChange - Called when the field or a quick amount changes it
  * @param props.onBid - Opens the confirm sheet
  * @param props.registerHref - Sign-in link for guests
- * @param props.eligibility - Whether the viewer is verified
+ * @param props.registrationHref - Registration flow link
+ * @param props.registrationStatusHref - Registration status link
+ * @param props.eligibility - Whether the viewer may bid, or what stops them
  * @param props.ctaRef - Ref for the main call to action
  * @param props.id - Element id
  * @param props.className - Extra classes merged onto the root element
@@ -127,6 +213,8 @@ export function BidPanel({
   onAmountChange,
   onBid,
   registerHref,
+  registrationHref,
+  registrationStatusHref,
   eligibility,
   ctaRef,
   id,
@@ -217,19 +305,18 @@ export function BidPanel({
               />
             ) : null}
           </>
-        ) : eligibility !== "ok" ? (
-          <>
-            <Banner kind="info">
-              {eligibility === "verification-pending"
-                ? "Your verification is being reviewed. You can bid once it's approved."
-                : "Verify your account to bid."}
-            </Banner>
-            {eligibility === "needs-verification" ? (
-              <Button asChild className="w-full">
-                <Link to="/register">Verify to bid</Link>
-              </Button>
-            ) : null}
-          </>
+        ) : eligibility.kind === "loading" ? (
+          <div aria-hidden="true" className="flex flex-col gap-3">
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : eligibility.kind !== "ok" ? (
+          <RegistrationPrompt
+            prompt={registrationPrompt(eligibility, {
+              registrationHref,
+              statusHref: registrationStatusHref,
+            })}
+          />
         ) : (
           <>
             <div>

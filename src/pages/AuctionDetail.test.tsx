@@ -19,8 +19,6 @@ interface Mock {
   results: Record<string, unknown>;
   authed: boolean;
   pastCta: boolean;
-  verified: boolean;
-  kyc: "pending" | undefined;
   mutations: Record<string, ReturnType<typeof vi.fn>>;
   calls: { name: string; args: unknown }[];
 }
@@ -30,8 +28,6 @@ const h = vi.hoisted(() => {
     results: {},
     authed: false,
     pastCta: false,
-    verified: true,
-    kyc: undefined,
     mutations: {},
     calls: [],
   };
@@ -73,11 +69,6 @@ vi.mock("@/hooks/useBranding", () => ({
   }),
 }));
 vi.mock("@/hooks/useVatRate", () => ({ useVatRate: () => 15 }));
-vi.mock("@/hooks/useUserProfile", () => ({
-  useUserProfile: () => ({
-    profile: { isVerified: h.verified, kycStatus: h.kyc },
-  }),
-}));
 const toast = vi.hoisted(() => ({
   info: vi.fn(),
   success: vi.fn(),
@@ -218,6 +209,7 @@ function setup(
     },
     getLotBidHistory: { bids: [], total: 0 },
     getMyLotBidState: { state: "none", myHighest: null },
+    getMyBidEligibility: { kind: "ok" },
     getWatchedLotIds: [],
     ...extra,
   };
@@ -243,8 +235,6 @@ describe("AuctionDetail (lot page)", () => {
     h.calls = [];
     h.authed = false;
     h.pastCta = false;
-    h.verified = true;
-    h.kyc = undefined;
     setup();
   });
 
@@ -428,28 +418,74 @@ describe("AuctionDetail (lot page)", () => {
     expect(screen.queryByRole("button", { name: /^Bid R/ })).toBeNull();
   });
 
-  it("an unverified user is sent to verify instead of bidding", () => {
-    h.authed = true;
-    h.verified = false;
+  it("asks the server for bid eligibility only when signed in", () => {
     renderPage();
-    expect(
-      screen.getAllByRole("link", { name: "Verify to bid" }).length
-    ).toBeGreaterThan(0);
-    expect(screen.queryByLabelText("Your bid")).toBeNull();
+    expect(h.calls.map((c) => c.name)).not.toContain("getMyBidEligibility");
+    h.authed = true;
+    renderPage();
+    expect(h.calls.map((c) => c.name)).toContain("getMyBidEligibility");
   });
 
-  it("a pending verification shows no bid action anywhere", () => {
+  it("an incomplete registration continues it, with the lot as the way back", () => {
     h.authed = true;
-    h.verified = false;
-    h.kyc = "pending";
     h.pastCta = true;
+    setup(
+      {},
+      {
+        getMyBidEligibility: { kind: "incomplete", step: 2, totalSteps: 4 },
+      }
+    );
     renderPage();
-    expect(screen.getByText(/being reviewed/)).toBeInTheDocument();
+    const [panel, bar] = screen.getAllByRole("region", { name: "Bidding" });
+    expect(within(panel).getByRole("alert")).toHaveTextContent(
+      "Finish registration to bid. Step 2 of 4."
+    );
     expect(
-      screen
-        .queryByRole("region", { name: "Bidding", hidden: false })
-        ?.querySelector("input")
-    ).toBeNull();
+      within(panel).getByRole("link", { name: "Continue registration" })
+    ).toHaveAttribute("href", "/register?callbackUrl=%2Fauction%2Fl1");
+    expect(screen.queryByLabelText("Your bid")).toBeNull();
+    expect(bar).toHaveTextContent("Step 2 of 4");
+    expect(within(bar).getByRole("link", { name: "Continue" })).toHaveAttribute(
+      "href",
+      "/register?callbackUrl=%2Fauction%2Fl1"
+    );
+  });
+
+  it("documents under review show no bid action anywhere", () => {
+    h.authed = true;
+    h.pastCta = true;
+    setup(
+      {},
+      {
+        getMyBidEligibility: { kind: "under_review", depositReceived: false },
+      }
+    );
+    renderPage();
+    expect(screen.getByText(/Documents under review/)).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: /See my registration|Details/ })
+    ).toHaveLength(2);
+    expect(screen.queryByLabelText("Your bid")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Bid R/ })).toBeNull();
+  });
+
+  it("a deposit due sends the buyer to the status page", () => {
+    h.authed = true;
+    setup({}, { getMyBidEligibility: { kind: "deposit_due", amount: 5000 } });
+    renderPage();
+    expect(screen.getByRole("link", { name: "Pay deposit" })).toHaveAttribute(
+      "href",
+      "/register/status?callbackUrl=%2Fauction%2Fl1"
+    );
+  });
+
+  it("shows a skeleton, not the bid controls, while eligibility loads", () => {
+    h.authed = true;
+    h.pastCta = true;
+    setup({}, { getMyBidEligibility: undefined });
+    renderPage();
+    expect(screen.queryByLabelText("Your bid")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Continue" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Bid R/ })).toBeNull();
   });
 

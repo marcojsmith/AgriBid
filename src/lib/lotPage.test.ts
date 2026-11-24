@@ -303,6 +303,70 @@ describe("stickyModel", () => {
       }).title
     ).toMatch(/^R\s5$/);
   });
+
+  describe("registration states", () => {
+    const base = {
+      price: 400_000,
+      remainingMs: 51 * HOUR,
+      hasBids: false,
+      viewer: "registered" as const,
+    };
+
+    it("incomplete: Finish registration, the step, a primary Continue", () => {
+      expect(
+        stickyModel({
+          ...base,
+          registration: { kind: "incomplete", step: 2, totalSteps: 4 },
+        })
+      ).toMatchObject({
+        title: "Finish registration",
+        sub: "Step 2 of 4",
+        cta: "Continue",
+        ctaVariant: "primary",
+        urgent: false,
+      });
+    });
+
+    it("under review: an outline Details button", () => {
+      expect(
+        stickyModel({
+          ...base,
+          registration: { kind: "under_review", depositReceived: false },
+        })
+      ).toMatchObject({
+        title: "Under review",
+        sub: "Bidding opens when approved",
+        cta: "Details",
+        ctaVariant: "outline",
+      });
+    });
+
+    it("needs replacing: Replace", () => {
+      expect(
+        stickyModel({
+          ...base,
+          registration: { kind: "needs_replacing", count: 1 },
+        })
+      ).toMatchObject({
+        title: "Document needs replacing",
+        cta: "Replace",
+        ctaVariant: "primary",
+      });
+    });
+
+    it("deposit due: Pay with the amount", () => {
+      const model = stickyModel({
+        ...base,
+        registration: { kind: "deposit_due", amount: 5000 },
+      });
+      expect(model).toMatchObject({ title: "Pay deposit", cta: "Pay" });
+      expect(model.sub).toMatch(/^R\s5\s000$/);
+    });
+
+    it("leaves the price model without a button when registered", () => {
+      expect(stickyModel(base).cta).toBeUndefined();
+    });
+  });
 });
 
 describe("isInExtension", () => {
