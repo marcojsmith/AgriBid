@@ -2,10 +2,23 @@ import { useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
+import type { FunctionReturnType } from "convex/server";
 import type { Id } from "convex/_generated/dataModel";
 
 import type { SellerType } from "@/lib/lotSpecs";
 import type { SellerResponseTime } from "@/lib/provinces";
+import { getErrorMessage } from "@/lib/utils";
+
+/**
+ * A buyer's registration as the admin review sees it: decrypted details,
+ * document metadata (never a URL) and the deposit.
+ */
+export type RegistrationReview = NonNullable<
+  FunctionReturnType<typeof api.admin.registration.getRegistrationForReview>
+>;
+
+/** A document in a {@link RegistrationReview}. */
+export type ReviewDocument = RegistrationReview["documents"][number];
 
 /**
  * KYC review user data interface
@@ -62,6 +75,12 @@ export function useUserManagement() {
   const promoteToAdminMutation = useMutation(api.users.promoteToAdmin);
   const reviewKYCMutation = useMutation(api.admin.reviewKYC);
   const getProfileForKYCMutation = useMutation(api.users.getProfileForKYC);
+  const getRegistrationMutation = useMutation(
+    api.admin.registration.getRegistrationForReview
+  );
+  const reviewDocumentMutation = useMutation(
+    api.admin.registration.reviewDocument
+  );
 
   // Search and filter state
   const [userSearch, setUserSearch] = useState("");
@@ -77,6 +96,10 @@ export function useUserManagement() {
   const [isKycProcessing, setIsKycProcessing] = useState(false);
   const [kycRejectionReason, setKycRejectionReason] = useState("");
   const [showFullId, setShowFullId] = useState(false);
+  // Set instead of the legacy profile when the buyer registered with documents.
+  const [registrationReview, setRegistrationReview] =
+    useState<RegistrationReview | null>(null);
+  const [isReviewingDocument, setIsReviewingDocument] = useState(false);
 
   // Promotion dialog state
   const [promoteTarget, setPromoteTarget] = useState<AdminProfile | null>(null);
@@ -112,6 +135,17 @@ export function useUserManagement() {
     setIsFetchingKYC(true);
     setFetchingKycUserId(userId);
     try {
+      // Registration first: a buyer with per-document registration is reviewed
+      // document by document; legacy submissions fall through to the old view.
+      const registration = await getRegistrationMutation({ userId });
+      if (registration && !registration.legacy) {
+        setRegistrationReview(registration);
+        setKycReviewUser({ userId, kycDocumentCount: 0 });
+        setShowFullId(false);
+        setKycRejectionReason("");
+        return;
+      }
+      setRegistrationReview(null);
       const fullProfile = await getProfileForKYCMutation({ userId });
       // Verify we are still looking for this specific user to avoid race conditions
       if (
@@ -205,6 +239,59 @@ export function useUserManagement() {
   };
 
   /**
+   * Approves or rejects one registration document and mirrors the result in the
+   * open review (the review is a one-off audited read, so it is updated locally).
+   * @param doc - The document to review, as shown in the open review
+   * @param decision - "approve" or "reject"
+   * @param reason - Required for a rejection
+   * @returns True when the decision was saved
+   */
+  const handleReviewDocument = async (
+    doc: ReviewDocument,
+    decision: "approve" | "reject",
+    reason?: string
+  ): Promise<boolean> => {
+    if (!registrationReview || isReviewingDocument) return false;
+    setIsReviewingDocument(true);
+    try {
+      await reviewDocumentMutation({
+        documentId: doc.id,
+        expectedUploadedAt: doc.uploadedAt,
+        decision,
+        reason: decision === "reject" ? reason?.trim() : undefined,
+      });
+      const reviewedAt = Date.now();
+      setRegistrationReview((current) =>
+        current
+          ? {
+              ...current,
+              documents: current.documents.map((item) =>
+                item.id === doc.id
+                  ? {
+                      ...item,
+                      status: decision === "approve" ? "approved" : "rejected",
+                      rejectionReason:
+                        decision === "reject" ? reason?.trim() : undefined,
+                      reviewedAt,
+                    }
+                  : item
+              ),
+            }
+          : current
+      );
+      toast.success(
+        decision === "approve" ? "Document approved" : "Document rejected"
+      );
+      return true;
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Review failed"));
+      return false;
+    } finally {
+      setIsReviewingDocument(false);
+    }
+  };
+
+  /**
    * Promotes a user to admin role.
    * Closes the promotion dialog on success.
    */
@@ -228,6 +315,7 @@ export function useUserManagement() {
    */
   const closeKycReview = () => {
     setKycReviewUser(null);
+    setRegistrationReview(null);
     setKycRejectionReason("");
     setShowFullId(false);
   };
@@ -257,6 +345,9 @@ export function useUserManagement() {
     handleReviewKYCClick,
     handleKycReview,
     closeKycReview,
+    registrationReview,
+    isReviewingDocument,
+    handleReviewDocument,
 
     // Promotion state and handlers
     promoteTarget,

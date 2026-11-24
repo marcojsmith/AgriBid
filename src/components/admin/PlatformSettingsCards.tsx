@@ -496,6 +496,134 @@ function FinanceContactForm({ settings }: { settings: PlatformSettings }) {
   );
 }
 
+/** Mirrors the server's deposit account number pattern. */
+const ACCOUNT_NUMBER_PATTERN = /^\d{6,16}$/;
+
+/** Mirrors the server's deposit branch code pattern. */
+const BRANCH_CODE_PATTERN = /^\d{6}$/;
+
+type BankDetails = NonNullable<
+  FunctionReturnType<typeof api.admin.platformSettings.getDepositBankDetails>
+>;
+
+/**
+ * "Deposit bank details" form: the account buyers pay their deposit into.
+ * Leaving a field empty clears it.
+ *
+ * @param props - Component props
+ * @param props.stored - The stored bank details
+ * @returns The section element
+ */
+function BankDetailsForm({ stored }: { stored: BankDetails }) {
+  const update = useMutation(
+    api.admin.platformSettings.updateDepositBankDetails
+  );
+  const [bank, setBank] = useState(stored.bank ?? "");
+  const [accountName, setAccountName] = useState(stored.accountName ?? "");
+  const [accountNumber, setAccountNumber] = useState(
+    stored.accountNumber ?? ""
+  );
+  const [branchCode, setBranchCode] = useState(stored.branchCode ?? "");
+
+  const tooLong = [bank, accountName].some(
+    (text) => text.trim().length > MAX_FINANCE_CONTACT_FIELD_LENGTH
+  );
+  let error: string | null = null;
+  if (tooLong) {
+    error = `Bank and account name must be at most ${String(MAX_FINANCE_CONTACT_FIELD_LENGTH)} characters.`;
+  } else if (
+    accountNumber.trim() !== "" &&
+    !ACCOUNT_NUMBER_PATTERN.test(accountNumber.trim())
+  ) {
+    error = "Account number must be 6 to 16 digits.";
+  } else if (
+    branchCode.trim() !== "" &&
+    !BRANCH_CODE_PATTERN.test(branchCode.trim())
+  ) {
+    error = "Branch code must be 6 digits.";
+  }
+
+  const fields: {
+    id: string;
+    label: string;
+    value: string;
+    set: (value: string) => void;
+    inputMode?: "numeric";
+  }[] = [
+    { id: "bank-name", label: "Bank", value: bank, set: setBank },
+    {
+      id: "bank-account-name",
+      label: "Account name",
+      value: accountName,
+      set: setAccountName,
+    },
+    {
+      id: "bank-account-number",
+      label: "Account number",
+      value: accountNumber,
+      set: setAccountNumber,
+      inputMode: "numeric",
+    },
+    {
+      id: "bank-branch-code",
+      label: "Branch code",
+      value: branchCode,
+      set: setBranchCode,
+      inputMode: "numeric",
+    },
+  ];
+
+  return (
+    <SettingsSection
+      id="bank-details"
+      title="Deposit bank details"
+      description="Shown to buyers on the deposit step."
+      error={error}
+      unchanged={
+        bank.trim() === (stored.bank ?? "") &&
+        accountName.trim() === (stored.accountName ?? "") &&
+        accountNumber.trim() === (stored.accountNumber ?? "") &&
+        branchCode.trim() === (stored.branchCode ?? "")
+      }
+      saveLabel="Save bank details"
+      successMessage="Bank details saved"
+      onSave={() => update({ bank, accountName, accountNumber, branchCode })}
+    >
+      {fields.map((field) => (
+        <div key={field.id} className="space-y-1">
+          <Label htmlFor={field.id}>{field.label}</Label>
+          <Input
+            id={field.id}
+            type="text"
+            inputMode={field.inputMode}
+            value={field.value}
+            aria-invalid={error !== null}
+            aria-describedby={error ? "bank-details-error" : undefined}
+            onChange={(event) => {
+              field.set(event.target.value);
+            }}
+          />
+        </div>
+      ))}
+    </SettingsSection>
+  );
+}
+
+/**
+ * Loads the stored bank details, then shows {@link BankDetailsForm}.
+ *
+ * @returns The section, or a loading line while the details load
+ */
+function BankDetailsSection() {
+  const stored = useQuery(api.admin.platformSettings.getDepositBankDetails);
+  if (stored === undefined) {
+    return (
+      <p className="text-sm text-muted-foreground">Loading bank details…</p>
+    );
+  }
+  return <BankDetailsForm key={JSON.stringify(stored)} stored={stored} />;
+}
+
 /**
  * Push reminders switch.
  *
@@ -627,6 +755,7 @@ export function PlatformSettingsCards() {
     <div className="space-y-6">
       <BuyerPremiumForm key={settings.buyerPremiumPct} settings={settings} />
       <DepositForm key={JSON.stringify(settings.deposit)} settings={settings} />
+      <BankDetailsSection />
       <SellerCostsForm
         key={JSON.stringify(settings.sellerCosts)}
         settings={settings}

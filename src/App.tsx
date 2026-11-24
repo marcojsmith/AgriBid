@@ -50,6 +50,7 @@ const AdminBusinessInfo = lazy(() => import("./pages/admin/AdminBusinessInfo"));
 const AdminFAQ = lazy(() => import("./pages/admin/AdminFAQ"));
 const AdminFees = lazy(() => import("./pages/admin/AdminFees"));
 const AdminPerformance = lazy(() => import("./pages/admin/AdminPerformance"));
+const AdminDeposits = lazy(() => import("./pages/admin/AdminDeposits"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const AdminLegal = lazy(() => import("./pages/admin/AdminLegal"));
@@ -145,7 +146,7 @@ function registerRoute(page: ReactElement): ReactElement {
  *   - /admin/marketplace, /admin/lots, /admin/auctions, /admin/auctions/:id, /admin/users
  *   - /admin/finance, /admin/announcements, /admin/support
  *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq, /admin/fees
- *   - /admin/performance, /admin/legal
+ *   - /admin/performance, /admin/legal, /admin/deposits
  * - "/register" → RegisterIndex (protected, allowedRole="any"; redirects to the first unfinished step)
  * - "/register/details", "/register/id", "/register/address", "/register/deposit",
  *   "/register/status" → registration steps (protected, allowedRole="any")
@@ -259,6 +260,7 @@ function App() {
               <Route path="/admin/legal" element={<AdminLegal />} />
               <Route path="/admin/fees" element={<AdminFees />} />
               <Route path="/admin/performance" element={<AdminPerformance />} />
+              <Route path="/admin/deposits" element={<AdminDeposits />} />
             </Route>
             <Route path="/kyc" element={<KycRedirect />} />
             <Route

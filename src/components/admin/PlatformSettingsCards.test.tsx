@@ -21,6 +21,8 @@ vi.mock("convex/_generated/api", () => ({
         updatePushReminders: "ps:push",
         updateWatchAlerts: "ps:watch",
         updateMinPhotos: "ps:photos",
+        getDepositBankDetails: "ps:bank",
+        updateDepositBankDetails: "ps:bankUpdate",
       },
     },
   },
@@ -36,6 +38,23 @@ const settings = {
   watchAlertsEnabled: false,
   minPhotosPerLot: 8,
 };
+
+const emptyBank = {
+  bank: null,
+  accountName: null,
+  accountNumber: null,
+  branchCode: null,
+};
+
+/** Bank details the `ps:bank` query returns; reset in `beforeEach`. */
+let storedBank:
+  | {
+      bank: string | null;
+      accountName: string | null;
+      accountNumber: string | null;
+      branchCode: string | null;
+    }
+  | undefined = emptyBank;
 
 const mutations: Record<string, Mock> = {};
 
@@ -72,17 +91,94 @@ describe("PlatformSettingsCards", () => {
       "ps:push",
       "ps:watch",
       "ps:photos",
+      "ps:bankUpdate",
     ]) {
       mutations[key] = vi.fn().mockResolvedValue({ success: true });
     }
+    storedBank = emptyBank;
     (useMutation as Mock).mockImplementation((ref: string) => mutations[ref]);
-    (useQuery as Mock).mockReturnValue(settings);
+    (useQuery as Mock).mockImplementation((ref: string) =>
+      ref === "ps:bank" ? storedBank : settings
+    );
   });
 
   it("shows a loading line while settings load", () => {
     (useQuery as Mock).mockReturnValue(undefined);
     render(<PlatformSettingsCards />);
     expect(screen.getByText(/Loading platform settings/)).toBeInTheDocument();
+  });
+
+  it("shows a loading line while the bank details load", () => {
+    storedBank = undefined;
+    render(<PlatformSettingsCards />);
+    expect(screen.getByText(/Loading bank details/)).toBeInTheDocument();
+  });
+
+  it("saves the deposit bank details", async () => {
+    render(<PlatformSettingsCards />);
+    expect(screen.getByText("Deposit bank details")).toBeInTheDocument();
+    expect(
+      screen.getByText("Shown to buyers on the deposit step.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save bank details" })
+    ).toBeDisabled();
+    fill("Bank", "FNB");
+    fill("Account name", "AgriBid Trust");
+    fill("Account number", "62012345678");
+    fill("Branch code", "250655");
+    fireEvent.click(screen.getByRole("button", { name: "Save bank details" }));
+    await waitFor(() => {
+      expect(mutations["ps:bankUpdate"]).toHaveBeenCalledWith({
+        bank: "FNB",
+        accountName: "AgriBid Trust",
+        accountNumber: "62012345678",
+        branchCode: "250655",
+      });
+    });
+    expect(toast.success).toHaveBeenCalledWith("Bank details saved");
+  });
+
+  it("starts from stored bank details and can clear them", async () => {
+    storedBank = {
+      bank: "FNB",
+      accountName: "AgriBid Trust",
+      accountNumber: "62012345678",
+      branchCode: "250655",
+    };
+    render(<PlatformSettingsCards />);
+    expect(screen.getByLabelText("Bank")).toHaveValue("FNB");
+    fill("Account number", "");
+    fireEvent.click(screen.getByRole("button", { name: "Save bank details" }));
+    await waitFor(() => {
+      expect(mutations["ps:bankUpdate"]).toHaveBeenCalledWith({
+        bank: "FNB",
+        accountName: "AgriBid Trust",
+        accountNumber: "",
+        branchCode: "250655",
+      });
+    });
+  });
+
+  it("validates the account number, branch code and field length", () => {
+    render(<PlatformSettingsCards />);
+    fill("Account number", "12ab");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Account number must be 6 to 16 digits."
+    );
+    expect(
+      screen.getByRole("button", { name: "Save bank details" })
+    ).toBeDisabled();
+    fill("Account number", "123456");
+    fill("Branch code", "12345");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Branch code must be 6 digits."
+    );
+    fill("Branch code", "250655");
+    fill("Bank", "x".repeat(101));
+    expect(screen.getByRole("alert")).toHaveTextContent("at most 100");
+    fill("Bank", "FNB");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("starts every Save button disabled", () => {

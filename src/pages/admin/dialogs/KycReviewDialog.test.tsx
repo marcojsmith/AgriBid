@@ -1,14 +1,19 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import type { ReactNode, ComponentProps } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
+import type {
+  KycReviewUser,
+  RegistrationReview,
+} from "@/hooks/admin/useUserManagement";
 
 import { KycReviewDialog } from "./KycReviewDialog";
 
 const protectedDocument = vi.hoisted(() => vi.fn());
+const documentPreview = vi.hoisted(() => vi.fn());
 vi.mock("@/hooks/useDocumentPreview", () => ({
   useProtectedDocument: protectedDocument,
+  useDocumentPreview: documentPreview,
 }));
 
 type DialogProps = ComponentProps<"div"> & {
@@ -321,5 +326,310 @@ describe("KycReviewDialog", () => {
     // Clicking the mock dialog triggers onOpenChange(false)
     fireEvent.click(screen.getByTestId("mock-dialog"));
     expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+});
+
+type ReviewDetails = RegistrationReview["details"];
+type ReviewDoc = RegistrationReview["documents"][number];
+
+/**
+ * Builds review details; the server type lists every optional key.
+ *
+ * @param over - Fields to set
+ * @returns The details
+ */
+function details(over: Partial<ReviewDetails>): ReviewDetails {
+  return {
+    idType: undefined,
+    fullName: undefined,
+    phoneNumber: undefined,
+    idNumber: undefined,
+    passportNumber: undefined,
+    countryOfIssue: undefined,
+    streetAddress: undefined,
+    town: undefined,
+    postalCode: undefined,
+    ...over,
+  };
+}
+
+/**
+ * Builds a review document; the server type lists every optional key.
+ *
+ * @param over - Fields to set (id, kind, status, fileName, fileSize, uploadedAt are required)
+ * @returns The document
+ */
+function reviewDoc(
+  over: Pick<ReviewDoc, "kind" | "status" | "fileName" | "fileSize"> &
+    Partial<Omit<ReviewDoc, "id">> & { id: string }
+): ReviewDoc {
+  return {
+    contentType: undefined,
+    uploadedAt: 1,
+    rejectionReason: undefined,
+    reviewedAt: undefined,
+    ...over,
+    id: over.id as ReviewDoc["id"],
+  };
+}
+
+describe("KycReviewDialog: per-document registration review", () => {
+  const registration: RegistrationReview = {
+    details: details({
+      idType: "sa_id",
+      fullName: "Thandi Nkosi",
+      phoneNumber: "+27825550147",
+      idNumber: "8001015009087",
+      streetAddress: "12 Church Street",
+      town: "Malmesbury",
+      postalCode: "7300",
+    }),
+    documents: [
+      reviewDoc({
+        id: "doc-front",
+        kind: "id_front",
+        status: "pending",
+        fileName: "front.jpg",
+        fileSize: 245_000,
+        contentType: "image/jpeg",
+        uploadedAt: 1,
+      }),
+      reviewDoc({
+        id: "doc-back",
+        kind: "id_back",
+        status: "rejected",
+        fileName: "back.pdf",
+        fileSize: 2_000_000,
+        contentType: "application/pdf",
+        uploadedAt: 1,
+        rejectionReason: "Photo is blurry",
+        reviewedAt: Date.UTC(2026, 10, 20),
+      }),
+      reviewDoc({
+        id: "doc-addr",
+        kind: "proof_of_address",
+        status: "approved",
+        fileName: "bill.jpg",
+        fileSize: 100,
+        uploadedAt: 1,
+        reviewedAt: Date.UTC(2026, 10, 21),
+      }),
+    ],
+    deposit: {
+      reference: "AB-7K3F2",
+      status: "paid_claimed",
+      amount: 5000,
+      paidClaimedAt: undefined,
+      receivedAt: undefined,
+      receivedAmount: undefined,
+      refundedAt: undefined,
+    },
+    submittedAt: undefined,
+    legacy: false,
+  };
+
+  const onReviewDocument = vi.fn();
+  const props = {
+    user: { userId: "u1", kycDocumentCount: 0 } satisfies KycReviewUser,
+    isOpen: true,
+    onClose: vi.fn(),
+    onReview: vi.fn(),
+    isProcessing: false,
+    rejectionReason: "",
+    setRejectionReason: vi.fn(),
+    showFullId: false,
+    setShowFullId: vi.fn(),
+    registration,
+    onReviewDocument,
+  };
+
+  beforeEach(() => {
+    onReviewDocument.mockReset().mockResolvedValue(true);
+    documentPreview
+      .mockReset()
+      .mockImplementation((doc: { contentType: string }) =>
+        doc.contentType === "application/pdf"
+          ? { isPdf: true, loading: false, href: "blob:pdf" }
+          : {
+              isPdf: false,
+              loading: false,
+              src: "blob:img",
+              href: "blob:full",
+            }
+      );
+  });
+
+  it("shows the details, one card per document and the deposit, not the legacy buttons", () => {
+    render(<KycReviewDialog {...props} />);
+
+    expect(screen.getByText("Thandi Nkosi")).toBeInTheDocument();
+    expect(screen.getByText("South African ID")).toBeInTheDocument();
+    expect(screen.getByText("****9087")).toBeInTheDocument();
+    expect(
+      screen.getByText("12 Church Street, Malmesbury, 7300")
+    ).toBeInTheDocument();
+    expect(screen.getByText("ID front")).toBeInTheDocument();
+    expect(screen.getByText("ID back")).toBeInTheDocument();
+    expect(screen.getByText("Proof of address")).toBeInTheDocument();
+    expect(screen.getByText("AB-7K3F2")).toBeInTheDocument();
+    expect(screen.queryByText("Approve & Verify")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reject Application")).not.toBeInTheDocument();
+    // Previews come from the protected hook; nothing here is a storage URL.
+    expect(documentPreview).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "doc-front" })
+    );
+  });
+
+  it("previews an image and opens a PDF in a new tab", () => {
+    render(<KycReviewDialog {...props} />);
+    expect(screen.getAllByRole("img")[0]).toHaveAttribute("src", "blob:img");
+    const pdf = screen.getByRole("link", { name: /Open ID back PDF/ });
+    expect(pdf).toHaveAttribute("href", "blob:pdf");
+    expect(pdf).toHaveAttribute("target", "_blank");
+    expect(pdf).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("shows status pills, the existing reason and the reviewed date", () => {
+    render(<KycReviewDialog {...props} />);
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(screen.getByText("Rejected")).toBeInTheDocument();
+    expect(screen.getByText("Approved")).toBeInTheDocument();
+    expect(screen.getByText(/Photo is blurry/)).toBeInTheDocument();
+    expect(screen.getByText(/Approved on/)).toBeInTheDocument();
+  });
+
+  it("approves one document", async () => {
+    render(<KycReviewDialog {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Approve ID front" }));
+    await waitFor(() => {
+      expect(onReviewDocument).toHaveBeenCalledWith(
+        registration.documents[0],
+        "approve"
+      );
+    });
+    // An already approved document can't be approved again.
+    expect(
+      screen.getByRole("button", { name: "Approve Proof of address" })
+    ).toBeDisabled();
+  });
+
+  it("requires a reason before a rejection can be confirmed", async () => {
+    render(<KycReviewDialog {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reject ID front" }));
+
+    const confirm = screen.getByRole("button", {
+      name: "Confirm reject ID front",
+    });
+    expect(confirm).toBeDisabled();
+    const reason = screen.getByLabelText("Reason for rejecting ID front");
+    expect(reason).toHaveAttribute("maxlength", "300");
+
+    fireEvent.change(reason, { target: { value: "   " } });
+    expect(confirm).toBeDisabled();
+    fireEvent.change(reason, { target: { value: "Cropped at the edge" } });
+    expect(screen.getByText("19/300")).toBeInTheDocument();
+    expect(confirm).toBeEnabled();
+
+    fireEvent.click(confirm);
+    await waitFor(() => {
+      expect(onReviewDocument).toHaveBeenCalledWith(
+        registration.documents[0],
+        "reject",
+        "Cropped at the edge"
+      );
+    });
+    // Saved: the reason form closes again.
+    await waitFor(() => {
+      expect(
+        screen.queryByLabelText("Reason for rejecting ID front")
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("keeps the reason form open when the rejection fails, and can cancel", async () => {
+    onReviewDocument.mockResolvedValue(false);
+    render(<KycReviewDialog {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "Reject ID front" }));
+    fireEvent.change(screen.getByLabelText("Reason for rejecting ID front"), {
+      target: { value: "Blurry" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm reject ID front" })
+    );
+    await waitFor(() => {
+      expect(onReviewDocument).toHaveBeenCalled();
+    });
+    expect(screen.getByLabelText("Reason for rejecting ID front")).toHaveValue(
+      "Blurry"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.queryByLabelText("Reason for rejecting ID front")
+    ).not.toBeInTheDocument();
+  });
+
+  it("disables every action while a decision is saving", () => {
+    render(<KycReviewDialog {...props} isProcessing={true} />);
+    for (const name of [
+      "Approve ID front",
+      "Reject ID front",
+      "Reject ID back",
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeDisabled();
+    }
+  });
+
+  it("reveals the full number and shows passport details", () => {
+    const setShowFullId = vi.fn();
+    render(
+      <KycReviewDialog
+        {...props}
+        setShowFullId={setShowFullId}
+        registration={{
+          ...registration,
+          details: details({
+            idType: "passport",
+            passportNumber: "AB123456",
+            countryOfIssue: "Zimbabwe",
+          }),
+          documents: [],
+          deposit: null,
+        }}
+      />
+    );
+    expect(screen.getByText("Passport")).toBeInTheDocument();
+    expect(screen.getByText("Zimbabwe")).toBeInTheDocument();
+    expect(screen.getByText("****3456")).toBeInTheDocument();
+    expect(screen.getByText("No documents uploaded.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Reveal" }));
+    expect(setShowFullId).toHaveBeenCalledWith(true);
+  });
+
+  it("shows loading and error states for a file", () => {
+    documentPreview.mockReturnValue({ isPdf: false, loading: true });
+    const { rerender } = render(<KycReviewDialog {...props} />);
+    expect(screen.getAllByText(/Loading ID front/)).toHaveLength(1);
+
+    documentPreview.mockReturnValue({
+      isPdf: false,
+      loading: false,
+      error: "That document isn't available.",
+    });
+    rerender(<KycReviewDialog {...props} />);
+    expect(screen.getAllByRole("alert")[0]).toHaveTextContent(
+      "ID front: That document isn't available."
+    );
+
+    documentPreview.mockReturnValue({ isPdf: false, loading: false });
+    rerender(<KycReviewDialog {...props} />);
+    expect(screen.getAllByRole("alert")[0]).toHaveTextContent(
+      "Couldn't load that document."
+    );
+  });
+
+  it("falls back to the legacy view when there is no registration", () => {
+    render(<KycReviewDialog {...props} registration={null} />);
+    expect(screen.getByText("Approve & Verify")).toBeInTheDocument();
   });
 });

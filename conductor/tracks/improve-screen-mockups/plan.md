@@ -64,7 +64,7 @@ Order: D1 → D2 → D3 → D4 → D5 → D6 → D7 → D8 → D9, then the Regi
 | R1b | Encrypted, auth-gated personal documents (AES-GCM at rest, upload and download HTTP routes, legacy KYC migration)    | **risky** (security, PII)          | R1, R3  | in review |     |
 | R2  | Register design-system components (RegProgress, TextField, IdTypeToggle, UploadSlot, CopyRow, RegStatusList, WhyBox) | low                                | R1      | in review |     |
 | R3  | Register screens: details, documents, deposit and review states                                                      | low                                | R1, R2  | in review |     |
-| R4  | Admin: review documents, mark deposit received, refund, bank details                                                 | **risky** (admin mutations)        | R1      | todo      |     |
+| R4  | Admin: review documents, mark deposit received, refund, bank details                                                 | **risky** (admin mutations)        | R1      | in review |     |
 | R5  | Lot page: eligibility-driven bid panel                                                                               | **risky** (bid flow UI)            | R1, R3  | todo      |     |
 
 R1 notes: `computeBidEligibility` is pure in `convex/lib/bidEligibility.ts` (importable from `src/`); the database-backed `getBidEligibility` and `requireCanBid` live in `convex/lib/bidGuard.ts` so the pure file does not pull in the Convex runtime. Verified buyers who change ID type are refused (their documents are already approved). An invalid upload is rejected by throwing, so the file is left for the orphan sweep (deleting it in the same mutation would be rolled back).

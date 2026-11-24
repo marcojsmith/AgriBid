@@ -18,6 +18,7 @@ import type * as admin_legal from "../admin/legal.js";
 import type * as admin_mutations from "../admin/mutations.js";
 import type * as admin_platformSettings from "../admin/platformSettings.js";
 import type * as admin_queries from "../admin/queries.js";
+import type * as admin_registration from "../admin/registration.js";
 import type * as admin_settings from "../admin/settings.js";
 import type * as admin_statistics from "../admin/statistics.js";
 import type * as admin_debug from "../admin_debug.js";
@@ -126,6 +127,7 @@ declare const fullApi: ApiFromModules<{
   "admin/mutations": typeof admin_mutations;
   "admin/platformSettings": typeof admin_platformSettings;
   "admin/queries": typeof admin_queries;
+  "admin/registration": typeof admin_registration;
   "admin/settings": typeof admin_settings;
   "admin/statistics": typeof admin_statistics;
   admin_debug: typeof admin_debug;
