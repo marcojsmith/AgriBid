@@ -279,6 +279,26 @@ describe("outbid push", () => {
     expect(await scheduled(t)).toHaveLength(0);
   });
 
+  it("respects a user who switched outbid alerts off", async () => {
+    const t = makeContext();
+    await setAlerts(t, true);
+    const { lotId } = await seed(t);
+    await t.run((ctx) =>
+      ctx.db.insert("userPreferences", {
+        userId: ALICE,
+        notificationsBidOutbid: false,
+        updatedAt: Date.now(),
+      })
+    );
+    await watch(t, ALICE, lotId);
+    await bid(t, ALICE, lotId, 1000);
+    await bid(t, BOB, lotId, 1100);
+    expect(
+      await t.run((ctx) => ctx.db.query("notifications").collect())
+    ).toHaveLength(0);
+    expect(await scheduled(t)).toHaveLength(0);
+  });
+
   it("still creates the in-app notice when the user has no push subscription", async () => {
     const t = makeContext();
     await setAlerts(t, true);
@@ -342,6 +362,35 @@ describe("closing-soon alerts", () => {
     expect(
       await t.run((ctx) => ctx.db.query("notifications").collect())
     ).toHaveLength(2);
+  });
+
+  it("only alerts watchers whose ending setting allows the 1-hour alert", async () => {
+    const t = makeContext();
+    await setAlerts(t, true);
+    const { lotId } = await seed(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("userPreferences", {
+        userId: ALICE,
+        notificationsWatchlistEnding: "disabled",
+        updatedAt: Date.now(),
+      });
+      await ctx.db.insert("userPreferences", {
+        userId: BOB,
+        notificationsWatchlistEnding: "1h",
+        updatedAt: Date.now(),
+      });
+      await ctx.db.insert("userPreferences", {
+        userId: "user_carol",
+        notificationsWatchlistEnding: "24h",
+        updatedAt: Date.now(),
+      });
+    });
+    for (const userId of [ALICE, BOB, "user_carol"]) {
+      await watch(t, userId, lotId);
+    }
+    expect(await run(t)).toEqual({ notified: 3, hasMore: false });
+    const notes = await t.run((ctx) => ctx.db.query("notifications").collect());
+    expect(notes.map((n) => n.recipientId)).toEqual([BOB]);
   });
 
   it("uses the lot's extended end time in the message", async () => {

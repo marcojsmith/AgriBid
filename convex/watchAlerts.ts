@@ -45,6 +45,30 @@ export function formatSastTime(ms: number): string {
   return `${hh}:${mm}`;
 }
 
+/**
+ * Whether a user's saved notification settings (Settings -> Notifications)
+ * allow this alert. No saved row means the defaults: both alerts on.
+ *
+ * @param ctx - Mutation context
+ * @param userId - The recipient
+ * @param kind - `outbid` follows "Outbid alerts"; `closing` follows "Watchlist
+ *   ending alerts", which only allows the 1-hour alert when unset or `1h`
+ * @returns True when the alert may be sent
+ */
+async function allowsAlert(
+  ctx: MutationCtx,
+  userId: string,
+  kind: "outbid" | "closing"
+): Promise<boolean> {
+  const prefs = await ctx.db
+    .query("userPreferences")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .first();
+  if (kind === "outbid") return prefs?.notificationsBidOutbid !== false;
+  const ending = prefs?.notificationsWatchlistEnding;
+  return ending === undefined || ending === "1h";
+}
+
 /** One alert: the in-app notification and the push payload share it. */
 interface Alert {
   title: string;
@@ -125,7 +149,9 @@ export async function notifyOutbidWatcher(
       q.eq("userId", previousLeaderId).eq("lotId", lot._id)
     )
     .first();
-  if (!watching) return;
+  if (!watching || !(await allowsAlert(ctx, previousLeaderId, "outbid"))) {
+    return;
+  }
   const messages = await alertUser(ctx, previousLeaderId, {
     title: "You've been outbid",
     body: `${lot.title}: the bid is now ${formatRandPush(args.amount)}. Tap to bid again.`,
@@ -190,6 +216,7 @@ export async function sendClosingSoonAlertsHandler(
       }
       const closesAt = formatSastTime(lot.extendedEndTime ?? sale.endTime);
       for (const watcher of watchers) {
+        if (!(await allowsAlert(ctx, watcher.userId, "closing"))) continue;
         messages.push(
           ...(await alertUser(ctx, watcher.userId, {
             title: "Closing in 1 hour",
