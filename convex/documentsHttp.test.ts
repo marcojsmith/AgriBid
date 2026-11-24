@@ -67,8 +67,8 @@ const bearer = { Authorization: "Bearer test-token" };
 async function upload(
   t: Pick<Ctx, "fetch">,
   body: Uint8Array,
-  query = "kind=id_front&fileName=front.jpg",
-  headers: Record<string, string> = {}
+  query = "kind=id_front",
+  headers: Record<string, string> = { "X-File-Name": "front.jpg" }
 ): Promise<Response> {
   return await t.fetch(`/documents/upload?${query}`, {
     method: "POST",
@@ -151,12 +151,10 @@ describe("POST /documents/upload", () => {
     );
     const exe = new Uint8Array([0x4d, 0x5a, 0x90, 0x00, 3, 0, 0, 0]);
     for (const body of [svg, exe, new Uint8Array(0)]) {
-      const res = await upload(
-        as(t, OWNER),
-        body,
-        "kind=id_front&fileName=photo.jpg",
-        { "Content-Type": "image/jpeg" }
-      );
+      const res = await upload(as(t, OWNER), body, "kind=id_front", {
+        "Content-Type": "image/jpeg",
+        "X-File-Name": "photo.jpg",
+      });
       expect(res.status).toBe(415);
     }
     expect(await storedBlobs(t)).toHaveLength(0);
@@ -192,11 +190,7 @@ describe("POST /documents/upload", () => {
   it("deletes the blob when the attach is refused (wrong kind for the ID type)", async () => {
     const t = makeContext();
     await seed(t);
-    const res = await upload(
-      as(t, OWNER),
-      JPEG,
-      "kind=passport_photo&fileName=p.jpg"
-    );
+    const res = await upload(as(t, OWNER), JPEG, "kind=passport_photo");
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toMatch(
       /isn't needed/
@@ -235,15 +229,83 @@ describe("POST /documents/upload", () => {
     // A file name over the limit is a ConvexError (400); force a plain Error
     // by removing the profile's table access is not possible, so assert the
     // ConvexError path carries the user-facing message instead.
-    const res = await upload(
-      as(t, OWNER),
-      JPEG,
-      `kind=id_front&fileName=${"a".repeat(201)}`
-    );
+    const res = await upload(as(t, OWNER), JPEG, "kind=id_front", {
+      "X-File-Name": "a".repeat(201),
+    });
     expect(res.status).toBe(400);
     expect(((await res.json()) as { error: string }).error).toMatch(
       /at most 200/
     );
+    expect(await storedBlobs(t)).toHaveLength(0);
+  });
+
+  it("reads the file name from the URI-encoded X-File-Name header, not the query", async () => {
+    const t = makeContext();
+    await seed(t);
+    const res = await upload(
+      as(t, OWNER),
+      JPEG,
+      "kind=id_front&fileName=leak.jpg",
+      {
+        "X-File-Name": encodeURIComponent("my front (1).jpg"),
+      }
+    );
+    expect(res.status).toBe(200);
+    const row = await t.run((ctx) =>
+      ctx.db.query("registrationDocuments").first()
+    );
+    expect(row?.fileName).toBe("my front (1).jpg");
+  });
+
+  it("falls back to a default name when X-File-Name is missing or malformed", async () => {
+    const t = makeContext();
+    await seed(t);
+    for (const headers of [
+      {} as Record<string, string>,
+      { "X-File-Name": "%E0%A4%A" },
+    ]) {
+      const res = await upload(as(t, OWNER), JPEG, "kind=id_front", headers);
+      expect(res.status).toBe(200);
+    }
+    const row = await t.run((ctx) =>
+      ctx.db.query("registrationDocuments").first()
+    );
+    expect(row?.fileName).toBe("document");
+  });
+
+  it("413s a body over the limit even when Content-Length is absent or false", async () => {
+    const t = makeContext();
+    await seed(t);
+    const big = new Uint8Array(MAX_REG_DOC_BYTES + 1);
+    big.set(JPEG);
+    // A streamed body has no Content-Length; a lying header claims it is small.
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(big.subarray(0, MAX_REG_DOC_BYTES));
+        controller.enqueue(big.subarray(MAX_REG_DOC_BYTES));
+        controller.close();
+      },
+    });
+    const streamed = await as(t, OWNER).fetch(
+      "/documents/upload?kind=id_front",
+      {
+        method: "POST",
+        headers: bearer,
+        body: stream,
+        duplex: "half",
+      } as RequestInit
+    );
+    expect(streamed.status).toBe(413);
+
+    const lying = await upload(as(t, OWNER), big, "kind=id_front", {
+      "Content-Length": "5",
+    });
+    expect(lying.status).toBe(413);
+
+    const junk = await upload(as(t, OWNER), big, "kind=id_front", {
+      "Content-Length": "not-a-number",
+    });
+    expect(junk.status).toBe(413);
     expect(await storedBlobs(t)).toHaveLength(0);
   });
 
@@ -489,6 +551,11 @@ describe("CORS", () => {
       expect(res.headers.get("Access-Control-Allow-Headers")).toContain(
         "Authorization"
       );
+      expect(res.headers.get("Access-Control-Allow-Headers")).toContain(
+        "X-File-Name"
+      );
+      expect(res.headers.get("Access-Control-Max-Age")).toBe("600");
+      expect(res.headers.get("Access-Control-Allow-Credentials")).toBeNull();
     }
   });
 

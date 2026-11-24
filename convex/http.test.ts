@@ -28,13 +28,13 @@ describe("getCorsHeaders", () => {
     expect(headers["Access-Control-Allow-Origin"]).toBe(
       "https://allowed.example.com"
     );
-    expect(headers["Access-Control-Allow-Methods"]).toBe(
-      "GET, POST, PUT, DELETE, OPTIONS"
-    );
+    expect(headers["Access-Control-Allow-Methods"]).toBe("GET, POST, OPTIONS");
     expect(headers["Access-Control-Allow-Headers"]).toBe(
-      "Content-Type, Authorization, Cookie, X-Requested-With"
+      "Content-Type, Authorization, X-Requested-With, X-File-Name"
     );
-    expect(headers["Access-Control-Allow-Credentials"]).toBe("true");
+    // Bearer tokens only: credentials are never allowed.
+    expect(headers["Access-Control-Allow-Credentials"]).toBeUndefined();
+    expect(headers["Access-Control-Max-Age"]).toBe("600");
     expect(headers.Vary).toBe("Origin");
   });
 

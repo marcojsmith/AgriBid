@@ -11,10 +11,10 @@ export function getCorsHeaders(request: Request): Record<string, string> {
   const isAllowed = isOriginAllowed(origin);
 
   const headers: Record<string, string> = {
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers":
-      "Content-Type, Authorization, Cookie, X-Requested-With",
-    "Access-Control-Allow-Credentials": "true",
+      "Content-Type, Authorization, X-Requested-With, X-File-Name",
+    "Access-Control-Max-Age": "600",
     Vary: "Origin",
   };
 

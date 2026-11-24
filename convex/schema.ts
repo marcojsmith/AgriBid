@@ -379,6 +379,14 @@ export default defineSchema({
     .index("by_status_and_uploadedAt", ["status", "uploadedAt"]),
 
   // Registration deposit (manual EFT). One row per user; the reference is permanent.
+  // Plain files the R1b migration still has to delete (queued in the same
+  // transaction that swaps the ids, so a crash can never orphan them).
+  pendingPlainDeletes: defineTable({
+    storageId: v.id("_storage"),
+    source: v.union(v.literal("kyc"), v.literal("registration")),
+    createdAt: v.number(),
+  }).index("by_createdAt", ["createdAt"]),
+
   registrationDeposits: defineTable({
     userId: v.string(),
     reference: v.string(),

@@ -19,7 +19,7 @@ import { encryptBytes } from "./lib/documentCrypto";
 import { sniffDocumentType } from "./lib/documentSniff";
 import { extractImageStorageIds } from "./lib/storage";
 import type { Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+import type { ActionCtx, MutationCtx } from "./_generated/server";
 
 /** Lots examined per `backfillLotNumbers` batch. */
 export const LOT_NUMBER_BACKFILL_BATCH = 100;
@@ -618,6 +618,15 @@ export const commitEncryptedKycDocuments = internalMutation({
       kycDocuments: args.newIds,
       kycDocumentsEncrypted: true,
     });
+    // Queue the plain originals in the same transaction as the swap, so a
+    // crash after this point can never leave one that nothing will delete.
+    for (const storageId of new Set(args.oldIds)) {
+      await ctx.db.insert("pendingPlainDeletes", {
+        storageId,
+        source: "kyc",
+        createdAt: Date.now(),
+      });
+    }
     return true;
   },
 });
@@ -644,52 +653,194 @@ export const commitEncryptedRegistrationDocument = internalMutation({
       contentType: args.contentType,
       encrypted: true,
     });
+    await ctx.db.insert("pendingPlainDeletes", {
+      storageId: args.oldStorageId,
+      source: "registration",
+      createdAt: Date.now(),
+    });
     return true;
   },
 });
 
+/** Most rows read per table when checking whether a file is still in use. */
+export const REFERENCE_SCAN_CAP = 2000;
+
+/** Queue entries handled per run. */
+export const PENDING_DELETE_BATCH = 50;
+
+/** How a stored file is still used: by another row, by none, or not known. */
+const referenceStateValidator = v.union(
+  v.literal("referenced"),
+  v.literal("free"),
+  v.literal("unknown")
+);
+
 /**
- * Whether any row other than `exceptProfileId`'s own list still points at a
- * stored file (another profile, a registration document, a lot or a sale).
- * The old `submitKYC` accepted any storage id, so a "KYC file" can really be
- * someone else's document or a public image; the migration must not delete it.
+ * Whether any row still points at a stored file (a registration document, a
+ * profile's KYC list, a lot or a sale). The old `submitKYC` accepted any
+ * storage id, so a "KYC file" can really be someone else's document or a
+ * public image; the migration must not delete it.
+ *
+ * Registration documents use the `by_storageId` index. The other tables have
+ * no index on file ids, so each is read up to `REFERENCE_SCAN_CAP` rows; a
+ * table that fills the cap without a match gives "unknown", and the caller
+ * keeps the file rather than risk deleting one that is in use.
  */
 export const isStorageReferencedElsewhere = internalQuery({
-  args: {
-    storageId: v.id("_storage"),
-    exceptProfileId: v.optional(v.id("profiles")),
-    exceptDocumentId: v.optional(v.id("registrationDocuments")),
-  },
-  returns: v.boolean(),
+  args: { storageId: v.id("_storage") },
+  returns: referenceStateValidator,
   handler: async (ctx, args) => {
     const doc = await ctx.db
       .query("registrationDocuments")
       .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
       .first();
-    if (doc && doc._id !== args.exceptDocumentId) return true;
-    for await (const profile of ctx.db.query("profiles")) {
-      if (
-        profile._id !== args.exceptProfileId &&
-        (profile.kycDocuments ?? []).includes(args.storageId)
-      ) {
-        return true;
-      }
+    if (doc) return "referenced";
+
+    const profiles = await ctx.db.query("profiles").take(REFERENCE_SCAN_CAP);
+    if (profiles.some((p) => (p.kycDocuments ?? []).includes(args.storageId))) {
+      return "referenced";
     }
-    for await (const lot of ctx.db.query("lots")) {
-      if (
-        extractImageStorageIds(lot.images).includes(args.storageId) ||
-        lot.conditionReportUrl === args.storageId ||
-        lot.coldStartVideo === args.storageId
-      ) {
-        return true;
-      }
+    const lots = await ctx.db.query("lots").take(REFERENCE_SCAN_CAP);
+    if (
+      lots.some(
+        (lot) =>
+          extractImageStorageIds(lot.images).includes(args.storageId) ||
+          lot.conditionReportUrl === args.storageId ||
+          lot.coldStartVideo === args.storageId
+      )
+    ) {
+      return "referenced";
     }
-    for await (const auction of ctx.db.query("auctions")) {
-      if (auction.bannerImage === args.storageId) return true;
+    const auctions = await ctx.db.query("auctions").take(REFERENCE_SCAN_CAP);
+    if (auctions.some((a) => a.bannerImage === args.storageId)) {
+      return "referenced";
     }
-    return false;
+    const capped = [profiles, lots, auctions].some(
+      (rows) => rows.length >= REFERENCE_SCAN_CAP
+    );
+    return capped ? "unknown" : "free";
   },
 });
+
+/** Oldest queued plain-file deletions, for `processPendingPlainDeletes`. */
+export const listPendingPlainDeletes = internalQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("pendingPlainDeletes"),
+      storageId: v.id("_storage"),
+    })
+  ),
+  handler: async (ctx) => {
+    const rows = await ctx.db
+      .query("pendingPlainDeletes")
+      .withIndex("by_createdAt")
+      .take(PENDING_DELETE_BATCH);
+    return rows.map((row) => ({ _id: row._id, storageId: row.storageId }));
+  },
+});
+
+/** Removes a handled entry from the plain-file deletion queue. */
+export const removePendingPlainDelete = internalMutation({
+  args: { id: v.id("pendingPlainDeletes") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.delete("pendingPlainDeletes", args.id);
+    return null;
+  },
+});
+
+/** One queued plain-file deletion. */
+interface PendingDelete {
+  _id: Id<"pendingPlainDeletes">;
+  storageId: Id<"_storage">;
+}
+
+/** The parts of an action context that `processPendingPlainDeletes` uses. */
+export interface PendingDeleteCtx {
+  listPending: () => Promise<PendingDelete[]>;
+  checkReference: (
+    storageId: Id<"_storage">
+  ) => Promise<"referenced" | "free" | "unknown">;
+  removeEntry: (id: Id<"pendingPlainDeletes">) => Promise<void>;
+  storage: {
+    get: (id: Id<"_storage">) => Promise<Blob | null>;
+    delete: (id: Id<"_storage">) => Promise<void>;
+  };
+}
+
+/**
+ * Deletes the plain files queued by the migration. For each entry: a file
+ * still used elsewhere is kept (entry dropped; the other owner's own
+ * migration queues it again); a file whose use cannot be confirmed is kept
+ * and retried next run; a missing file just clears the entry. Any failure
+ * leaves the entry for the next run and never stops the rest of the batch.
+ *
+ * @param ctx - Queue listing, reference check, queue removal and storage access
+ * @returns How many plain files were deleted
+ */
+export async function processPendingPlainDeletes(
+  ctx: PendingDeleteCtx
+): Promise<number> {
+  const entries = await ctx.listPending();
+  let deleted = 0;
+  for (const entry of entries) {
+    try {
+      const state = await ctx.checkReference(entry.storageId);
+      if (state === "unknown") {
+        console.warn(
+          `Kept plain file ${entry.storageId}: could not confirm it is unused`
+        );
+        continue;
+      }
+      if (state === "referenced") {
+        console.warn(
+          `Kept plain file ${entry.storageId}: referenced elsewhere`
+        );
+        await ctx.removeEntry(entry._id);
+        continue;
+      }
+      if ((await ctx.storage.get(entry.storageId)) !== null) {
+        await ctx.storage.delete(entry.storageId);
+        deleted++;
+      }
+      await ctx.removeEntry(entry._id);
+    } catch (err) {
+      console.warn(`Could not delete plain file ${entry.storageId}`, err);
+    }
+  }
+  return deleted;
+}
+
+/**
+ * Binds an action context to the queue helpers.
+ *
+ * @param ctx - The migration action's context
+ * @returns The context `processPendingPlainDeletes` needs
+ */
+function pendingDeleteCtx(ctx: ActionCtx): PendingDeleteCtx {
+  return {
+    listPending: () =>
+      ctx.runQuery(internal.migrations.listPendingPlainDeletes, {}),
+    checkReference: async (storageId) => {
+      try {
+        return await ctx.runQuery(
+          internal.migrations.isStorageReferencedElsewhere,
+          { storageId }
+        );
+      } catch {
+        // A scan too large for one query counts as "cannot confirm".
+        return "unknown";
+      }
+    },
+    removeEntry: async (id) => {
+      await ctx.runMutation(internal.migrations.removePendingPlainDelete, {
+        id,
+      });
+    },
+    storage: ctx.storage,
+  };
+}
 
 /**
  * Reads a plain stored file, encrypts it and stores the ciphertext.
@@ -752,6 +903,10 @@ export const encryptLegacyKycDocuments = internalAction({
     let next: { phase: "kyc" | "registration"; cursor: string | null } | null =
       null;
 
+    // Finish any deletions a previous run left queued before doing more.
+    const pending = pendingDeleteCtx(ctx);
+    await processPendingPlainDeletes(pending);
+
     if (phase === "kyc") {
       const page = await ctx.runQuery(internal.migrations.listLegacyKycBatch, {
         cursor,
@@ -777,21 +932,6 @@ export const encryptLegacyKycDocuments = internalAction({
         );
         if (committed) {
           encrypted++;
-          for (const oldId of new Set(sealed.map((entry) => entry.oldId))) {
-            const shared = await ctx.runQuery(
-              internal.migrations.isStorageReferencedElsewhere,
-              { storageId: oldId, exceptProfileId: item.profileId }
-            );
-            if (shared) {
-              console.warn(`Kept plain file ${oldId}: referenced elsewhere`);
-              continue;
-            }
-            try {
-              await ctx.storage.delete(oldId);
-            } catch (err) {
-              console.warn(`Could not delete plain file ${oldId}`, err);
-            }
-          }
         } else {
           for (const entry of sealed) await ctx.storage.delete(entry.newId);
         }
@@ -819,17 +959,6 @@ export const encryptLegacyKycDocuments = internalAction({
         );
         if (committed) {
           encrypted++;
-          const shared = await ctx.runQuery(
-            internal.migrations.isStorageReferencedElsewhere,
-            { storageId: item.storageId, exceptDocumentId: item.documentId }
-          );
-          if (shared) {
-            console.warn(
-              `Kept plain file ${item.storageId}: referenced elsewhere`
-            );
-          } else {
-            await ctx.storage.delete(item.storageId);
-          }
         } else {
           await ctx.storage.delete(result.newId);
         }
@@ -838,6 +967,7 @@ export const encryptLegacyKycDocuments = internalAction({
       else next = { phase: "registration", cursor: page.continueCursor };
     }
 
+    await processPendingPlainDeletes(pending);
     if (next) {
       await ctx.scheduler.runAfter(
         0,

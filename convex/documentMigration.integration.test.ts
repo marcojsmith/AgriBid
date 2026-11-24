@@ -5,6 +5,10 @@ import { convexTest } from "convex-test";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { decryptBytes } from "./lib/documentCrypto";
+import {
+  processPendingPlainDeletes,
+  type PendingDeleteCtx,
+} from "./migrations";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");
@@ -240,36 +244,91 @@ describe("migrations.encryptLegacyKycDocuments", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     await runMigration(t);
     warn.mockRestore();
-    // Still pointed at by a registration row: never deleted.
+    // Still pointed at by a registration row: never deleted, and not retried.
     expect(await readFile(t, sharedWithDoc)).not.toBeNull();
+    const left = await t.run((ctx) =>
+      ctx.db.query("pendingPlainDeletes").collect()
+    );
+    expect(left).toHaveLength(0);
     // Shared by two profiles: gone only once the last of them has its own copy.
     expect(await readFile(t, shared)).toBeNull();
   });
 
-  it("keeps a file that is also a lot image", async () => {
+  it("reports whether a file is still referenced or free", async () => {
     const t = makeContext();
     const photo = await plainFile(t, JPEG);
+    const free = await plainFile(t, PDF);
     await addProfile(t, "user_a", { kycDocuments: [photo] });
-    await t.run(async (ctx) => {
-      const lot = await ctx.db.query("lots").first();
-      expect(lot).toBeNull();
-    });
     expect(
       await t.query(internal.migrations.isStorageReferencedElsewhere, {
         storageId: photo,
+      })
+    ).toBe("referenced");
+    expect(
+      await t.query(internal.migrations.isStorageReferencedElsewhere, {
+        storageId: free,
+      })
+    ).toBe("free");
+  });
+
+  it("queues the plain originals in the same transaction as the swap", async () => {
+    const t = makeContext();
+    const oldA = await plainFile(t, JPEG);
+    const newA = await plainFile(t, [1]);
+    const profileId = await addProfile(t, "user_a", { kycDocuments: [oldA] });
+    expect(
+      await t.mutation(internal.migrations.commitEncryptedKycDocuments, {
+        profileId,
+        oldIds: [oldA],
+        newIds: [newA],
       })
     ).toBe(true);
+    const queued = await t.run((ctx) =>
+      ctx.db.query("pendingPlainDeletes").collect()
+    );
+    expect(queued.map((q) => [q.storageId, q.source])).toEqual([[oldA, "kyc"]]);
+  });
+
+  it("deletes a plain file left queued by an interrupted run, on the next run", async () => {
+    const t = makeContext();
+    const oldA = await plainFile(t, JPEG);
+    const newA = await plainFile(t, [1]);
+    const profileId = await addProfile(t, "user_a", { kycDocuments: [oldA] });
+    // The swap committed, then the run died before deleting anything.
+    await t.mutation(internal.migrations.commitEncryptedKycDocuments, {
+      profileId,
+      oldIds: [oldA],
+      newIds: [newA],
+    });
+    expect(await readFile(t, oldA)).not.toBeNull();
+
+    await runMigration(t);
+
+    expect(await readFile(t, oldA)).toBeNull();
     expect(
-      await t.query(internal.migrations.isStorageReferencedElsewhere, {
-        storageId: photo,
-        exceptProfileId: await t.run((ctx) =>
-          ctx.db
-            .query("profiles")
-            .first()
-            .then((p) => p?._id)
-        ),
+      await t.run((ctx) => ctx.db.query("pendingPlainDeletes").collect())
+    ).toHaveLength(0);
+  });
+
+  it("deletes the plain original of a registration row after a normal run", async () => {
+    const t = makeContext();
+    const plain = await plainFile(t, PDF);
+    await t.run((ctx) =>
+      ctx.db.insert("registrationDocuments", {
+        userId: "user_a",
+        kind: "id_front",
+        storageId: plain,
+        fileName: "f",
+        fileSize: 3,
+        status: "pending",
+        uploadedAt: 1,
       })
-    ).toBe(false);
+    );
+    await runMigration(t);
+    expect(await readFile(t, plain)).toBeNull();
+    expect(
+      await t.run((ctx) => ctx.db.query("pendingPlainDeletes").collect())
+    ).toHaveLength(0);
   });
 
   it("encrypts unencrypted registration documents and records the real type", async () => {
@@ -408,5 +467,67 @@ describe("migration commits refuse stale input", () => {
         }
       )
     ).toBe(false);
+  });
+});
+
+describe("processPendingPlainDeletes", () => {
+  type Id1 = Id<"_storage">;
+  const sid = (n: number) => `s${String(n)}` as Id1;
+  const pid = (n: number) => `p${String(n)}` as Id<"pendingPlainDeletes">;
+
+  /**
+   * Builds a fake context over a set of queued files.
+   *
+   * @param states - Reference state per storage id
+   * @param failing - Storage ids whose delete throws
+   * @returns The context and what happened to it
+   */
+  function fake(
+    states: Record<string, "referenced" | "free" | "unknown">,
+    failing: string[] = []
+  ) {
+    const deleted: string[] = [];
+    const removed: string[] = [];
+    const ctx: PendingDeleteCtx = {
+      listPending: () =>
+        Promise.resolve(
+          [1, 2, 3].map((n) => ({ _id: pid(n), storageId: sid(n) }))
+        ),
+      checkReference: (id) => Promise.resolve(states[id] ?? "free"),
+      removeEntry: (id) => {
+        removed.push(id);
+        return Promise.resolve();
+      },
+      storage: {
+        get: (id) => Promise.resolve(id === "s3" ? null : new Blob([])),
+        delete: (id) => {
+          if (failing.includes(id)) return Promise.reject(new Error("boom"));
+          deleted.push(id);
+          return Promise.resolve();
+        },
+      },
+    };
+    return { ctx, deleted, removed };
+  }
+
+  it("one failed delete does not stop the batch and its entry stays queued", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { ctx, deleted, removed } = fake({}, ["s1"]);
+    const count = await processPendingPlainDeletes(ctx);
+    warn.mockRestore();
+    expect(deleted).toEqual(["s2"]);
+    expect(count).toBe(1);
+    // s1 failed (kept for next run); s2 deleted; s3 already gone so just cleared.
+    expect(removed).toEqual(["p2", "p3"]);
+  });
+
+  it("keeps a referenced file (entry dropped) and an unconfirmed one (entry kept)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { ctx, deleted, removed } = fake({ s1: "referenced", s2: "unknown" });
+    await processPendingPlainDeletes(ctx);
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockRestore();
+    expect(deleted).toEqual([]);
+    expect(removed).toEqual(["p1", "p3"]);
   });
 });

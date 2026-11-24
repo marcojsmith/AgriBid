@@ -82,7 +82,61 @@ async function callerId(ctx: {
 }
 
 /**
- * `POST /documents/upload?kind=<kind>&fileName=<name>`: the body is the raw
+ * Reads the original file name from the `X-File-Name` header (URI-encoded), so
+ * it never lands in access logs the way a query string would.
+ *
+ * @param request - The upload request
+ * @returns The decoded name, or "document" when absent or malformed
+ */
+function readFileName(request: Request): string {
+  const raw = request.headers.get("X-File-Name");
+  if (raw === null || raw === "") return "document";
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return "document";
+  }
+}
+
+/**
+ * Reads a request body, stopping as soon as it passes `limit` bytes.
+ *
+ * @param request - The request
+ * @param limit - Maximum bytes accepted
+ * @returns The bytes, or null when the body is larger than the limit
+ */
+async function readBodyWithLimit(
+  request: Request,
+  limit: number
+): Promise<Uint8Array | null> {
+  const declared = Number(request.headers.get("Content-Length"));
+  if (Number.isFinite(declared) && declared > limit) return null;
+  if (request.body === null) return new Uint8Array(0);
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
+/**
+ * `POST /documents/upload?kind=<kind>` with the file name in `X-File-Name`: the body is the raw
  * file. Checks the type from the file's own bytes, encrypts it, stores the
  * ciphertext and attaches it to the caller's registration.
  */
@@ -99,23 +153,18 @@ export const uploadDocument = httpAction(async (ctx, request) => {
   if (kind === undefined) {
     return jsonResponse(request, 400, { error: "Unknown document kind." });
   }
-  const fileName = url.searchParams.get("fileName") ?? "document";
+  const fileName = readFileName(request);
 
-  // Refuse an oversized body before reading it when the client declared it.
-  const declared = Number(request.headers.get("Content-Length") ?? "0");
-  if (declared > MAX_REG_DOC_BYTES) {
-    return jsonResponse(request, 413, {
-      error: "That file is too large. The limit is 10 MB.",
-    });
-  }
-  const body = await request.arrayBuffer();
-  if (body.byteLength > MAX_REG_DOC_BYTES) {
+  // Read the body through a byte counter so a missing or false Content-Length
+  // can never make us buffer more than the limit.
+  const body = await readBodyWithLimit(request, MAX_REG_DOC_BYTES);
+  if (body === null) {
     return jsonResponse(request, 413, {
       error: "That file is too large. The limit is 10 MB.",
     });
   }
 
-  const contentType = sniffDocumentType(new Uint8Array(body));
+  const contentType = sniffDocumentType(body);
   if (contentType === null) {
     return jsonResponse(request, 415, {
       error: "Upload a photo (JPG, PNG) or a PDF.",
@@ -124,7 +173,7 @@ export const uploadDocument = httpAction(async (ctx, request) => {
 
   let storageId;
   try {
-    const sealed = await encryptBytes(body);
+    const sealed = await encryptBytes(body.buffer as ArrayBuffer);
     storageId = await ctx.storage.store(
       new Blob([sealed], { type: "application/octet-stream" })
     );

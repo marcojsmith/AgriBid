@@ -9,7 +9,6 @@ import {
   verifyUserHandler,
   promoteToAdminHandler,
   getMyKYCDetailsHandler,
-  deleteMyKYCDocumentHandler,
   updateMyProfileHandler,
 } from "./users";
 import * as auth from "./lib/auth";
@@ -815,124 +814,6 @@ describe("Users Coverage", () => {
       );
       expect(result).toBeNull();
       expect(spy).not.toHaveBeenCalled();
-      spy.mockRestore();
-    });
-  });
-
-  describe("deleteMyKYCDocumentHandler", () => {
-    it("should delete a KYC document", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({
-        _id: "p1",
-        kycStatus: "verified",
-        kycDocuments: ["s1", "s2"],
-      });
-
-      const result = await deleteMyKYCDocumentHandler(
-        mockCtx as unknown as MutationCtx,
-        { storageId: "s1" as Id<"_storage"> }
-      );
-
-      expect(result).toEqual({ success: true });
-      expect(mockCtx.db.patch).toHaveBeenCalledWith(
-        "profiles",
-        "p1",
-        expect.objectContaining({ kycDocuments: ["s2"] })
-      );
-      expect(mockCtx.storage.delete).toHaveBeenCalledWith("s1");
-    });
-
-    it("should handle profile with no documents during deletion", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({
-        _id: "p1",
-        kycDocuments: undefined,
-      });
-
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow("Document not found in your profile");
-    });
-
-    it("should throw if resolveUserId fails", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue(null);
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow("Unable to determine user ID");
-    });
-
-    it("should throw if profile not found", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue(null);
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow(ConvexError);
-    });
-
-    it("should throw if KYC is pending", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({ _id: "p1", kycStatus: "pending" });
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow("Cannot delete document while KYC is pending");
-    });
-
-    it("should throw if document not in profile", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({ _id: "p1", kycDocuments: ["s2"] });
-      await expect(
-        deleteMyKYCDocumentHandler(mockCtx as unknown as MutationCtx, {
-          storageId: "s1" as Id<"_storage">,
-        })
-      ).rejects.toThrow("Document not found in your profile");
-    });
-
-    it("should handle storage deletion failure gracefully", async () => {
-      vi.mocked(auth.requireAuth).mockResolvedValue({
-        _id: "u1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user123");
-      queryMock.unique.mockResolvedValue({ _id: "p1", kycDocuments: ["s1"] });
-      mockCtx.storage.delete.mockRejectedValue(
-        new Error("Storage Delete Fail")
-      );
-      const spy = vi.spyOn(console, "error").mockImplementation(() => {
-        // intentional no-op: silences the expected storage-delete error
-      });
-
-      const result = await deleteMyKYCDocumentHandler(
-        mockCtx as unknown as MutationCtx,
-        { storageId: "s1" as Id<"_storage"> }
-      );
-
-      expect(result).toEqual({ success: true });
-      expect(spy).toHaveBeenCalled();
       spy.mockRestore();
     });
   });

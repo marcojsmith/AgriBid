@@ -14,7 +14,7 @@ import {
   requireAdmin,
   getAuthenticatedUserId,
 } from "./lib/auth";
-import type { Id, Doc } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 import { logAudit, decryptPII, updateCounter, countQuery } from "./admin_utils";
 import { logActivity } from "./userActivity";
 import { sellerResponseTimeValidator } from "./lib/provinces";
@@ -563,67 +563,6 @@ export const getMyKYCDetails = query({
   args: {},
   returns: v.union(v.null(), KYCDetailsValidator),
   handler: getMyKYCDetailsHandler,
-});
-
-/**
- * Handler for deleting a KYC document.
- * @param ctx - Convex mutation context
- * @param root0 - Destructured handler arguments
- * @param root0.storageId - Storage ID of the KYC document to delete
- * @returns Promise<{ success: boolean }>
- */
-export const deleteMyKYCDocumentHandler = async (
-  ctx: MutationCtx,
-  { storageId }: { storageId: Id<"_storage"> }
-) => {
-  const authUser = await requireAuth(ctx);
-  const userId = resolveUserId(authUser);
-  if (!userId) throw new Error("Unable to determine user ID");
-
-  const profile = await ctx.db
-    .query("profiles")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .unique();
-
-  if (!profile) throw new ConvexError("Profile not found");
-
-  if (profile.kycStatus === "pending") {
-    throw new ConvexError("Cannot delete document while KYC is pending");
-  }
-
-  const kycDocuments = profile.kycDocuments ?? [];
-  if (!kycDocuments.includes(storageId)) {
-    throw new ConvexError("Document not found in your profile");
-  }
-
-  // Remove from profile
-  const updatedDocs = kycDocuments.filter((id) => id !== storageId);
-  await ctx.db.patch("profiles", profile._id, {
-    kycDocuments: updatedDocs,
-    updatedAt: Date.now(),
-  });
-
-  // Delete from storage
-  try {
-    await ctx.storage.delete(storageId);
-  } catch (err) {
-    console.error(
-      `Failed to delete storage ${storageId}, may be orphaned:`,
-      err
-    );
-    // Profile update succeeded; storage deletion failure is non-critical
-  }
-
-  return { success: true };
-};
-
-/**
- * User: Delete one of their own KYC documents.
- */
-export const deleteMyKYCDocument = mutation({
-  args: { storageId: v.id("_storage") },
-  returns: v.object({ success: v.boolean() }),
-  handler: deleteMyKYCDocumentHandler,
 });
 
 /**
