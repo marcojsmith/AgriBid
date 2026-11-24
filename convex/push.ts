@@ -16,8 +16,10 @@ import type { PushMessage } from "./lib/pushDelivery";
 
 /** Longest push endpoint URL we store. */
 const MAX_ENDPOINT_LENGTH = 2048;
+/** Longest p256dh / auth key we store (real keys are 87 and 22 characters). */
+const MAX_KEY_LENGTH = 128;
 /** Sales examined per reminder run. */
-const SALES_PER_RUN = 20;
+const SALES_PER_RUN = 50;
 /** Subscriptions read per user, to bound a single run. */
 const SUBSCRIPTIONS_PER_USER = 10;
 
@@ -45,7 +47,9 @@ export const saveSubscription = mutation({
     const userId = await getAuthenticatedUserId(ctx);
     if (
       !args.endpoint.startsWith("https://") ||
-      args.endpoint.length > MAX_ENDPOINT_LENGTH
+      args.endpoint.length > MAX_ENDPOINT_LENGTH ||
+      args.p256dh.length > MAX_KEY_LENGTH ||
+      args.auth.length > MAX_KEY_LENGTH
     ) {
       throw new ConvexError("Invalid push endpoint");
     }
@@ -60,6 +64,15 @@ export const saveSubscription = mutation({
         auth: args.auth,
       });
     } else {
+      // Keep a user's devices bounded: drop the oldest beyond the cap.
+      const mine = await ctx.db
+        .query("pushSubscriptions")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect();
+      const excess = mine.length - SUBSCRIPTIONS_PER_USER + 1;
+      for (const old of mine.slice(0, Math.max(0, excess))) {
+        await ctx.db.delete("pushSubscriptions", old._id);
+      }
       await ctx.db.insert("pushSubscriptions", {
         userId,
         endpoint: args.endpoint,
@@ -103,7 +116,7 @@ export const getMySaleReminder = query({
         q.eq("userId", userId).eq("auctionId", args.auctionId)
       )
       .first();
-    return reminder !== null;
+    return reminder?.status === "pending";
   },
 });
 
@@ -134,7 +147,14 @@ export const setSaleReminder = mutation({
     if (auction?.status !== "published" || auction.startTime <= Date.now()) {
       throw new ConvexError("This sale can't be reminded");
     }
-    if (existing.length === 0) {
+    const [row] = existing;
+    if (row?.status === "sent") {
+      // The sale was re-timed after its reminder went out: arm it again.
+      await ctx.db.patch("saleReminders", row._id, {
+        status: "pending",
+        sentAt: undefined,
+      });
+    } else if (!row) {
       await ctx.db.insert("saleReminders", {
         userId,
         auctionId: args.auctionId,

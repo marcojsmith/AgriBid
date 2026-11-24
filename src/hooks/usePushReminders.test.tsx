@@ -117,6 +117,11 @@ describe("nextStep", () => {
     expect(step()).toBe("subscribe");
   });
 
+  it("is unsupported when the server has no VAPID key", () => {
+    m.vapid = null;
+    expect(step()).toBe("unsupported");
+  });
+
   it("otherwise asks for permission", () => {
     expect(step()).toBe("permission");
     m.permission = "denied";

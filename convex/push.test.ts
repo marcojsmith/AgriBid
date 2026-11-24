@@ -144,6 +144,29 @@ describe("saveSubscription", () => {
     expect(rows[0]?.userId).toBe(BOB);
   });
 
+  it("rejects oversized keys and keeps at most 10 devices per user", async () => {
+    const t = makeContext();
+    const asAlice = t.withIdentity({ subject: ALICE });
+    await expect(
+      asAlice.mutation(api.push.saveSubscription, {
+        ...sub(),
+        p256dh: "k".repeat(200),
+      })
+    ).rejects.toThrow("Invalid push endpoint");
+    for (let i = 0; i < 12; i++) {
+      await asAlice.mutation(
+        api.push.saveSubscription,
+        sub(`https://push.example/${String(i)}`)
+      );
+    }
+    const rows = await t.run((ctx) =>
+      ctx.db.query("pushSubscriptions").collect()
+    );
+    expect(rows).toHaveLength(10);
+    expect(rows.map((r) => r.endpoint)).not.toContain("https://push.example/0");
+    expect(rows.map((r) => r.endpoint)).toContain("https://push.example/11");
+  });
+
   it("rejects non-https and over-long endpoints", async () => {
     const t = makeContext();
     const asAlice = t.withIdentity({ subject: ALICE });
@@ -264,6 +287,35 @@ describe("sale reminders", () => {
     expect(
       await asAlice.query(api.push.getMySaleReminder, { auctionId: id })
     ).toBe(false);
+  });
+
+  it("re-arms a sent reminder when the sale is re-timed", async () => {
+    const t = makeContext();
+    await setSetting(t, true);
+    const id = await makeSale(t, Date.now() + HOUR);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("saleReminders", {
+        userId: ALICE,
+        auctionId: id,
+        status: "sent",
+        createdAt: Date.now(),
+        sentAt: Date.now(),
+      });
+    });
+    const asAlice = t.withIdentity({ subject: ALICE });
+    expect(
+      await asAlice.query(api.push.getMySaleReminder, { auctionId: id })
+    ).toBe(false);
+    await asAlice.mutation(api.push.setSaleReminder, {
+      auctionId: id,
+      on: true,
+    });
+    expect(
+      await asAlice.query(api.push.getMySaleReminder, { auctionId: id })
+    ).toBe(true);
+    const rows = await t.run((ctx) => ctx.db.query("saleReminders").collect());
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.sentAt).toBeUndefined();
   });
 
   it("can clear a reminder even after the setting is switched off", async () => {

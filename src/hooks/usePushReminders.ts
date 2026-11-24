@@ -77,10 +77,10 @@ export function usePushReminders(
     if (reminded) return "remove";
     if (browserNeedsHomeScreenInstall()) return "home-screen";
     if (!isAuthenticated) return "sign-in";
-    if (!pushSupported()) return "unsupported";
+    if (!pushSupported() || vapidKey === null) return "unsupported";
     if (Notification.permission === "granted") return "subscribe";
     return "permission";
-  }, [reminded, isAuthenticated]);
+  }, [reminded, isAuthenticated, vapidKey]);
 
   const enable = useCallback(async (): Promise<EnableResult> => {
     if (!auctionId) return "failed";

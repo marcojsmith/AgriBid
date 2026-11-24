@@ -40,6 +40,7 @@ export const sendPushBatch = internalAction({
         webpush.sendNotification(target, payload, {
           TTL: 3600,
           urgency: "high",
+          timeout: 10_000,
         })
     );
     if (expired.length > 0) {

@@ -45,7 +45,10 @@ self.addEventListener("notificationclick", (event) => {
           (w) => new URL(w.url).origin === self.location.origin
         );
         if (client && "navigate" in client) {
-          return client.navigate(url).then((c) => (c || client).focus());
+          return client
+            .navigate(url)
+            .then((c) => (c || client).focus())
+            .catch(() => self.clients.openWindow(url));
         }
         return self.clients.openWindow(url);
       })
