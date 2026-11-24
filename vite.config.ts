@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "path";
 
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -35,9 +35,23 @@ export default defineConfig(({ mode }) => {
   const https = key && cert ? { key, cert } : undefined;
   /* eslint-enable security/detect-non-literal-fs-filename */
 
+  // Public origin written into index.html and the client bundle. Vercel sets
+  // VERCEL_PROJECT_PRODUCTION_URL (no scheme) at build time.
+  const productionHost = env.VERCEL_PROJECT_PRODUCTION_URL;
+  const siteUrl = (
+    env.VITE_SITE_URL ||
+    (productionHost ? `https://${productionHost}` : "") ||
+    "https://agribid-iota.vercel.app"
+  ).replace(/\/+$/, "");
+  const siteUrlPlugin: Plugin = {
+    name: "agribid-site-url",
+    transformIndexHtml: (html) => html.replaceAll("%SITE_URL%", siteUrl),
+  };
+
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), siteUrlPlugin],
     define: {
+      "import.meta.env.VITE_SITE_URL": JSON.stringify(siteUrl),
       "import.meta.env.VITE_APP_VERSION": JSON.stringify(pkg.version),
     },
     server: {

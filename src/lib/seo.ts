@@ -1,7 +1,7 @@
 // src/lib/seo.ts
 // Centralised SEO configuration and helpers
 
-const PRODUCTION_FALLBACK = "https://agribid.co.za";
+const PRODUCTION_FALLBACK = "https://agribid-iota.vercel.app";
 
 /**
  * Get the site URL for the current context.
@@ -32,11 +32,10 @@ export const SITE_URL = (_rawSiteUrl || PRODUCTION_FALLBACK).replace(
 
 export const SITE_NAME = "AgriBid";
 
-export const DEFAULT_TITLE =
-  "AgriBid – South Africa's Agricultural Equipment Auction Platform";
+export const DEFAULT_TITLE = "AgriBid · Farm equipment auctions";
 export const DEFAULT_DESCRIPTION =
-  "Buy and sell farming equipment at auction. AgriBid is the national marketplace for heavy machinery — built for farmers, by farmers.";
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+  "Online farm equipment auctions in South Africa";
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/api/og?kind=home`;
 
 export const ORGANIZATION_SCHEMA = {
   "@context": "https://schema.org",

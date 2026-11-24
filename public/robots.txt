@@ -8,4 +8,4 @@ Disallow: /notifications
 Disallow: /login
 Disallow: /support
 
-Sitemap: https://agribid.co.za/sitemap.xml
+Sitemap: https://agribid-iota.vercel.app/sitemap.xml

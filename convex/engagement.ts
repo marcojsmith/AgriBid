@@ -214,12 +214,13 @@ export function computeEngagementScore(signals: {
 
 /**
  * Live (published, started, not ended) auctions that end soonest first.
+ * Exported for the share-preview queries.
  *
  * @param ctx - Query context
  * @param now - Current time in ms
  * @returns Up to `LIVE_AUCTION_SCAN_CAP` live auctions, soonest-ending first
  */
-async function listLiveAuctions(
+export async function listLiveAuctions(
   ctx: QueryCtx,
   now: number
 ): Promise<Doc<"auctions">[]> {
@@ -393,6 +394,75 @@ export const refreshEngagementScores = internalMutation({
   handler: refreshEngagementScoresHandler,
 });
 
+/** One ranked lot of a sale with its precomputed engagement row. */
+export interface EngagedLotEntry {
+  lot: Doc<"lots">;
+  row: Doc<"engagementScores">;
+}
+
+/**
+ * Ranks a published sale's lots by the precomputed `engagementScores` (top
+ * `limit`, ties to the lower lot number then the lower id) and returns the lot
+ * documents that are still assigned, in the sale and unhidden.
+ *
+ * @param ctx - Query context
+ * @param auctionId - The sale to rank
+ * @param limit - How many ranked rows to read (already clamped by the caller)
+ * @returns Up to `limit` lots with their score rows, best first
+ */
+export async function mostEngagedLotDocs(
+  ctx: QueryCtx,
+  auctionId: Id<"auctions">,
+  limit: number
+): Promise<EngagedLotEntry[]> {
+  const top = await ctx.db
+    .query("engagementScores")
+    .withIndex("by_auctionId_and_score", (q) => q.eq("auctionId", auctionId))
+    .order("desc")
+    .take(limit);
+
+  // The index orders equal scores by creation time; re-resolve the tie at
+  // the cut-off so the documented tie-break (lot number, then id) holds.
+  let ranked = top;
+  if (top.length === limit) {
+    const cutoff = top[limit - 1].score;
+    const tied = await ctx.db
+      .query("engagementScores")
+      .withIndex("by_auctionId_and_score", (q) =>
+        q.eq("auctionId", auctionId).eq("score", cutoff)
+      )
+      .take(constants.ENGAGEMENT_CANDIDATE_CAP);
+    ranked = [...top.filter((row) => row.score > cutoff), ...tied];
+  }
+  ranked = [...ranked]
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        (a.lotNumber ?? Number.MAX_SAFE_INTEGER) -
+          (b.lotNumber ?? Number.MAX_SAFE_INTEGER) ||
+        a.lotId.localeCompare(b.lotId)
+    )
+    .slice(0, limit);
+
+  const entries: {
+    lot: Doc<"lots">;
+    row: Doc<"engagementScores">;
+  }[] = [];
+  for (const row of ranked) {
+    const lot = await ctx.db.get("lots", row.lotId);
+    // A lot may have left the sale or been hidden since the last refresh.
+    if (
+      lot?.status === "assigned" &&
+      lot.auctionId === auctionId &&
+      lot.hiddenByFlags !== true
+    ) {
+      entries.push({ lot, row });
+    }
+  }
+
+  return entries;
+}
+
 /**
  * Public: the most engaged lots of an auction, ranked by the precomputed
  * `engagementScores` (score = bids * 3 + watchers * 2 + log2(1 + views),
@@ -428,50 +498,7 @@ export const getMostEngagedLots = query({
     const auctionId = await resolveEngagementAuction(ctx, args.auctionId);
     if (!auctionId) return [];
 
-    const top = await ctx.db
-      .query("engagementScores")
-      .withIndex("by_auctionId_and_score", (q) => q.eq("auctionId", auctionId))
-      .order("desc")
-      .take(limit);
-
-    // The index orders equal scores by creation time; re-resolve the tie at
-    // the cut-off so the documented tie-break (lot number, then id) holds.
-    let ranked = top;
-    if (top.length === limit) {
-      const cutoff = top[limit - 1].score;
-      const tied = await ctx.db
-        .query("engagementScores")
-        .withIndex("by_auctionId_and_score", (q) =>
-          q.eq("auctionId", auctionId).eq("score", cutoff)
-        )
-        .take(constants.ENGAGEMENT_CANDIDATE_CAP);
-      ranked = [...top.filter((row) => row.score > cutoff), ...tied];
-    }
-    ranked = [...ranked]
-      .sort(
-        (a, b) =>
-          b.score - a.score ||
-          (a.lotNumber ?? Number.MAX_SAFE_INTEGER) -
-            (b.lotNumber ?? Number.MAX_SAFE_INTEGER) ||
-          a.lotId.localeCompare(b.lotId)
-      )
-      .slice(0, limit);
-
-    const entries: {
-      lot: Doc<"lots">;
-      row: Doc<"engagementScores">;
-    }[] = [];
-    for (const row of ranked) {
-      const lot = await ctx.db.get("lots", row.lotId);
-      // A lot may have left the sale or been hidden since the last refresh.
-      if (
-        lot?.status === "assigned" &&
-        lot.auctionId === auctionId &&
-        lot.hiddenByFlags !== true
-      ) {
-        entries.push({ lot, row });
-      }
-    }
+    const entries = await mostEngagedLotDocs(ctx, auctionId, limit);
 
     const summaries = await toLotSummaries(
       ctx,
