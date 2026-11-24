@@ -1,6 +1,7 @@
 /**
  * Where the machine stands: "Malmesbury, Western Cape". A trailing country
- * ("ZA", "South Africa") on the stored town is dropped. Has no imports so the
+ * ("ZA", "South Africa") on the stored town is dropped, and the province is
+ * not repeated when the town already ends with it. Has no imports so the
  * Vercel share function can use it.
  *
  * @param location - The stored town or place
@@ -14,5 +15,11 @@ export function lotPlace(
   const town = (location ?? "")
     .replace(/,\s*(ZA|South Africa)\s*$/i, "")
     .trim();
-  return [town, province?.trim()].filter((part) => !!part).join(", ");
+  const label = province?.trim() ?? "";
+  // The stored town often already ends with the province ("Marble Hall, Limpopo").
+  const repeated =
+    label !== "" &&
+    (town.toLowerCase() === label.toLowerCase() ||
+      town.toLowerCase().endsWith(`, ${label.toLowerCase()}`));
+  return [town, repeated ? "" : label].filter((part) => !!part).join(", ");
 }

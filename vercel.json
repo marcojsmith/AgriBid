@@ -42,7 +42,7 @@
     }
   ],
   "functions": {
-    "api/og.tsx": {
+    "api/og.ts": {
       "memory": 1024,
       "maxDuration": 15,
       "includeFiles": "api/_fonts/**"

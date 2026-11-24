@@ -342,5 +342,12 @@ describe("lotPlace", () => {
     expect(lotPlace("Cradock, South Africa")).toBe("Cradock");
     expect(lotPlace(undefined, "Gauteng")).toBe("Gauteng");
     expect(lotPlace(null, null)).toBe("");
+    expect(lotPlace("Marble Hall, Limpopo", "Limpopo")).toBe(
+      "Marble Hall, Limpopo"
+    );
+    expect(lotPlace("marble hall, LIMPOPO, ZA", "Limpopo")).toBe(
+      "marble hall, LIMPOPO"
+    );
+    expect(lotPlace("Limpopo", "Limpopo")).toBe("Limpopo");
   });
 });
