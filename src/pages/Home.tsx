@@ -17,6 +17,7 @@ import { BeforeYouBid } from "@/components/ds/BeforeYouBid";
 import { FeesRulesSheet } from "@/components/ds/FeesRulesSheet";
 import { SellerStrip } from "@/components/ds/SellerStrip";
 import { StickyBar } from "@/components/ds/StickyBar";
+import { TransportQuoteSheet } from "@/components/ds/TransportQuoteSheet";
 import { showToast } from "@/components/ds/showToast";
 import { HomeFilters, type PriceFilter } from "@/components/home/HomeFilters";
 import { HomeHero } from "@/components/home/HomeHero";
@@ -27,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { useBranding } from "@/hooks/useBranding";
 import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
+import { useTransportQuote } from "@/hooks/useTransportQuote";
 import { lotTitle, lotTitleWithYear } from "@/lib/lotTitle";
 import { WATCHING_MESSAGE } from "@/lib/auctionRules";
 import { formatClosesIn } from "@/lib/countdown";
@@ -103,6 +105,7 @@ export default function Home() {
     price: PriceFilter;
   }>({ saleKey: "", category: null, make: null, price: {} });
   const [feesOpen, setFeesOpen] = useState(false);
+  const transport = useTransportQuote();
   const [ctaRef, ctaGone] = useScrolledPast();
 
   const active = usePaginatedQuery(
@@ -439,7 +442,9 @@ export default function Home() {
           {settings ? (
             <BeforeYouBid
               className="mt-8"
-              transportHref="/support"
+              onTransportClick={() => {
+                transport.setOpen(true);
+              }}
               finance={settings.financeContact}
               depositEnabled={settings.deposit.enabled}
             />
@@ -456,6 +461,7 @@ export default function Home() {
               deposit={settings.deposit}
             />
           ) : null}
+          <TransportQuoteSheet {...transport.sheetProps} />
           {hero ? (
             <StickyBar
               hidden={!showSticky}

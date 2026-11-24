@@ -27,6 +27,7 @@ export * as legal from "./admin/legal";
 export {
   getRecentBids,
   getTickets,
+  getTransportQuotes,
   getAuditLogs,
   listAnnouncements,
   getPendingKYC,
@@ -49,6 +50,7 @@ export {
 export {
   voidBid,
   resolveTicket,
+  markTransportQuoteHandled,
   createAnnouncement,
   syncLotWinners,
   setSellerResponseTime,

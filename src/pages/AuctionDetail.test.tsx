@@ -317,6 +317,19 @@ describe("AuctionDetail (lot page)", () => {
     expect(screen.getByRole("dialog", { name: /Fees/ })).toBeInTheDocument();
   });
 
+  it("opens the transport quote sheet for this lot", () => {
+    renderPage();
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /Request a transport quote/ })[0]
+    );
+    const sheet = screen.getByRole("dialog", {
+      name: "Request a transport quote",
+    });
+    expect(sheet).toBeVisible();
+    expect(screen.queryByLabelText("Collect from")).toBeNull();
+    expect(within(sheet).getByText(/^Collect from /)).toBeInTheDocument();
+  });
+
   it("registered: every bid goes through the confirm sheet, then the server", async () => {
     h.authed = true;
     renderPage();

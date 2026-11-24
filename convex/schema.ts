@@ -366,6 +366,27 @@ export default defineSchema({
     .index("by_user_updatedAt", ["userId", "updatedAt"])
     .index("by_user_createdAt", ["userId", "createdAt"]),
 
+  // Public "Request a transport quote" form (guests allowed). Admin-only reads.
+  transportQuoteRequests: defineTable({
+    userId: v.optional(v.string()),
+    lotId: v.optional(v.id("lots")),
+    lotLabel: v.optional(v.string()),
+    pickup: v.string(),
+    deliveryTown: v.string(),
+    deliveryProvince: provinceValidator,
+    name: v.string(),
+    phone: v.string(), // normalised +27�, plain text (admin-only, rate-limit index)
+    notes: v.optional(v.string()),
+    status: v.union(v.literal("new"), v.literal("handled")),
+    createdAt: v.number(),
+    handledBy: v.optional(v.string()),
+    handledAt: v.optional(v.number()),
+  })
+    .index("by_phone_and_createdAt", ["phone", "createdAt"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_status_and_createdAt", ["status", "createdAt"]),
+
   notifications: defineTable({
     recipientId: v.string(), // "all" for announcements
     type: v.union(

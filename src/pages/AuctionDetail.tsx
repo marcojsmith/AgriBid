@@ -15,6 +15,7 @@ import { ConfirmBidSheet } from "@/components/ds/ConfirmBidSheet";
 import { CostBox } from "@/components/ds/CostBox";
 import { DepositLines } from "@/components/ds/DepositLines";
 import { FeesRulesSheet } from "@/components/ds/FeesRulesSheet";
+import { TransportQuoteSheet } from "@/components/ds/TransportQuoteSheet";
 import { LotChip } from "@/components/ds/LotChip";
 import { BackLink, LotNav } from "@/components/ds/LotNav";
 import { Money } from "@/components/ds/Money";
@@ -47,6 +48,7 @@ import { useLotBid } from "@/hooks/useLotBid";
 import { useLotLiveWindow } from "@/hooks/useLotLiveWindow";
 import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
+import { useTransportQuote } from "@/hooks/useTransportQuote";
 import { useVatRate } from "@/hooks/useVatRate";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { WATCHING_SAVED_MESSAGE } from "@/lib/auctionRules";
@@ -177,6 +179,7 @@ function LotPage({ id }: { id: string | undefined }) {
 
   const [viewerAt, setViewerAt] = useState<number | null>(null);
   const [feesOpen, setFeesOpen] = useState(false);
+  const transport = useTransportQuote(lot?._id);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [ctaRef, ctaGone] = useScrolledPast();
 
@@ -541,6 +544,9 @@ function LotPage({ id }: { id: string | undefined }) {
     );
 
   const showViewCollect = !isEnded;
+  const openTransport = () => {
+    transport.setOpen(true);
+  };
   const backLink = sale ? (
     <BackLink to={`/auctions/${sale._id}`}>
       {facets
@@ -632,6 +638,7 @@ function LotPage({ id }: { id: string | undefined }) {
                 <ViewCollect
                   heading={false}
                   place={place}
+                  onTransportClick={openTransport}
                   phone={phone}
                   finance={{
                     name: finance.name,
@@ -682,6 +689,7 @@ function LotPage({ id }: { id: string | undefined }) {
               <div className="lg:hidden">
                 <ViewCollect
                   place={place}
+                  onTransportClick={openTransport}
                   phone={phone}
                   finance={{
                     name: finance.name,
@@ -761,6 +769,13 @@ function LotPage({ id }: { id: string | undefined }) {
         onReviseBid={bid.reviseBid}
         busy={bid.busy}
         error={bid.error}
+      />
+      <TransportQuoteSheet
+        {...transport.sheetProps}
+        lot={{
+          label: `${title}${lot.lotNumber !== undefined ? ` � Lot ${String(lot.lotNumber)}` : ""}`,
+          place,
+        }}
       />
       <FeesRulesSheet
         open={feesOpen}

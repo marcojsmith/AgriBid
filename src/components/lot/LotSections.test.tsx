@@ -161,12 +161,14 @@ describe("ViewCollect", () => {
   };
 
   it("shows the location, call to book, transport quote and the finance contact", () => {
+    const onTransportClick = vi.fn();
     render(
       <MemoryRouter>
         <ViewCollect
           place="Malmesbury, Western Cape"
           phone={phone}
           finance={finance}
+          onTransportClick={onTransportClick}
         />
       </MemoryRouter>
     );
@@ -177,9 +179,10 @@ describe("ViewCollect", () => {
       "href",
       "tel:0837000000"
     );
-    expect(
-      screen.getByRole("link", { name: /Request a transport quote/ })
-    ).toHaveAttribute("href", "/support");
+    fireEvent.click(
+      screen.getByRole("button", { name: /Request a transport quote/ })
+    );
+    expect(onTransportClick).toHaveBeenCalledTimes(1);
     expect(
       screen.getByRole("link", {
         name: /Need finance\? Lee-Anne Vermeulen, com-fin, 083 277 0178/,
@@ -196,6 +199,7 @@ describe("ViewCollect", () => {
         <ViewCollect
           heading={false}
           place=""
+          onTransportClick={() => undefined}
           finance={{ name: null, phone: null }}
         />
       </MemoryRouter>
@@ -210,6 +214,7 @@ describe("ViewCollect", () => {
       <MemoryRouter>
         <ViewCollect
           place="Cradock"
+          onTransportClick={() => undefined}
           finance={{ name: null, phone: "083 277 0178", tel: "tel:0832770178" }}
         />
       </MemoryRouter>

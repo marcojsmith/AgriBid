@@ -19,6 +19,8 @@ import { paginationOptsValidator } from "convex/server";
 
 import { query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
+import { provinceValidator } from "../lib/provinces";
+import { MAX_RESULTS_CAP } from "../constants";
 import { countQuery } from "../admin_utils";
 import { batchFetchReadCounts } from "../notifications";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -244,6 +246,69 @@ export const getTickets = query({
         totalCount,
       };
     }
+  },
+});
+
+// --- Transport quote requests ---
+
+/**
+ * Query transport quote requests (newest first), optionally by status.
+ *
+ * Returns paginated rows with a total count. Only accessible to admin users.
+ */
+export const getTransportQuotes = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: v.optional(v.union(v.literal("new"), v.literal("handled"))),
+  },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("transportQuoteRequests"),
+        _creationTime: v.number(),
+        userId: v.optional(v.string()),
+        lotId: v.optional(v.id("lots")),
+        lotLabel: v.optional(v.string()),
+        pickup: v.string(),
+        deliveryTown: v.string(),
+        deliveryProvince: provinceValidator,
+        name: v.string(),
+        phone: v.string(),
+        notes: v.optional(v.string()),
+        status: v.union(v.literal("new"), v.literal("handled")),
+        createdAt: v.number(),
+        handledBy: v.optional(v.string()),
+        handledAt: v.optional(v.number()),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+    totalCount: v.number(),
+    pageStatus: v.optional(
+      v.union(
+        v.literal("SplitRequired"),
+        v.literal("SplitRecommended"),
+        v.null()
+      )
+    ),
+    splitCursor: v.optional(v.union(v.string(), v.null())),
+  }),
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const { status } = args;
+    const base = () =>
+      status
+        ? ctx.db
+            .query("transportQuoteRequests")
+            .withIndex("by_status_and_createdAt", (q) => q.eq("status", status))
+        : ctx.db.query("transportQuoteRequests").withIndex("by_createdAt");
+    // Bounded count: a guest-fed table must not be read in full.
+    const [results, counted] = await Promise.all([
+      base().order("desc").paginate(args.paginationOpts),
+      base().take(MAX_RESULTS_CAP),
+    ]);
+    const totalCount = counted.length;
+    return { ...results, totalCount };
   },
 });
 

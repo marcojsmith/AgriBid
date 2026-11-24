@@ -23,8 +23,8 @@ export interface FinanceContact {
 }
 
 interface BeforeYouBidProps {
-  /** Where "Request a transport quote" goes. */
-  transportHref: string;
+  /** Called when "Request a transport quote" is pressed (opens the quote sheet). */
+  onTransportClick: () => void;
   /** The finance contact; the "Need finance?" row is hidden when there is no phone. */
   finance?: FinanceContact | null;
   /** Whether a registration deposit applies (adds the deposit sentence to Payment). */
@@ -36,21 +36,23 @@ interface RowProps {
   icon: LucideIcon;
   title: ReactNode;
   href?: string;
+  onClick?: () => void;
   children: ReactNode;
 }
 
 /**
- * One row: icon, bold title (a link when `href` is set, with a chevron) and a
+ * One row: icon, bold title (a link when `href` is set, a button when `onClick` is, each with a chevron) and a
  * short line of text. Rows sit under a hairline divider.
  *
  * @param props - Component props
  * @param props.icon - The lucide icon
  * @param props.title - The title
- * @param props.href - Makes the title a link and adds the chevron
+ * @param props.href - Makes the row a link and adds the chevron
+ * @param props.onClick - Makes the row a button and adds the chevron
  * @param props.children - The text
  * @returns The row
  */
-function Row({ icon: Icon, title, href, children }: RowProps) {
+function Row({ icon: Icon, title, href, onClick, children }: RowProps) {
   const body = (
     <div className="flex min-w-0 flex-1 gap-3">
       <Icon
@@ -61,7 +63,8 @@ function Row({ icon: Icon, title, href, children }: RowProps) {
         <p
           className={cn(
             "font-semibold",
-            href && "underline underline-offset-2"
+            (href !== undefined || onClick !== undefined) &&
+              "underline underline-offset-2"
           )}
         >
           {title}
@@ -80,6 +83,18 @@ function Row({ icon: Icon, title, href, children }: RowProps) {
             className="size-4 shrink-0 text-muted-foreground"
           />
         </a>
+      ) : onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className="flex w-full items-center gap-2 text-left"
+        >
+          {body}
+          <ChevronRight
+            aria-hidden="true"
+            className="size-4 shrink-0 text-muted-foreground"
+          />
+        </button>
       ) : (
         body
       )}
@@ -95,14 +110,14 @@ function Row({ icon: Icon, title, href, children }: RowProps) {
  * deposit sentence only shows while a deposit applies.
  *
  * @param props - Component props
- * @param props.transportHref - Where the transport quote link goes
+ * @param props.onTransportClick - Opens the transport quote sheet
  * @param props.finance - The finance contact from the platform settings
  * @param props.depositEnabled - Whether a registration deposit applies
  * @param props.className - Extra classes merged onto the section
  * @returns The section
  */
 export function BeforeYouBid({
-  transportHref,
+  onTransportClick,
   finance,
   depositEnabled = true,
   className,
@@ -131,7 +146,7 @@ export function BeforeYouBid({
           <Row
             icon={Truck}
             title="Request a transport quote"
-            href={transportHref}
+            onClick={onTransportClick}
           >
             The AgriBid team replies with a price.
           </Row>
