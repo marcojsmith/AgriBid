@@ -5,6 +5,7 @@ import type { PaginationOptions } from "convex/server";
 import { query, paginationOptsValidator, type QueryCtx } from "./shared";
 import { OwnerLotSummaryValidator, toOwnerLotSummaries } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
+import { getAuctionLotCount } from "../../lib/lotCounters";
 import { parseOffsetCursor } from "../../lib/pagination";
 import { resolveUrlCached } from "../../image_cache";
 import { countQuery } from "../../admin_utils";
@@ -135,6 +136,8 @@ async function toAuction(
  * lower/partial bounds over the lots read, and hidden lots count toward the cap.
  * The live/upcoming/closed bucket is derived on the client from
  * `status`/`startTime`/`effectiveEndTime` (a cached query cannot track time).
+ * `lotCount` is exact (read from the per-sale `lots:<auctionId>` counter) and
+ * `lotCountCapped` false, except for a sale the backfill has not reached.
  */
 export const PublishedAuctionValidator = AuctionValidator.extend({
   lotCountCapped: v.boolean(),
@@ -246,9 +249,13 @@ async function summarizeAuction(ctx: QueryCtx, auction: AuctionContainerDoc) {
   const assignedLots = lots.filter((lot) => lot.status === "assigned");
   const pricedLots = assignedLots.length > 0 ? assignedLots : lots;
 
+  // The per-sale counter is exact; the capped read is only the fallback for a
+  // sale whose counter the backfill has not created yet.
+  const exactCount = await getAuctionLotCount(ctx, auction._id);
+
   return {
-    lotCount: lots.length,
-    lotCountCapped,
+    lotCount: exactCount ?? lots.length,
+    lotCountCapped: exactCount === null && lotCountCapped,
     fromPrice: pricedLots.length
       ? Math.min(...pricedLots.map((lot) => lot.currentPrice))
       : null,

@@ -30,7 +30,10 @@ const { issueNextLotNumber } = vi.hoisted(() => ({
   issueNextLotNumber: vi.fn().mockResolvedValue(7),
 }));
 
-vi.mock("../../lib/lotCounters", () => ({ issueNextLotNumber }));
+vi.mock("../../lib/lotCounters", () => ({
+  issueNextLotNumber,
+  syncAuctionLotCount: vi.fn().mockResolvedValue(undefined),
+}));
 
 const { getBuyerPremiumPct } = vi.hoisted(() => ({
   getBuyerPremiumPct: vi.fn().mockResolvedValue(12),

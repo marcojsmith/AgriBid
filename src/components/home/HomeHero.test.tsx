@@ -66,6 +66,23 @@ describe("HomeHero", () => {
     expect(screen.queryByText(/Most watched/)).toBeNull();
   });
 
+  it("stacks the left-edge fade above the caption scrim and spans the full photo height", () => {
+    const { container } = renderHero();
+    const scrim = container.querySelector('[data-slot="hero-scrim"]');
+    const fade = container.querySelector('[data-slot="hero-fade"]');
+    if (!scrim || !fade) throw new Error("scrim and fade layers must render");
+    expect(fade).toHaveClass("inset-y-0", "left-0");
+    // Later siblings paint above earlier ones: the fade must follow the scrim.
+    expect(
+      scrim.compareDocumentPosition(fade) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    // The caption itself carries no desktop scrim that would cover the fade.
+    const caption = screen
+      .getByText("2016 John Deere 8370RT")
+      .closest("span.absolute");
+    expect(caption).toHaveClass("lg:bg-none");
+  });
+
   it("calls the bid Current bid once the featured lot has bids", () => {
     renderHero({ featured: { ...featured, hasBids: true } });
     expect(screen.getByRole("link", { name: /Current bid/ })).toBeVisible();

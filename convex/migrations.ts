@@ -4,9 +4,11 @@ import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { countQuery, getCounter, updateCounter } from "./admin_utils";
 import {
+  auctionLotCounterName,
   bidCounterName,
   issueNextLotNumber,
   lotNumberCounterName,
+  recountAuctionLots,
   watcherCounterName,
 } from "./lib/lotCounters";
 import type { Id } from "./_generated/dataModel";
@@ -421,6 +423,74 @@ export const backfillBidCounts = internalMutation({
   }),
   handler: async (ctx, args) =>
     backfillBidCountsHandler(ctx, { ...args, cursor: args.cursor ?? null }),
+});
+
+/** Sales recounted per `backfillAuctionLotCounts` batch (each reads all its lots). */
+export const AUCTION_LOT_COUNT_BACKFILL_BATCH = 1;
+
+/**
+ * One batch of the per-sale visible-lot-count rebuild.
+ *
+ * Walks the `auctions` table and, for each sale, recounts its buyer-visible lots
+ * (status assigned/sold/unsold, not hidden by flags) through
+ * `by_status_auctionId` and writes the absolute value to its `lots:<auctionId>`
+ * counter. One sale per mutation keeps the reads bounded by that sale's lots.
+ * Absolute writes make it idempotent and safe to re-run. Reschedules itself
+ * until the table is exhausted.
+ *
+ * @param ctx - Mutation context.
+ * @param args - Batch arguments.
+ * @param args.cursor - Pagination cursor, `null` for the first batch.
+ * @returns Counts for this batch and whether the migration finished.
+ */
+export async function backfillAuctionLotCountsHandler(
+  ctx: MutationCtx,
+  args: { cursor: string | null }
+): Promise<BatchResult> {
+  const page = await ctx.db.query("auctions").paginate({
+    numItems: AUCTION_LOT_COUNT_BACKFILL_BATCH,
+    cursor: args.cursor,
+  });
+
+  let updated = 0;
+  for (const auction of page.page) {
+    const before = await getCounter(ctx, auctionLotCounterName(auction._id));
+    const count = await recountAuctionLots(ctx, auction._id);
+    if (before?.total !== count) updated++;
+  }
+
+  if (!page.isDone) {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.migrations.backfillAuctionLotCounts,
+      { cursor: page.continueCursor }
+    );
+  }
+
+  return {
+    processed: page.page.length,
+    updated,
+    isDone: page.isDone,
+    continueCursor: page.isDone ? null : page.continueCursor,
+  };
+}
+
+/**
+ * Rebuild every sale's visible-lot counter from `lots`.
+ * Run with `bunx convex run migrations:backfillAuctionLotCounts` after
+ * `bunx convex deploy`. Idempotent. Until a sale is reached, its lot count
+ * falls back to the capped read.
+ */
+export const backfillAuctionLotCounts = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.object({
+    processed: v.number(),
+    updated: v.number(),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) =>
+    backfillAuctionLotCountsHandler(ctx, { cursor: args.cursor ?? null }),
 });
 
 /**

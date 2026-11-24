@@ -37,6 +37,12 @@ interface MockCtxType {
   runAction: unknown;
 }
 
+vi.mock("../lib/lotCounters", () => ({
+  removeLotWatchData: vi.fn().mockResolvedValue(undefined),
+  deleteAuctionEngagementScores: vi.fn().mockResolvedValue(0),
+  syncAuctionLotCount: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../admin_utils", () => ({
   updateCounter: vi.fn(),
   logAudit: vi.fn(),

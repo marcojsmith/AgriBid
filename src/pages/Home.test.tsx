@@ -455,12 +455,23 @@ describe("Home page", () => {
   });
 
   it("shows a lower-bound count when the sales were capped", () => {
-    data.facets = { ...facets, total: 100, capped: true };
+    data.sales = [sale("a", { lotCount: 20, lotCountCapped: true })];
     renderHome();
-    expect(screen.getByRole("button", { name: "All 100+" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "All 20+" })).toBeVisible();
     expect(
-      screen.getAllByRole("link", { name: "View all 100+ lots" })[0]
+      screen.getAllByRole("link", { name: "View all 20+ lots" })[0]
     ).toBeVisible();
+  });
+
+  it("shows the sale's exact lot count, not the facets total", () => {
+    data.sales = [sale("a", { lotCount: 82 })];
+    data.facets = { ...facets, total: 20, capped: true };
+    renderHome();
+    expect(screen.getByRole("button", { name: "All 82" })).toBeVisible();
+    expect(
+      screen.getAllByRole("link", { name: "View all 82 lots" })[0]
+    ).toBeVisible();
+    expect(screen.queryByText(/20\+/)).toBeNull();
   });
 
   it("drops lots that have closed since the query ran", () => {

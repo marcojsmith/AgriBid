@@ -55,7 +55,7 @@ type SeedTableNames =
 const BATCH_SIZE = 500;
 
 /**
- * Deletes the `lotNumber:*`, `watchers:*`, `bids:*`, `views:*` and
+ * Deletes the `lotNumber:*`, `lots:*` (per-sale visible lot counts), `watchers:*`, `bids:*`, `views:*` and
  * `anonviews:*` counters, which are scoped to lots and auctions that no longer
  * exist after a lots/auctions clear.
  *
@@ -64,6 +64,7 @@ const BATCH_SIZE = 500;
 async function clearLotScopedCounters(ctx: MutationCtx): Promise<void> {
   for (const [from, to] of [
     ["lotNumber:", "lotNumber;"],
+    ["lots:", "lots;"],
     ["watchers:", "watchers;"],
     ["bids:", "bids;"],
     ["views:", "views;"],

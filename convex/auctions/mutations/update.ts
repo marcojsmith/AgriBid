@@ -5,6 +5,7 @@ import { requireAdmin, getAuthenticatedUserId } from "../../lib/auth";
 import { safeDelete } from "../../lib/storage";
 import { provinceValidator, type Province } from "../../lib/provinces";
 import { logAudit } from "../../admin_utils";
+import { syncAuctionLotCount } from "../../lib/lotCounters";
 import {
   assertImageAnglesMatchImages,
   assertValidColdStartVideo,
@@ -337,6 +338,11 @@ export const adminUpdateLotHandler = async (
   if (newStatus && oldStatus !== newStatus) {
     await adjustLotStatusCounters(ctx, oldStatus, newStatus);
   }
+  await syncAuctionLotCount(ctx, lot, {
+    status: newStatus ?? oldStatus,
+    auctionId: lot.auctionId,
+    hiddenByFlags: patchData.hiddenByFlags ?? lot.hiddenByFlags,
+  });
 
   await logAudit(ctx, {
     action: "UPDATE_AUCTION",
@@ -508,6 +514,11 @@ export const bulkUpdateLotsHandler = async (
       if (newStatus && oldStatus !== newStatus) {
         await adjustLotStatusCounters(ctx, oldStatus, newStatus);
       }
+      await syncAuctionLotCount(ctx, lot, {
+        status: newStatus ?? oldStatus,
+        auctionId: lot.auctionId,
+        hiddenByFlags: patchData.hiddenByFlags ?? lot.hiddenByFlags,
+      });
     } else {
       skipped.push(id);
     }

@@ -30,6 +30,10 @@ vi.mock("../helpers", async (importOriginal) => {
   };
 });
 
+vi.mock("../../lib/lotCounters", () => ({
+  getAuctionLotCount: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("../../image_cache", () => ({
   resolveUrlCached: vi.fn(),
 }));
