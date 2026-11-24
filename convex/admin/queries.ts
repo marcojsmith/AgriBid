@@ -20,6 +20,7 @@ import { paginationOptsValidator } from "convex/server";
 import { query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { provinceValidator } from "../lib/provinces";
+import { MAX_RESULTS_CAP } from "../constants";
 import { countQuery } from "../admin_utils";
 import { batchFetchReadCounts } from "../notifications";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -301,10 +302,12 @@ export const getTransportQuotes = query({
             .query("transportQuoteRequests")
             .withIndex("by_status_and_createdAt", (q) => q.eq("status", status))
         : ctx.db.query("transportQuoteRequests").withIndex("by_createdAt");
-    const [results, totalCount] = await Promise.all([
+    // Bounded count: a guest-fed table must not be read in full.
+    const [results, counted] = await Promise.all([
       base().order("desc").paginate(args.paginationOpts),
-      countQuery(base()),
+      base().take(MAX_RESULTS_CAP),
     ]);
+    const totalCount = counted.length;
     return { ...results, totalCount };
   },
 });
