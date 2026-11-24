@@ -20,6 +20,8 @@ import {
 } from "./_lib/ogLayout.js";
 import { lotShareState } from "./_lib/shareMeta.js";
 
+/** Shape of a cache key produced by `shareMeta`. */
+const VERSION_KEY = /^[\w.%-]{1,100}$/;
 const PHOTO_TIMEOUT_MS = 4000;
 const PHOTO_MAX_BYTES = 8 * 1024 * 1024;
 const JPEG_BUDGET_BYTES = 290 * 1024;
@@ -255,9 +257,14 @@ export async function GET(request: Request): Promise<Response> {
       .jpeg({ quality: 65, mozjpeg: true })
       .toBuffer();
   }
-  const cache = url.searchParams.has("v")
-    ? "public, max-age=604800, s-maxage=31536000, immutable"
-    : "public, s-maxage=300";
+  // Only a card that matches what the share page promised may be cached for
+  // good; a fallback card must expire so the real one can replace it.
+  const v = url.searchParams.get("v");
+  const complete = loaded.data !== null && card.kind === kind;
+  const cache =
+    complete && v !== null && VERSION_KEY.test(v)
+      ? "public, max-age=604800, s-maxage=31536000, immutable"
+      : "public, s-maxage=300";
   return new Response(new Uint8Array(jpeg), {
     status: 200,
     headers: { "Content-Type": "image/jpeg", "Cache-Control": cache },

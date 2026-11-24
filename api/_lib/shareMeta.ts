@@ -127,7 +127,7 @@ function homeMeta(
     description = `Next sale: ${sale.title} · Opens ${formatSastDate(sale.startTime)}`;
   }
   const key = sale
-    ? `${String(sale.startTime)}-${String(sale.effectiveEndTime)}`
+    ? `${sale.phase}-${String(sale.startTime)}-${String(sale.effectiveEndTime)}`
     : "none";
   return {
     title: HOME_TITLE,
@@ -238,20 +238,23 @@ export function buildSaleMeta(
 ): ShareMeta {
   if (!sale) return homeMeta(null, path, origin);
   const lots = `${String(sale.lotCount)} lots`;
+  const closed = sale.status === "closed" || sale.effectiveEndTime <= now;
+  const upcoming = !closed && sale.startTime > now;
   let description: string;
-  if (sale.status === "closed" || sale.effectiveEndTime <= now) {
+  if (closed) {
     const day = formatSastDate(sale.effectiveEndTime).split(",")[0];
     description = join(
       lots,
       `Closed ${day}`,
       sale.soldCount === undefined ? "" : `${String(sale.soldCount)} sold`
     );
-  } else if (sale.startTime > now) {
+  } else if (upcoming) {
     description = `${lots} · Opens ${formatSastDate(sale.startTime)} · Online`;
   } else {
     description = `${lots} · Closes ${formatSastDate(sale.effectiveEndTime)} · Online`;
   }
-  const key = `${sale.status}-${String(sale.lotCount)}-${String(sale.soldCount ?? 0)}-${String(sale.effectiveEndTime)}`;
+  const phase = closed ? "closed" : upcoming ? "upcoming" : "open";
+  const key = `${phase}-${String(sale.lotCount)}-${String(sale.soldCount ?? 0)}-${String(sale.effectiveEndTime)}`;
   return {
     title: sale.title,
     description,

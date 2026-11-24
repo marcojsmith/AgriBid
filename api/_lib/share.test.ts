@@ -115,6 +115,11 @@ describe("GET /api/share", () => {
     expect(query).not.toHaveBeenCalled();
   });
 
+  it("rejects paths with control characters", async () => {
+    const res = await GET(req("kind=home&path=/%09/evil.com", "Mozilla/5.0"));
+    expect(res.headers.get("location")).toBe("/");
+  });
+
   it("never redirects off-site", async () => {
     const res = await GET(req("kind=home&path=//evil.com", "Mozilla/5.0"));
     expect(res.headers.get("location")).toBe("/");

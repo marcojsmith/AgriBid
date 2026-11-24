@@ -181,6 +181,32 @@ describe("buildSaleMeta", () => {
   });
 });
 
+describe("image cache keys", () => {
+  it("change when a sale goes from upcoming to open", () => {
+    const upcoming = { ...SALE, startTime: NOW + HOUR };
+    const before = buildSaleMeta(upcoming, "/auctions/x", NOW, ORIGIN);
+    const after = buildSaleMeta(
+      upcoming,
+      "/auctions/x",
+      NOW + 2 * HOUR,
+      ORIGIN
+    );
+    expect(before.imageUrl).not.toBe(after.imageUrl);
+  });
+
+  it("change when a sale closes by time", () => {
+    const open = buildSaleMeta(SALE, "/auctions/x", NOW, ORIGIN);
+    const closed = buildSaleMeta(SALE, "/auctions/x", CLOSE + HOUR, ORIGIN);
+    expect(open.imageUrl).not.toBe(closed.imageUrl);
+  });
+
+  it("change when the home sale goes from upcoming to live", () => {
+    const a = buildHomeMeta({ ...HOME, phase: "upcoming" }, "/", NOW, ORIGIN);
+    const b = buildHomeMeta(HOME, "/", NOW, ORIGIN);
+    expect(a.imageUrl).not.toBe(b.imageUrl);
+  });
+});
+
 describe("buildHomeMeta", () => {
   it("describes a live sale", () => {
     const m = buildHomeMeta(HOME, "/", NOW, ORIGIN);

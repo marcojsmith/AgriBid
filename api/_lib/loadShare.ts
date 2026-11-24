@@ -14,6 +14,9 @@ export const CONVEX_TIMEOUT_MS = 3000;
 /** Shape of a Convex document id. */
 const ID_PATTERN = /^[a-z0-9]{20,40}$/;
 
+/** A same-origin path: letters, digits and URL-safe punctuation only. */
+const SAFE_PATH = /^\/[A-Za-z0-9\-._~/%]*$/;
+
 /** The kinds of page a preview can describe. */
 export type ShareKind = "lot" | "sale" | "home";
 
@@ -100,8 +103,6 @@ export function roundToMinute(ms: number): number {
  * @returns A safe path, "/" when the input is unusable
  */
 export function safePath(raw: string | null): string {
-  if (!raw?.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) {
-    return "/";
-  }
-  return raw.split(/[?#]/)[0] || "/";
+  if (raw === null || !SAFE_PATH.test(raw) || raw.startsWith("//")) return "/";
+  return raw;
 }
