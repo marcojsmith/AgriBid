@@ -8,6 +8,10 @@ describe("clerkAppearance", () => {
     expect(appearance.variables?.borderRadius).toBe("6px");
   });
 
+  it("puts Clerk in the CSS layer that index.css orders below utilities", () => {
+    expect(appearance.cssLayerName).toBe("clerk");
+  });
+
   it("styles the form to the design", () => {
     expect(appearance.elements).toMatchObject({
       card: expect.stringContaining("shadow-none"),

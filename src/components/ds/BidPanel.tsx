@@ -306,9 +306,10 @@ export function BidPanel({
             ) : null}
           </>
         ) : eligibility.kind === "loading" ? (
-          <div aria-hidden="true" className="flex flex-col gap-3">
-            <Skeleton className="h-11 w-full" />
-            <Skeleton className="h-12 w-full" />
+          <div aria-busy="true" className="flex flex-col gap-3">
+            <span className="sr-only">Checking your registration…</span>
+            <Skeleton aria-hidden="true" className="h-11 w-full" />
+            <Skeleton aria-hidden="true" className="h-12 w-full" />
           </div>
         ) : eligibility.kind !== "ok" ? (
           <RegistrationPrompt

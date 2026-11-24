@@ -479,6 +479,18 @@ describe("AuctionDetail (lot page)", () => {
     );
   });
 
+  it("a signed-in account with no profile yet starts registration", () => {
+    h.authed = true;
+    setup({}, { getMyBidEligibility: null });
+    renderPage();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Finish registration to bid. Step 1 of 4."
+    );
+    expect(
+      screen.getByRole("link", { name: "Continue registration" })
+    ).toHaveAttribute("href", "/register?callbackUrl=%2Fauction%2Fl1");
+  });
+
   it("shows a skeleton, not the bid controls, while eligibility loads", () => {
     h.authed = true;
     h.pastCta = true;

@@ -285,11 +285,23 @@ function LotPage({ id }: { id: string | undefined }) {
   const viewer = viewerState(isAuthenticated, myBidState?.state);
   const extended = isLive && isInExtension(lot, now);
   const premium = premiumPct(lot.buyerPremiumFraction);
-  const eligibility: PanelEligibility = bidEligibility ?? { kind: "loading" };
+  // `undefined` while loading; `null` means the account has no profile yet, so
+  // registration has not started (never leave the buyer on a skeleton).
+  const eligibility: PanelEligibility =
+    bidEligibility === undefined
+      ? { kind: "loading" }
+      : (bidEligibility ?? {
+          kind: "incomplete",
+          step: 1,
+          totalSteps: settings.deposit.enabled ? 4 : 3,
+        });
   const registration: RegistrationBlock | undefined =
     eligibility.kind === "ok" || eligibility.kind === "loading"
       ? undefined
       : eligibility;
+  const registrationCta = registration
+    ? registrationSticky(registration)
+    : undefined;
   const reserve = reserveOf(lot.reserveState);
   const deposit = settings.deposit.enabled
     ? {
@@ -346,8 +358,8 @@ function LotPage({ id }: { id: string | undefined }) {
                 registration.kind === "incomplete"
                   ? registrationHref
                   : registrationStatusHref,
-              label: registrationSticky(registration).cta ?? "Continue",
-              ctaVariant: registrationSticky(registration).ctaVariant,
+              label: registrationCta?.cta ?? "Continue",
+              ctaVariant: registrationCta?.ctaVariant,
             }
           : viewer === "leading"
             ? { kind: "raise", onRaise: scrollToPanel }

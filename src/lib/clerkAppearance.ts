@@ -13,6 +13,9 @@ export type ClerkLocalization = NonNullable<ClerkProviderProps["localization"]>;
  * from the CSS tokens, so dark mode follows the theme.
  */
 export const appearance: ClerkAppearance = {
+  // Matches the `@layer` order in `index.css`: without it Clerk's unlayered
+  // styles beat Tailwind 4's layered utilities.
+  cssLayerName: "clerk",
   variables: {
     colorPrimary: "hsl(var(--primary))",
     borderRadius: "6px",
