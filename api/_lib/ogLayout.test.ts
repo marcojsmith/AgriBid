@@ -92,3 +92,46 @@ describe("renderOgCard", () => {
     }
   });
 });
+
+describe("lot card title", () => {
+  /**
+   * Finds the font size of the element that holds a text.
+   *
+   * @param node - Element tree
+   * @param text - The text to find
+   * @returns The font size, or undefined
+   */
+  function sizeOf(node: unknown, text: string): number | undefined {
+    if (typeof node !== "object" || node === null) return undefined;
+    const props = (node as { props?: Record<string, unknown> }).props ?? {};
+    const style = props.style as { fontSize?: number } | undefined;
+    if (props.children === text) return style?.fontSize;
+    const kids = ([] as unknown[]).concat(props.children ?? []);
+    for (const kid of kids) {
+      const found = sizeOf(kid, text);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+
+  const base = {
+    kind: "lot" as const,
+    sold: false,
+    priceLabel: "Opening bid",
+    price: "R 1",
+    timeLabel: "Closes",
+    photo: { fg: "a", bg: "b" },
+  };
+
+  it("uses 58px for a short title and 44px for a long one", () => {
+    expect(
+      sizeOf(renderOgCard({ ...base, title: "Case IH 7120" }), "Case IH 7120")
+    ).toBe(58);
+    expect(
+      sizeOf(
+        renderOgCard({ ...base, title: "Massey Ferguson 8670" }),
+        "Massey Ferguson 8670"
+      )
+    ).toBe(44);
+  });
+});

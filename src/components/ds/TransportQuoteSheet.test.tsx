@@ -17,10 +17,14 @@ vi.mock("@/components/ui/select", () => ({
       {children}
     </SelectContext.Provider>
   ),
-  SelectTrigger: ({ id }: { id?: string }) => (
-    <button type="button" role="combobox" id={id} />
+  SelectTrigger: ({ id, children }: { id?: string; children?: ReactNode }) => (
+    <button type="button" role="combobox" id={id}>
+      {children}
+    </button>
   ),
-  SelectValue: () => null,
+  SelectValue: ({ placeholder }: { placeholder?: string }) => (
+    <span>{placeholder}</span>
+  ),
   SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
   SelectItem: ({ children, value }: { children: ReactNode; value: string }) => {
     const onChange = useContext(SelectContext);
@@ -125,6 +129,11 @@ describe("TransportQuoteSheet", () => {
     expect(screen.getByLabelText("Your name")).toHaveValue("Thandi");
     expect(screen.getByLabelText("Phone")).toHaveValue("0837000000");
     expect(screen.getByLabelText("Phone")).toHaveAttribute("inputmode", "tel");
+  });
+
+  it("shows a province placeholder until one is chosen", () => {
+    setup();
+    expect(screen.getByText("Choose a province")).toBeInTheDocument();
   });
 
   it("shows the exact inline errors for an empty form", () => {

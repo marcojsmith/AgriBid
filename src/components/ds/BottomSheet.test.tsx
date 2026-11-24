@@ -64,3 +64,31 @@ describe("BottomSheet", () => {
     ).toBeNull();
   });
 });
+
+describe("BottomSheet focus", () => {
+  it("starts focus on the sheet, not the close button", () => {
+    render(
+      <BottomSheet open onOpenChange={() => undefined} title="Sheet">
+        <p>Body</p>
+      </BottomSheet>
+    );
+    expect(screen.getByRole("dialog")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Close" })).not.toHaveFocus();
+  });
+
+  it("gives the close button a keyboard-only ring inside the sheet", () => {
+    render(
+      <BottomSheet open onOpenChange={() => undefined} title="Sheet">
+        <p>Body</p>
+      </BottomSheet>
+    );
+    const close = screen.getByRole("button", { name: "Close" });
+    expect(close).toHaveClass(
+      "size-11",
+      "outline-none",
+      "focus-visible:ring-2",
+      "focus-visible:ring-ring",
+      "focus-visible:ring-offset-2"
+    );
+  });
+});

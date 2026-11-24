@@ -51,8 +51,17 @@ export function BottomSheet({
         <Dialog.Content
           data-slot="bottom-sheet"
           aria-describedby={undefined}
+          tabIndex={-1}
+          // Start focus on the sheet itself, not the close button, so no ring
+          // shows on open; keyboard users still get one once they tab.
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            if (event.currentTarget instanceof HTMLElement) {
+              event.currentTarget.focus();
+            }
+          }}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[90dvh] w-full flex-col overflow-y-auto rounded-t-lg border-t border-border bg-card px-4 pt-2 pb-5 md:max-w-lg",
+            "fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[90dvh] w-full flex-col overflow-y-auto rounded-t-lg border-t border-border bg-card px-4 pt-2 pb-5 outline-none md:max-w-lg",
             "data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom",
             className
           )}
@@ -67,7 +76,7 @@ export function BottomSheet({
             </Dialog.Title>
             <Dialog.Close
               aria-label="Close"
-              className="-mr-2 flex size-11 items-center justify-center text-foreground"
+              className="-mr-2 flex size-11 items-center justify-center rounded text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <X aria-hidden="true" className="size-[22px]" />
             </Dialog.Close>

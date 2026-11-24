@@ -186,7 +186,7 @@ function TransportQuoteForm({
               className="w-full"
               aria-invalid={!!errors.province}
             >
-              <SelectValue />
+              <SelectValue placeholder="Choose a province" />
             </SelectTrigger>
             <SelectContent>
               {PROVINCES.map((key) => (
