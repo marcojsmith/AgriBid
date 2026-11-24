@@ -13,7 +13,7 @@ const modules = import.meta.glob("./**/*.*s");
 const ALICE = "user_alice";
 const BOB = "user_bob";
 const HOUR = 3_600_000;
-const sub = (endpoint = "https://push.example/abc") => ({
+const sub = (endpoint = "https://fcm.googleapis.com/abc") => ({
   endpoint,
   p256dh: "p256",
   auth: "authkey",
@@ -74,10 +74,12 @@ async function makeSale(
  */
 async function remind(t: Ctx, userId: string, auctionId: Id<"auctions">) {
   await t.run(async (ctx) => {
+    const sale = await ctx.db.get("auctions", auctionId);
     await ctx.db.insert("saleReminders", {
       userId,
       auctionId,
       status: "pending",
+      startTime: sale?.startTime ?? 0,
       createdAt: Date.now(),
     });
   });
@@ -156,15 +158,19 @@ describe("saveSubscription", () => {
     for (let i = 0; i < 12; i++) {
       await asAlice.mutation(
         api.push.saveSubscription,
-        sub(`https://push.example/${String(i)}`)
+        sub(`https://fcm.googleapis.com/${String(i)}`)
       );
     }
     const rows = await t.run((ctx) =>
       ctx.db.query("pushSubscriptions").collect()
     );
     expect(rows).toHaveLength(10);
-    expect(rows.map((r) => r.endpoint)).not.toContain("https://push.example/0");
-    expect(rows.map((r) => r.endpoint)).toContain("https://push.example/11");
+    expect(rows.map((r) => r.endpoint)).not.toContain(
+      "https://fcm.googleapis.com/0"
+    );
+    expect(rows.map((r) => r.endpoint)).toContain(
+      "https://fcm.googleapis.com/11"
+    );
   });
 
   it("rejects non-https and over-long endpoints", async () => {
@@ -172,11 +178,11 @@ describe("saveSubscription", () => {
     const asAlice = t.withIdentity({ subject: ALICE });
     await expect(
       asAlice.mutation(api.push.saveSubscription, sub("http://push.example/x"))
-    ).rejects.toThrow("Invalid push endpoint");
+    ).rejects.toThrow("Unsupported push service.");
     await expect(
       asAlice.mutation(
         api.push.saveSubscription,
-        sub(`https://push.example/${"a".repeat(2100)}`)
+        sub(`https://fcm.googleapis.com/${"a".repeat(2100)}`)
       )
     ).rejects.toThrow("Invalid push endpoint");
   });
@@ -298,6 +304,7 @@ describe("sale reminders", () => {
         userId: ALICE,
         auctionId: id,
         status: "sent",
+        startTime: Date.now() - HOUR,
         createdAt: Date.now(),
         sentAt: Date.now(),
       });
@@ -316,6 +323,26 @@ describe("sale reminders", () => {
     const rows = await t.run((ctx) => ctx.db.query("saleReminders").collect());
     expect(rows).toHaveLength(1);
     expect(rows[0]?.sentAt).toBeUndefined();
+  });
+
+  it("follows a re-timed sale when a pending reminder is set again", async () => {
+    const t = makeContext();
+    await setSetting(t, true);
+    const id = await makeSale(t, Date.now() + HOUR);
+    const asAlice = t.withIdentity({ subject: ALICE });
+    await asAlice.mutation(api.push.setSaleReminder, {
+      auctionId: id,
+      on: true,
+    });
+    const later = Date.now() + 5 * HOUR;
+    await t.run((ctx) => ctx.db.patch("auctions", id, { startTime: later }));
+    await asAlice.mutation(api.push.setSaleReminder, {
+      auctionId: id,
+      on: true,
+    });
+    const rows = await t.run((ctx) => ctx.db.query("saleReminders").collect());
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.startTime).toBe(later);
   });
 
   it("can clear a reminder even after the setting is switched off", async () => {
@@ -361,7 +388,7 @@ describe("sendDueSaleRemindersHandler", () => {
       });
       await ctx.db.insert("pushSubscriptions", {
         userId: ALICE,
-        ...sub("https://push.example/second"),
+        ...sub("https://fcm.googleapis.com/second"),
         createdAt: now,
       });
     });
@@ -415,7 +442,7 @@ describe("sendDueSaleRemindersHandler", () => {
     expect(scheduled).toHaveLength(0);
   });
 
-  it("skips future, stale and unpublished sales", async () => {
+  it("keeps future reminders and drops stale or unpublished ones", async () => {
     const t = makeContext();
     await setSetting(t, true);
     const now = Date.now();
@@ -424,6 +451,74 @@ describe("sendDueSaleRemindersHandler", () => {
     const draft = await makeSale(t, now - 1000, "draft");
     for (const id of [future, stale, draft]) await remind(t, ALICE, id);
     expect(await run(t, now)).toEqual({ sent: 0, hasMore: false });
+    const rows = await t.run((ctx) => ctx.db.query("saleReminders").collect());
+    expect(rows.map((r) => r.auctionId)).toEqual([future]);
+  });
+
+  it("drops reminders whose sale was deleted", async () => {
+    const t = makeContext();
+    await setSetting(t, true);
+    const now = Date.now();
+    const id = await makeSale(t, now - 1000);
+    await remind(t, ALICE, id);
+    await t.run((ctx) => ctx.db.delete("auctions", id));
+    expect(await run(t, now)).toEqual({ sent: 0, hasMore: false });
+    expect(
+      await t.run((ctx) => ctx.db.query("saleReminders").collect())
+    ).toHaveLength(0);
+  });
+
+  it("follows a re-timed sale instead of sending early", async () => {
+    const t = makeContext();
+    await setSetting(t, true);
+    const now = Date.now();
+    const id = await makeSale(t, now - 1000);
+    await remind(t, ALICE, id);
+    // The sale moved to the future after the reminder was stored.
+    await t.run((ctx) =>
+      ctx.db.patch("auctions", id, { startTime: now + HOUR })
+    );
+    expect(await run(t, now)).toEqual({ sent: 0, hasMore: false });
+    let rows = await t.run((ctx) => ctx.db.query("saleReminders").collect());
+    expect(rows[0]).toMatchObject({ status: "pending", startTime: now + HOUR });
+    // It sends once the new start time passes.
+    expect((await run(t, now + HOUR + 1)).sent).toBe(1);
+    rows = await t.run((ctx) => ctx.db.query("saleReminders").collect());
+    expect(rows[0]?.status).toBe("sent");
+  });
+
+  it("re-arms a stale reminder whose sale moved into the future", async () => {
+    const t = makeContext();
+    await setSetting(t, true);
+    const now = Date.now();
+    const id = await makeSale(t, now - SALE_REMINDER_STALE_MS - 1000);
+    await remind(t, ALICE, id);
+    await t.run((ctx) =>
+      ctx.db.patch("auctions", id, { startTime: now + HOUR })
+    );
+    await run(t, now);
+    const rows = await t.run((ctx) => ctx.db.query("saleReminders").collect());
+    expect(rows[0]).toMatchObject({ status: "pending", startTime: now + HOUR });
+  });
+
+  it("sends every sale's reminders when 60 sales open together", async () => {
+    const t = makeContext();
+    await setSetting(t, true);
+    const now = Date.now();
+    for (let i = 0; i < 60; i++) {
+      const id = await makeSale(t, now - 1000 - i);
+      await remind(t, `user_a${String(i)}`, id);
+      await remind(t, `user_b${String(i)}`, id);
+    }
+    let sent = 0;
+    for (let pass = 0; pass < 5; pass++) {
+      const result = await run(t, now);
+      sent += result.sent;
+      if (!result.hasMore) break;
+    }
+    expect(sent).toBe(120);
+    const rows = await t.run((ctx) => ctx.db.query("saleReminders").collect());
+    expect(rows.every((r) => r.status === "sent")).toBe(true);
   });
 
   it("caps a run at the batch size and reports hasMore", async () => {
@@ -437,6 +532,7 @@ describe("sendDueSaleRemindersHandler", () => {
           userId: `user_${String(i)}`,
           auctionId: id,
           status: "pending",
+          startTime: now - 1000,
           createdAt: now,
         });
       }

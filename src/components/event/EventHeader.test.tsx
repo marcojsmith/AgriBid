@@ -126,6 +126,15 @@ describe("EventHeader", () => {
     expect(onRemind).toHaveBeenCalled();
   });
 
+  it("disables Remind me while push is being set up", () => {
+    renderHeader({
+      sale: { ...live, bucket: "upcoming", startTime: NOW + 24 * HOUR },
+      onRemind: vi.fn(),
+      remindDisabled: true,
+    });
+    expect(screen.getByRole("button", { name: "Remind me" })).toBeDisabled();
+  });
+
   it("has no Remind me on an upcoming sale unless the feature is on", () => {
     renderHeader({
       sale: { ...live, bucket: "upcoming", startTime: NOW + 24 * HOUR },

@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
 import {
   internalMutation,
   mutation,
@@ -12,14 +13,12 @@ import { notifyUser } from "./auctions/internal";
 import { getEnv } from "./config";
 import { SALE_REMINDER_BATCH, SALE_REMINDER_STALE_MS } from "./constants";
 import { getAuthenticatedUserId, getAuthUser, resolveUserId } from "./lib/auth";
-import type { PushMessage } from "./lib/pushDelivery";
+import { isAllowedPushEndpoint, type PushMessage } from "./lib/pushDelivery";
 
 /** Longest push endpoint URL we store. */
 const MAX_ENDPOINT_LENGTH = 2048;
 /** Longest p256dh / auth key we store (real keys are 87 and 22 characters). */
 const MAX_KEY_LENGTH = 128;
-/** Sales examined per reminder run. */
-const SALES_PER_RUN = 50;
 /** Subscriptions read per user, to bound a single run. */
 const SUBSCRIPTIONS_PER_USER = 10;
 
@@ -46,12 +45,14 @@ export const saveSubscription = mutation({
   handler: async (ctx, args) => {
     const userId = await getAuthenticatedUserId(ctx);
     if (
-      !args.endpoint.startsWith("https://") ||
       args.endpoint.length > MAX_ENDPOINT_LENGTH ||
       args.p256dh.length > MAX_KEY_LENGTH ||
       args.auth.length > MAX_KEY_LENGTH
     ) {
       throw new ConvexError("Invalid push endpoint");
+    }
+    if (!isAllowedPushEndpoint(args.endpoint)) {
+      throw new ConvexError("Unsupported push service.");
     }
     const existing = await ctx.db
       .query("pushSubscriptions")
@@ -148,18 +149,24 @@ export const setSaleReminder = mutation({
       throw new ConvexError("This sale can't be reminded");
     }
     const [row] = existing;
-    if (row?.status === "sent") {
-      // The sale was re-timed after its reminder went out: arm it again.
-      await ctx.db.patch("saleReminders", row._id, {
-        status: "pending",
-        sentAt: undefined,
-      });
-    } else if (!row) {
+    if (!row) {
       await ctx.db.insert("saleReminders", {
         userId,
         auctionId: args.auctionId,
         status: "pending",
+        startTime: auction.startTime,
         createdAt: Date.now(),
+      });
+    } else if (row.status === "sent") {
+      // The sale was re-timed after its reminder went out: arm it again.
+      await ctx.db.patch("saleReminders", row._id, {
+        status: "pending",
+        startTime: auction.startTime,
+        sentAt: undefined,
+      });
+    } else if (row.startTime !== auction.startTime) {
+      await ctx.db.patch("saleReminders", row._id, {
+        startTime: auction.startTime,
       });
     }
     return null;
@@ -167,11 +174,19 @@ export const setSaleReminder = mutation({
 });
 
 /**
- * Sends the "sale is open" reminders that are due: for each published sale
- * that opened in the last {@link SALE_REMINDER_STALE_MS}, marks pending
- * reminders sent, creates the in-app notification and schedules one push
- * batch. Bounded to {@link SALE_REMINDER_BATCH} reminders per run; a full
- * batch reschedules the gated cron wrapper to continue.
+ * Sends the "sale is open" reminders that are due. Driven by the pending
+ * reminders themselves (index `by_status_and_startTime`, on the sale's start
+ * time copied onto each reminder), so the number of sales never starves a
+ * reminder. Per run, bounded to {@link SALE_REMINDER_BATCH} rows each:
+ *
+ * 1. Reminders older than {@link SALE_REMINDER_STALE_MS} are dropped, unless
+ *    their sale was re-timed into the future (then they are re-armed).
+ * 2. Due reminders: the sale is loaded; if it is gone or unpublished the
+ *    reminder is deleted, if it was re-timed the reminder's `startTime` is
+ *    updated, otherwise it is marked sent, the in-app notification is
+ *    created and the user's push subscriptions go into one scheduled batch.
+ *
+ * A full batch reschedules the gated cron wrapper to continue.
  *
  * @param ctx - Mutation context
  * @param now - Current time (ms)
@@ -183,31 +198,57 @@ export async function sendDueSaleRemindersHandler(
 ): Promise<{ sent: number; hasMore: boolean }> {
   if (!(await isPushRemindersEnabled(ctx))) return { sent: 0, hasMore: false };
 
-  const sales = await ctx.db
-    .query("auctions")
-    .withIndex("by_status_startTime", (q) =>
+  const staleBefore = now - SALE_REMINDER_STALE_MS;
+  const stale = await ctx.db
+    .query("saleReminders")
+    .withIndex("by_status_and_startTime", (q) =>
+      q.eq("status", "pending").lte("startTime", staleBefore)
+    )
+    .take(SALE_REMINDER_BATCH);
+  for (const reminder of stale) {
+    const sale = await ctx.db.get("auctions", reminder.auctionId);
+    if (sale?.status === "published" && sale.startTime > staleBefore) {
+      await ctx.db.patch("saleReminders", reminder._id, {
+        startTime: sale.startTime,
+      });
+    } else {
+      await ctx.db.delete("saleReminders", reminder._id);
+    }
+  }
+
+  const due = await ctx.db
+    .query("saleReminders")
+    .withIndex("by_status_and_startTime", (q) =>
       q
-        .eq("status", "published")
-        .gt("startTime", now - SALE_REMINDER_STALE_MS)
+        .eq("status", "pending")
+        .gt("startTime", staleBefore)
         .lte("startTime", now)
     )
-    .take(SALES_PER_RUN);
+    .take(SALE_REMINDER_BATCH);
 
   let sent = 0;
   const messages: PushMessage[] = [];
-  for (const sale of sales) {
-    const budget = SALE_REMINDER_BATCH - sent;
-    if (budget <= 0) break;
-    const pending = await ctx.db
-      .query("saleReminders")
-      .withIndex("by_auctionId_and_status", (q) =>
-        q.eq("auctionId", sale._id).eq("status", "pending")
-      )
-      .take(budget);
-    if (pending.length === 0) continue;
+  const sales = new Map<string, Doc<"auctions"> | null>();
+  const body = "Bidding has started. Tap to see the lots.";
+  for (const reminder of due) {
+    let sale = sales.get(reminder.auctionId);
+    if (sale === undefined) {
+      sale = await ctx.db.get("auctions", reminder.auctionId);
+      sales.set(reminder.auctionId, sale);
+    }
+    if (sale?.status !== "published") {
+      await ctx.db.delete("saleReminders", reminder._id);
+      continue;
+    }
+    if (sale.startTime !== reminder.startTime) {
+      // Re-timed: follow the sale; it is picked up again when it is due.
+      await ctx.db.patch("saleReminders", reminder._id, {
+        startTime: sale.startTime,
+      });
+      continue;
+    }
 
     const title = `${sale.title} is open`;
-    const body = "Bidding has started. Tap to see the lots.";
     const url = `/auctions/${sale._id}`;
     const payload = JSON.stringify({
       title,
@@ -215,32 +256,30 @@ export async function sendDueSaleRemindersHandler(
       url,
       tag: `sale-${sale._id}`,
     });
-    for (const reminder of pending) {
-      await ctx.db.patch("saleReminders", reminder._id, {
-        status: "sent",
-        sentAt: now,
+    await ctx.db.patch("saleReminders", reminder._id, {
+      status: "sent",
+      sentAt: now,
+    });
+    await notifyUser(ctx, {
+      recipientId: reminder.userId,
+      type: "info",
+      title,
+      message: body,
+      link: url,
+    });
+    const subscriptions = await ctx.db
+      .query("pushSubscriptions")
+      .withIndex("by_userId", (q) => q.eq("userId", reminder.userId))
+      .take(SUBSCRIPTIONS_PER_USER);
+    for (const subscription of subscriptions) {
+      messages.push({
+        endpoint: subscription.endpoint,
+        p256dh: subscription.p256dh,
+        auth: subscription.auth,
+        payload,
       });
-      await notifyUser(ctx, {
-        recipientId: reminder.userId,
-        type: "info",
-        title,
-        message: body,
-        link: url,
-      });
-      const subscriptions = await ctx.db
-        .query("pushSubscriptions")
-        .withIndex("by_userId", (q) => q.eq("userId", reminder.userId))
-        .take(SUBSCRIPTIONS_PER_USER);
-      for (const subscription of subscriptions) {
-        messages.push({
-          endpoint: subscription.endpoint,
-          p256dh: subscription.p256dh,
-          auth: subscription.auth,
-          payload,
-        });
-      }
-      sent += 1;
     }
+    sent += 1;
   }
 
   if (messages.length > 0) {
@@ -248,7 +287,10 @@ export async function sendDueSaleRemindersHandler(
       messages,
     });
   }
-  const hasMore = sent >= SALE_REMINDER_BATCH;
+  // A full read means more rows may be waiting; every row read leaves the
+  // due window (sent, deleted or re-timed), so the rerun always progresses.
+  const hasMore =
+    due.length >= SALE_REMINDER_BATCH || stale.length >= SALE_REMINDER_BATCH;
   if (hasMore) {
     await ctx.scheduler.runAfter(0, internal.cronJobs.sendSaleReminders, {});
   }

@@ -5,7 +5,7 @@ import type { Id } from "convex/_generated/dataModel";
 interface HookMocks {
   authed: boolean;
   reminded: boolean;
-  vapid: string | null;
+  vapid: string | null | undefined;
   needsInstall: boolean;
   supported: boolean;
   permission: string;
@@ -117,11 +117,6 @@ describe("nextStep", () => {
     expect(step()).toBe("subscribe");
   });
 
-  it("is unsupported when the server has no VAPID key", () => {
-    m.vapid = null;
-    expect(step()).toBe("unsupported");
-  });
-
   it("otherwise asks for permission", () => {
     expect(step()).toBe("permission");
     m.permission = "denied";
@@ -154,11 +149,30 @@ describe("enable", () => {
     expect(m.subscribe).not.toHaveBeenCalled();
   });
 
+  it("fails (not unsupported) while the VAPID key is still loading", async () => {
+    m.vapid = undefined;
+    expect(await enable()).toBe("failed");
+    expect(m.subscribe).not.toHaveBeenCalled();
+  });
+
   it("fails when subscribing or saving throws", async () => {
     m.subscribe.mockRejectedValueOnce(new Error("push service down"));
     expect(await enable()).toBe("failed");
     m.setReminder.mockRejectedValueOnce(new Error("refused"));
     expect(await enable()).toBe("failed");
+  });
+});
+
+describe("availability", () => {
+  const availability = () =>
+    renderHook(() => usePushReminders(SALE)).result.current.availability;
+
+  it("follows the VAPID key query", () => {
+    expect(availability()).toBe("ready");
+    m.vapid = null;
+    expect(availability()).toBe("unavailable");
+    m.vapid = undefined;
+    expect(availability()).toBe("loading");
   });
 });
 

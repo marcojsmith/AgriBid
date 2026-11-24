@@ -58,6 +58,8 @@ interface EventHeaderProps {
   onRemind?: () => void;
   /** Whether the visitor already set a reminder; the button then reads "Reminder set". */
   reminded?: boolean;
+  /** Disables Remind me while push is still being set up. */
+  remindDisabled?: boolean;
   onFeesClick: () => void;
   /** Opens the transport quote sheet. */
   onTransportClick: () => void;
@@ -90,6 +92,7 @@ interface EventHeaderProps {
  * @param props.closed - Totals for a closed sale
  * @param props.onRemind - Called by Remind me; the button is hidden without it
  * @param props.reminded - Whether a reminder is already set
+ * @param props.remindDisabled - Disables the Remind me button
  * @param props.onFeesClick - Opens the Fees & rules sheet
  * @param props.onTransportClick - Opens the transport quote sheet
  * @param props.shareUrl - Link the share button shares
@@ -109,6 +112,7 @@ export function EventHeader({
   closed,
   onRemind,
   reminded = false,
+  remindDisabled = false,
   onFeesClick,
   onTransportClick,
   shareUrl,
@@ -226,6 +230,7 @@ export function EventHeader({
                 variant="outline"
                 onClick={onRemind}
                 aria-pressed={reminded}
+                disabled={remindDisabled}
                 className="flex-1 border-hero-muted/60 bg-transparent text-hero-foreground hover:bg-white/10 hover:text-hero-foreground sm:flex-none"
               >
                 {reminded ? (

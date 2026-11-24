@@ -331,7 +331,7 @@ function EventPage({ id }: { id: string | undefined }) {
         await reminders.disable();
         toast.success("Reminder removed.");
       } catch {
-        toast.error("Couldn't set the reminder. Try again.");
+        toast.error("Couldn't remove the reminder. Try again.");
       }
     } else if (step === "home-screen") {
       setSheet("home-screen");
@@ -427,13 +427,16 @@ function EventPage({ id }: { id: string | undefined }) {
             : null
         }
         onRemind={
-          upcoming && settings.pushRemindersEnabled
+          upcoming &&
+          settings.pushRemindersEnabled &&
+          reminders.availability !== "unavailable"
             ? () => {
                 void handleRemind();
               }
             : undefined
         }
         reminded={reminders.reminded}
+        remindDisabled={reminders.availability === "loading"}
         onFeesClick={() => {
           setFeesOpen(true);
         }}

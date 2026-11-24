@@ -703,9 +703,12 @@ export default defineSchema({
     userId: v.string(),
     auctionId: v.id("auctions"),
     status: v.union(v.literal("pending"), v.literal("sent")),
+    // Copy of the sale's startTime so the cron can find due reminders by index.
+    startTime: v.number(),
     createdAt: v.number(),
     sentAt: v.optional(v.number()),
   })
     .index("by_userId_and_auctionId", ["userId", "auctionId"])
+    .index("by_status_and_startTime", ["status", "startTime"])
     .index("by_auctionId_and_status", ["auctionId", "status"]),
 });

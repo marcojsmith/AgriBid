@@ -17,6 +17,7 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
+  if (!data || typeof data !== "object") data = {};
   const title = data.title || "AgriBid";
   event.waitUntil(
     self.registration.showNotification(title, {

@@ -25,6 +25,11 @@ export type EnableResult = "granted" | "denied" | "unsupported" | "failed";
 
 /** State and actions for one sale's "Remind me when it opens" reminder. */
 export interface PushReminders {
+  /**
+   * Whether the server can send pushes: `loading` while the VAPID key is
+   * being fetched, `unavailable` when none is configured (hide Remind me).
+   */
+  availability: "loading" | "unavailable" | "ready";
   /** Whether the signed-in visitor already asked to be reminded. */
   reminded: boolean;
   /** The step Remind me should take now. */
@@ -77,16 +82,18 @@ export function usePushReminders(
     if (reminded) return "remove";
     if (browserNeedsHomeScreenInstall()) return "home-screen";
     if (!isAuthenticated) return "sign-in";
-    if (!pushSupported() || vapidKey === null) return "unsupported";
+    if (!pushSupported()) return "unsupported";
     if (Notification.permission === "granted") return "subscribe";
     return "permission";
-  }, [reminded, isAuthenticated, vapidKey]);
+  }, [reminded, isAuthenticated]);
 
   const enable = useCallback(async (): Promise<EnableResult> => {
     if (!auctionId) return "failed";
     const permission = await requestReminderPermission();
     if (permission !== "granted") return permission;
-    if (!vapidKey) return "unsupported";
+    // Still loading is a failure to retry, not "this browser can't".
+    if (vapidKey === undefined) return "failed";
+    if (vapidKey === null) return "unsupported";
     try {
       const subscription = await subscribeToPush(vapidKey);
       await saveSubscription(subscription);
@@ -102,5 +109,12 @@ export function usePushReminders(
     await setSaleReminder({ auctionId, on: false });
   }, [setSaleReminder, auctionId]);
 
-  return { reminded, nextStep, enable, disable };
+  const availability =
+    vapidKey === undefined
+      ? "loading"
+      : vapidKey === null
+        ? "unavailable"
+        : "ready";
+
+  return { availability, reminded, nextStep, enable, disable };
 }

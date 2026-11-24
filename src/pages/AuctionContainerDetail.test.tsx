@@ -17,6 +17,7 @@ interface MockState {
   toggle: ReturnType<typeof vi.fn>;
   push: {
     reminded: boolean;
+    availability: string;
     step: string;
     result: string;
     enable: ReturnType<typeof vi.fn>;
@@ -33,6 +34,7 @@ const h = vi.hoisted(() => {
     toggle: vi.fn(),
     push: {
       reminded: false,
+      availability: "ready",
       step: "permission",
       result: "granted",
       enable: vi.fn(),
@@ -84,6 +86,7 @@ vi.mock("@/hooks/useBranding", () => ({
 vi.mock("@/hooks/usePushReminders", () => ({
   usePushReminders: () => ({
     reminded: h.push.reminded,
+    availability: h.push.availability,
     nextStep: () => h.push.step,
     enable: h.push.enable,
     disable: h.push.disable,
@@ -211,6 +214,7 @@ describe("AuctionContainerDetail", () => {
     h.authed = false;
     h.pastCta = false;
     h.push.reminded = false;
+    h.push.availability = "ready";
     h.push.step = "permission";
     h.push.enable.mockImplementation(() => Promise.resolve(h.push.result));
     h.push.result = "granted";
@@ -624,6 +628,20 @@ describe("AuctionContainerDetail", () => {
       expect(h.push.disable).toHaveBeenCalled();
     });
 
+    it("hides Remind me when the server has no push keys", () => {
+      h.push.availability = "unavailable";
+      remindOn();
+      renderPage();
+      expect(screen.queryByRole("button", { name: "Remind me" })).toBeNull();
+    });
+
+    it("disables Remind me while push is loading", () => {
+      h.push.availability = "loading";
+      remindOn();
+      renderPage();
+      expect(screen.getByRole("button", { name: "Remind me" })).toBeDisabled();
+    });
+
     it("reports a failed removal", async () => {
       h.push.reminded = true;
       h.push.step = "remove";
@@ -633,7 +651,7 @@ describe("AuctionContainerDetail", () => {
       fireEvent.click(screen.getByRole("button", { name: "Reminder set" }));
       await waitFor(() => {
         expect(toast.error).toHaveBeenCalledWith(
-          "Couldn't set the reminder. Try again."
+          "Couldn't remove the reminder. Try again."
         );
       });
     });

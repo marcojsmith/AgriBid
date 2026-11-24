@@ -19,6 +19,43 @@ export interface DeliveryResult {
   expired: string[];
 }
 
+/** Push services whose endpoints we accept (exact hostnames). */
+const PUSH_HOSTS: readonly string[] = [
+  "fcm.googleapis.com",
+  "updates.push.services.mozilla.com",
+  "web.push.apple.com",
+];
+/** Push services that use per-device subdomains (hostname suffixes). */
+const PUSH_HOST_SUFFIXES: readonly string[] = [
+  ".notify.windows.com",
+  ".push.apple.com",
+];
+
+/**
+ * Whether a push endpoint points at a real browser push service. The backend
+ * POSTs to every stored endpoint, so anything else (localhost, private or
+ * tailnet hosts, other ports, plain http) must never be stored or called.
+ *
+ * @param url - The endpoint URL from the browser's subscription
+ * @returns True for an https URL on a known push-service host and the default port
+ */
+export function isAllowedPushEndpoint(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") return false;
+  if (parsed.port !== "" && parsed.port !== "443") return false;
+  if (parsed.username !== "" || parsed.password !== "") return false;
+  const host = parsed.hostname.toLowerCase();
+  return (
+    PUSH_HOSTS.includes(host) ||
+    PUSH_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix))
+  );
+}
+
 /**
  * Whether a send error means the subscription no longer exists.
  *
