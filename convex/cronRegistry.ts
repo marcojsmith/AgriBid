@@ -18,6 +18,7 @@ export type CronJobKey =
   | "purge_lot_viewers"
   | "refresh_engagement_scores"
   | "send_sale_reminders"
+  | "send_closing_soon_alerts"
   | "weekly_mock_data_reset";
 
 /** Static description of a toggleable background job. */
@@ -100,6 +101,14 @@ export const CRON_JOBS: readonly CronJobDefinition[] = [
     description:
       "Sends the push notification to everyone who tapped Remind me when a sale opens. Also requires Push reminders to be switched on in Admin settings.",
     schedule: "Every 1 minute",
+    defaultEnabled: true,
+  },
+  {
+    key: "send_closing_soon_alerts",
+    label: "Send closing-soon alerts",
+    description:
+      "Sends the 1-hour-before-close push to everyone who watches a lot. Also requires Watched-lot alerts to be switched on in Admin settings.",
+    schedule: "Every 5 minutes",
     defaultEnabled: true,
   },
   {

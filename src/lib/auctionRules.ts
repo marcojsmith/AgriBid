@@ -25,10 +25,10 @@ export const WATCHING_MESSAGE =
   "Watching. We'll notify you 1 hour before close and if you're outbid.";
 
 /**
- * Shown when a lot page's heart is tapped. It claims only what exists today:
- * the lot is saved to the watchlist. Outbid and closing-soon notifications are
- * not sent yet (design D9), so `WATCHING_MESSAGE` must not be used here until
- * they are.
+ * Shown when a heart is tapped and alerts will not be sent (the admin setting
+ * is off, or this browser has no push subscription). It claims only that the
+ * lot is saved to the watchlist; `useWatchAlerts` picks `WATCHING_MESSAGE`
+ * instead only when the outbid and closing-soon alerts will really arrive.
  */
 export const WATCHING_SAVED_MESSAGE =
   "Watching. Find this lot in your watchlist.";

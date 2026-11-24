@@ -86,6 +86,24 @@ const toast = vi.hoisted(() => ({
 vi.mock("sonner", () => ({ toast }));
 const showToast = vi.hoisted(() => vi.fn());
 vi.mock("@/components/ds/showToast", () => ({ showToast }));
+
+const wa = vi.hoisted(() => ({
+  message: "Watching. Find this lot in your watchlist.",
+  open: false,
+  onAllow: vi.fn(),
+}));
+vi.mock("@/hooks/useWatchAlerts", () => ({
+  useWatchAlerts: () => ({
+    afterWatch: () => Promise.resolve(wa.message),
+    promptProps: {
+      open: wa.open,
+      onOpenChange: vi.fn(),
+      onAllow: wa.onAllow,
+      description: "Get an alert 1 hour before close and if you're outbid?",
+      allowLabel: "Allow alerts",
+    },
+  }),
+}));
 vi.mock("@/lib/viewSession", () => ({
   getViewSessionId: () => "session12345",
 }));
@@ -763,5 +781,34 @@ describe("AuctionDetail (lot page)", () => {
     expect(
       screen.queryByRole("region", { name: "More in this sale" })
     ).toBeNull();
+  });
+});
+
+describe("watched-lot alerts", () => {
+  beforeEach(() => {
+    wa.message = "Watching. Find this lot in your watchlist.";
+    wa.open = false;
+  });
+
+  it("promises alerts in the toast only when the hook says they will arrive", async () => {
+    wa.message =
+      "Watching. We'll notify you 1 hour before close and if you're outbid.";
+    h.authed = true;
+    h.mutations.toggleWatchlist = vi.fn().mockResolvedValueOnce(true);
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Watch lot 3/ }));
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith(wa.message);
+    });
+  });
+
+  it("shows the alerts permission prompt and allows from it", () => {
+    wa.open = true;
+    renderPage();
+    expect(
+      screen.getByText("Get an alert 1 hour before close and if you're outbid?")
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Allow alerts" }));
+    expect(wa.onAllow).toHaveBeenCalled();
   });
 });

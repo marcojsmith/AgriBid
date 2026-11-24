@@ -19,6 +19,7 @@ const KEYS = {
   financeContactCompany: "finance_contact_company",
   financeContactPhone: "finance_contact_phone",
   pushRemindersEnabled: "push_reminders_enabled",
+  watchAlertsEnabled: "watch_alerts_enabled",
   minPhotosPerLot: "min_photos_per_lot",
 } as const;
 
@@ -117,6 +118,20 @@ export async function isPushRemindersEnabled(ctx: QueryCtx): Promise<boolean> {
 }
 
 /**
+ * Whether the watched-lot alerts (outbid, closing in 1 hour) are switched on.
+ *
+ * @param ctx - Query or mutation context
+ * @returns True when admins have enabled watched-lot alerts (default off)
+ */
+export async function isWatchAlertsEnabled(ctx: QueryCtx): Promise<boolean> {
+  return await readBoolean(
+    ctx,
+    KEYS.watchAlertsEnabled,
+    constants.DEFAULT_WATCH_ALERTS_ENABLED
+  );
+}
+
+/**
  * Reads an optional text setting; empty or non-string values read as null.
  *
  * @param ctx - Query context
@@ -181,6 +196,7 @@ const PlatformSettingsValidator = v.object({
     phone: v.union(v.string(), v.null()),
   }),
   pushRemindersEnabled: v.boolean(),
+  watchAlertsEnabled: v.boolean(),
   minPhotosPerLot: v.number(),
 });
 
@@ -205,6 +221,7 @@ export const getPlatformSettings = query({
       company,
       phone,
       pushRemindersEnabled,
+      watchAlertsEnabled,
       minPhotosPerLot,
     ] = await Promise.all([
       getBuyerPremiumPct(ctx),
@@ -257,6 +274,7 @@ export const getPlatformSettings = query({
         KEYS.pushRemindersEnabled,
         constants.DEFAULT_PUSH_REMINDERS_ENABLED
       ),
+      isWatchAlertsEnabled(ctx),
       getMinPhotosPerLot(ctx),
     ]);
 
@@ -270,6 +288,7 @@ export const getPlatformSettings = query({
       sellerCosts: { commissionPct, listingFee, payoutDays },
       financeContact: { name, company, phone },
       pushRemindersEnabled,
+      watchAlertsEnabled,
       minPhotosPerLot,
     };
   },
@@ -546,6 +565,29 @@ export const updatePushReminders = mutation({
         },
       ],
       "push-reminders"
+    );
+    return { success: true };
+  },
+});
+
+/**
+ * Admin-only: switch watched-lot alerts (outbid, closing in 1 hour) on or off.
+ */
+export const updateWatchAlerts = mutation({
+  args: { enabled: v.boolean() },
+  returns: SuccessValidator,
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await saveSettings(
+      ctx,
+      [
+        {
+          key: KEYS.watchAlertsEnabled,
+          value: args.enabled,
+          description: "Whether watched-lot alerts are enabled",
+        },
+      ],
+      "watch-alerts"
     );
     return { success: true };
   },

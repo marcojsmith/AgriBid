@@ -86,6 +86,18 @@ crons.interval(
 );
 
 /**
+ * Send the "closing in 1 hour" push to everyone who watches a lot. The Admin
+ * "Watched-lot alerts" setting is the real switch; this job is a cheap no-op
+ * while it is off.
+ */
+crons.interval(
+  "send closing soon alerts",
+  { minutes: 5 },
+  internal.cronJobs.sendClosingSoonAlerts,
+  {}
+);
+
+/**
  * Daily job to process error reports and create GitHub issues.
  * Runs at 2 AM UTC to avoid peak hours.
  */

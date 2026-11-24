@@ -29,8 +29,9 @@ import { useBranding } from "@/hooks/useBranding";
 import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
 import { useTransportQuote } from "@/hooks/useTransportQuote";
+import { useWatchAlerts } from "@/hooks/useWatchAlerts";
+import { PermissionPrompt } from "@/components/ds/PermissionPrompt";
 import { lotTitle, lotTitleWithYear } from "@/lib/lotTitle";
-import { WATCHING_SAVED_MESSAGE } from "@/lib/auctionRules";
 import { formatClosesIn } from "@/lib/countdown";
 import { URGENT_MS } from "@/lib/auction-badges";
 import { formatSastDate } from "@/lib/dates";
@@ -91,6 +92,7 @@ export default function Home() {
   // Ticks every 5 s so the seconds in the last 10 minutes stay current.
   const now = useNow(5000);
   const { isAuthenticated } = useConvexAuth();
+  const watchAlerts = useWatchAlerts();
   const branding = useBranding();
 
   const rawQuery = searchParams.get("q");
@@ -195,7 +197,7 @@ export default function Home() {
       const watching = await toggleWatchlist({
         lotId: lotId as Id<"lots">,
       });
-      if (watching) showToast(WATCHING_SAVED_MESSAGE);
+      if (watching) showToast(await watchAlerts.afterWatch());
       else toast.success("Removed from watchlist");
     } catch {
       toast.error("Failed to update watchlist");
@@ -478,6 +480,7 @@ export default function Home() {
           ) : null}
         </>
       )}
+      <PermissionPrompt {...watchAlerts.promptProps} />
     </>
   );
 }

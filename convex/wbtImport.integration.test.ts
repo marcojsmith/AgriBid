@@ -733,10 +733,18 @@ describe("wbtDemo", () => {
       await ctx.db.patch("lots", bidLot, { currentPrice: 999999 });
     });
 
+    await t.run(async (ctx) => {
+      for (const lot of await ctx.db.query("lots").collect()) {
+        await ctx.db.patch("lots", lot._id, { closingSoonNotifiedAt: 1 });
+      }
+    });
     const end = Date.now() + 6 * MS_PER_DAY;
+
     await t.mutation(internal.wbtDemo.retimeBatch, {
       auctionId: sale,
+
       role: "live",
+
       startTime: Date.now() - 2 * MS_PER_DAY,
       endTime: end,
       status: "published",
@@ -754,6 +762,12 @@ describe("wbtDemo", () => {
     expect(watchers).toHaveLength(0);
     const auction = await t.run((ctx) => ctx.db.get("auctions", sale));
     expect(auction?.endTime).toBe(end);
+    // Re-timed open lots get their closing-soon alert again.
+    expect(
+      lots
+        .filter((lot) => lot._id !== bidLot)
+        .every((lot) => lot.closingSoonNotifiedAt === undefined)
+    ).toBe(true);
   });
 
   it("reverts lots settled while the sale was past due and keeps real watchers", async () => {

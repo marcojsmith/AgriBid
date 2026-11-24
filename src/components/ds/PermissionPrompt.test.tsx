@@ -19,6 +19,21 @@ describe("PermissionPrompt", () => {
     ).toBeInTheDocument();
   });
 
+  it("uses a custom confirm label", () => {
+    render(
+      <PermissionPrompt
+        open
+        onOpenChange={() => undefined}
+        onAllow={() => undefined}
+        description="x"
+        allowLabel="Allow alerts"
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: "Allow alerts" })
+    ).toBeInTheDocument();
+  });
+
   it("calls onAllow and closes on Not now", () => {
     const onAllow = vi.fn();
     const onOpenChange = vi.fn();

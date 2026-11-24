@@ -531,6 +531,42 @@ function PushRemindersForm({ settings }: { settings: PlatformSettings }) {
 }
 
 /**
+ * Watched-lot alerts switch (outbid and closing in 1 hour).
+ *
+ * @param props - Component props
+ * @param props.settings - Stored settings
+ * @returns The section element
+ */
+function WatchAlertsForm({ settings }: { settings: PlatformSettings }) {
+  const update = useMutation(api.admin.platformSettings.updateWatchAlerts);
+  const [enabled, setEnabled] = useState(settings.watchAlertsEnabled);
+
+  return (
+    <SettingsSection
+      id="watch-alerts"
+      title="Watched-lot alerts"
+      description="Push and in-app alerts to people who watch a lot: outbid, and 1 hour before close."
+      error={null}
+      unchanged={enabled === settings.watchAlertsEnabled}
+      saveLabel="Save watched-lot alerts"
+      successMessage="Watched-lot alerts saved"
+      onSave={() => update({ enabled })}
+    >
+      <div className="flex items-center gap-3">
+        <Switch
+          id="watch-alerts-enabled"
+          checked={enabled}
+          onCheckedChange={setEnabled}
+        />
+        <Label htmlFor="watch-alerts-enabled">
+          Watched-lot alerts (outbid, closing in 1 hour)
+        </Label>
+      </div>
+    </SettingsSection>
+  );
+}
+
+/**
  * Minimum photos per lot form.
  *
  * @param props - Component props
@@ -601,6 +637,10 @@ export function PlatformSettingsCards() {
       />
       <PushRemindersForm
         key={String(settings.pushRemindersEnabled)}
+        settings={settings}
+      />
+      <WatchAlertsForm
+        key={String(settings.watchAlertsEnabled)}
         settings={settings}
       />
       <MinPhotosForm key={settings.minPhotosPerLot} settings={settings} />

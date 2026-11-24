@@ -103,6 +103,22 @@ export const removeSubscription = mutation({
   },
 });
 
+/** Whether the caller has at least one saved push subscription (false when signed out). */
+export const hasMySubscription = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    const authUser = await getAuthUser(ctx);
+    const userId = authUser ? resolveUserId(authUser) : null;
+    if (!userId) return false;
+    const first = await ctx.db
+      .query("pushSubscriptions")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    return first !== null;
+  },
+});
+
 /** Whether the caller has asked to be reminded when a sale opens. */
 export const getMySaleReminder = query({
   args: { auctionId: v.id("auctions") },

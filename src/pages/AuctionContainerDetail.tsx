@@ -32,9 +32,9 @@ import { useNow } from "@/hooks/useNow";
 import { usePushReminders } from "@/hooks/usePushReminders";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
 import { useTransportQuote } from "@/hooks/useTransportQuote";
+import { useWatchAlerts } from "@/hooks/useWatchAlerts";
 import { URGENT_MS } from "@/lib/auction-badges";
 import { getEventBucket } from "@/lib/auction-utils";
-import { WATCHING_SAVED_MESSAGE } from "@/lib/auctionRules";
 import { formatClosesIn, formatRemaining } from "@/lib/countdown";
 import { formatSastDate } from "@/lib/dates";
 import type { EventSort } from "@/lib/eventPage";
@@ -98,6 +98,7 @@ function EventPage({ id }: { id: string | undefined }) {
   const auctionId = id as Id<"auctions"> | undefined;
   const navigate = useNavigate();
   const { isAuthenticated } = useConvexAuth();
+  const watchAlerts = useWatchAlerts();
   const branding = useBranding();
   // Ticks every 5 s so the seconds in the last 10 minutes stay current.
   const now = useNow(5000);
@@ -300,7 +301,7 @@ function EventPage({ id }: { id: string | undefined }) {
     }
     try {
       const watching = await toggleWatchlist({ lotId: lotId as Id<"lots"> });
-      if (watching) showToast(WATCHING_SAVED_MESSAGE);
+      if (watching) showToast(await watchAlerts.afterWatch());
       else toast.success("Removed from watchlist");
     } catch {
       toast.error("Failed to update watchlist");
@@ -581,6 +582,7 @@ function EventPage({ id }: { id: string | undefined }) {
           if (!open) setSheet(null);
         }}
       />
+      <PermissionPrompt {...watchAlerts.promptProps} />
       <PermissionPrompt
         open={sheet === "permission"}
         onOpenChange={(open) => {

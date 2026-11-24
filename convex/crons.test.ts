@@ -21,6 +21,7 @@ vi.mock("./_generated/api", () => ({
       purgeLotViewers: "purgeLotViewers",
       refreshEngagementScores: "refreshEngagementScores",
       sendSaleReminders: "sendSaleReminders",
+      sendClosingSoonAlerts: "sendClosingSoonAlerts",
     },
   },
 }));
@@ -83,6 +84,13 @@ describe("Crons Coverage", () => {
       "send sale reminders",
       { minutes: 1 },
       "sendSaleReminders",
+      {}
+    );
+
+    expect(crons.interval).toHaveBeenCalledWith(
+      "send closing soon alerts",
+      { minutes: 5 },
+      "sendClosingSoonAlerts",
       {}
     );
   });

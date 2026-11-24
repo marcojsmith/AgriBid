@@ -88,6 +88,7 @@ describe("getPlatformSettings", () => {
       sellerCosts: { commissionPct: 8, listingFee: 0, payoutDays: 7 },
       financeContact: { name: null, company: null, phone: null },
       pushRemindersEnabled: false,
+      watchAlertsEnabled: false,
       minPhotosPerLot: 8,
     });
   });
@@ -388,6 +389,36 @@ describe("updatePushReminders", () => {
       t
         .withIdentity({ subject: BUYER })
         .mutation(api.admin.platformSettings.updatePushReminders, {
+          enabled: true,
+        })
+    ).rejects.toThrow();
+  });
+});
+
+describe("updateWatchAlerts", () => {
+  it("toggles the flag and audits", async () => {
+    const t = makeContext();
+    await seed(t);
+    await asAdmin(t).mutation(api.admin.platformSettings.updateWatchAlerts, {
+      enabled: true,
+    });
+    const settings = await t.query(
+      api.admin.platformSettings.getPlatformSettings,
+      {}
+    );
+    expect(settings.watchAlertsEnabled).toBe(true);
+    // Separate from the sale-open reminders switch.
+    expect(settings.pushRemindersEnabled).toBe(false);
+    expect(await audits(t, "watch-alerts")).toBe(1);
+  });
+
+  it("rejects non-admins", async () => {
+    const t = makeContext();
+    await seed(t);
+    await expect(
+      t
+        .withIdentity({ subject: BUYER })
+        .mutation(api.admin.platformSettings.updateWatchAlerts, {
           enabled: true,
         })
     ).rejects.toThrow();

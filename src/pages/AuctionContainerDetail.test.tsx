@@ -101,6 +101,24 @@ vi.mock("sonner", () => ({ toast }));
 const showToast = vi.hoisted(() => vi.fn());
 vi.mock("@/components/ds/showToast", () => ({ showToast }));
 
+const wa = vi.hoisted(() => ({
+  message: "Watching. Find this lot in your watchlist.",
+  open: false,
+  onAllow: vi.fn(),
+}));
+vi.mock("@/hooks/useWatchAlerts", () => ({
+  useWatchAlerts: () => ({
+    afterWatch: () => Promise.resolve(wa.message),
+    promptProps: {
+      open: wa.open,
+      onOpenChange: vi.fn(),
+      onAllow: wa.onAllow,
+      description: "Get an alert 1 hour before close and if you're outbid?",
+      allowLabel: "Allow alerts",
+    },
+  }),
+}));
+
 const settings = {
   buyerPremiumPct: 12,
   deposit: { enabled: true, amount: 5000, refundDays: 3 },
@@ -751,5 +769,39 @@ describe("AuctionContainerDetail", () => {
       expect(lastLotsArgs()).toMatchObject({ outcome: "under_consideration" });
       expect(screen.getByText(/1 under consideration/)).toBeVisible();
     });
+  });
+});
+
+describe("watched-lot alerts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    h.calls = [];
+    h.authed = false;
+    h.pastCta = false;
+    setup();
+    wa.message = "Watching. Find this lot in your watchlist.";
+    wa.open = false;
+  });
+
+  it("promises alerts in the toast only when the hook says they will arrive", async () => {
+    wa.message =
+      "Watching. We'll notify you 1 hour before close and if you're outbid.";
+    h.authed = true;
+    h.toggle.mockResolvedValueOnce(true);
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Watch/i }));
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith(wa.message);
+    });
+  });
+
+  it("shows the alerts permission prompt and allows from it", () => {
+    wa.open = true;
+    renderPage();
+    expect(
+      screen.getByText("Get an alert 1 hour before close and if you're outbid?")
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Allow alerts" }));
+    expect(wa.onAllow).toHaveBeenCalled();
   });
 });

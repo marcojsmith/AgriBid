@@ -134,6 +134,8 @@ async function resetOpenLot(ctx: MutationCtx, lot: Doc<"lots">): Promise<void> {
       winnerId: undefined,
       settledAt: undefined,
       extendedEndTime: undefined,
+      closingSoonNotifiedAt: undefined,
+      closingSoonCursor: undefined,
       considerationDeadline: undefined,
     });
     if (lot.status === "under_consideration") {

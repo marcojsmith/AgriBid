@@ -58,6 +58,8 @@ export const DEFAULT_SELLER_LISTING_FEE = 0;
 export const DEFAULT_SELLER_PAYOUT_DAYS = 7;
 export const MAX_SELLER_PAYOUT_DAYS = 60;
 export const DEFAULT_PUSH_REMINDERS_ENABLED = false;
+/** Watched-lot alerts (outbid, closing in 1 hour) are opt-in for admins. */
+export const DEFAULT_WATCH_ALERTS_ENABLED = false;
 // Maximum number of additional images allowed for a lot (declared here so the
 // min-photos maximum below can derive from it).
 export const MAX_ADDITIONAL_IMAGES = 6;
@@ -304,3 +306,7 @@ export const TRANSPORT_QUOTE_MAX_NOTES_LENGTH = 500;
 export const SALE_REMINDER_BATCH = 100;
 /** A sale that opened longer ago than this no longer sends its reminders. */
 export const SALE_REMINDER_STALE_MS = 6 * 3_600_000;
+/** A lot closing within this long from now gets its "closing soon" alert. */
+export const CLOSING_SOON_WINDOW_MS = 60 * 60_000;
+/** Watcher notifications sent per closing-soon cron run; more reschedules it. */
+export const CLOSING_SOON_MAX_NOTIFICATIONS = 200;

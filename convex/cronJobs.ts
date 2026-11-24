@@ -23,6 +23,7 @@ import {
 } from "./engagement";
 import { requireAdmin } from "./lib/auth";
 import { sendDueSaleRemindersHandler } from "./push";
+import { sendClosingSoonAlertsHandler } from "./watchAlerts";
 import { runOrphanSweep } from "./storageCleanup";
 
 /**
@@ -266,6 +267,30 @@ export const sendSaleReminders = internalMutation({
       return { sent: 0, hasMore: false };
     }
     return await sendDueSaleRemindersHandler(ctx, Date.now());
+  },
+});
+
+/**
+ * Cron wrapper: send due closing-soon alerts unless the job is disabled. A
+ * run that hit its notification bound reschedules itself through this wrapper,
+ * so the gate is re-checked.
+ */
+export const sendClosingSoonAlerts = internalMutation({
+  args: {},
+  returns: v.object({ notified: v.number(), hasMore: v.boolean() }),
+  handler: async (ctx) => {
+    if (!(await isCronJobEnabled(ctx, "send_closing_soon_alerts"))) {
+      return { notified: 0, hasMore: false };
+    }
+    const result = await sendClosingSoonAlertsHandler(ctx, Date.now());
+    if (result.hasMore) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.cronJobs.sendClosingSoonAlerts,
+        {}
+      );
+    }
+    return result;
   },
 });
 

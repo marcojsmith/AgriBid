@@ -105,6 +105,10 @@ export default defineSchema({
     lotNumber: v.optional(v.number()),
     // South African province the equipment is located in (seller-set, admin-editable).
     province: v.optional(provinceValidator),
+    // When the "closing in 1 hour" alert went out to this lot's watchers (once per lot).
+    closingSoonNotifiedAt: v.optional(v.number()),
+    // Set while a lot with many watchers is only partly alerted: the `_creationTime` of the last watchlist row done. Cleared on completion.
+    closingSoonCursor: v.optional(v.number()),
     extendedEndTime: v.optional(v.number()), // effectiveLotEndTime = extendedEndTime ?? auction.endTime
     // Snapshot of the parent auction's fee defaults at assignment time, so later auction edits don't change an already-assigned lot's fees.
     resolvedBuyerPremiumPct: v.optional(v.number()),
