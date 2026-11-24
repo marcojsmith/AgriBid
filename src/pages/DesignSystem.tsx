@@ -34,6 +34,13 @@ import { StickyBar } from "@/components/ds/StickyBar";
 import { Toast } from "@/components/ds/Toast";
 import { showToast } from "@/components/ds/showToast";
 import { WatchButton } from "@/components/ds/WatchButton";
+import { CopyRow } from "@/components/ds/CopyRow";
+import { IdTypeToggle, type IdType } from "@/components/ds/IdTypeToggle";
+import { RegProgress } from "@/components/ds/RegProgress";
+import { RegStatusList } from "@/components/ds/RegStatusList";
+import { TextField } from "@/components/ds/TextField";
+import { UploadSlot, type UploadSlotFile } from "@/components/ds/UploadSlot";
+import { WhyBox } from "@/components/ds/WhyBox";
 import { WhatsAppButton } from "@/components/ds/WhatsAppButton";
 import { contrastRatio, readHslTokens } from "@/lib/color-contrast";
 import { formatRand } from "@/lib/currency";
@@ -146,6 +153,14 @@ export default function DesignSystem() {
     { key: "cat", label: "Tractors" },
     { key: "prov", label: "Free State" },
   ]);
+
+  const [idType, setIdType] = useState<IdType>("sa_id");
+  const [cell, setCell] = useState("");
+  const [idNumber, setIdNumber] = useState("90010");
+  const [idFront, setIdFront] = useState<UploadSlotFile | undefined>({
+    name: "id-front.jpg",
+    size: 1_258_291,
+  });
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -517,6 +532,118 @@ export default function DesignSystem() {
         <p className="text-[13px] text-muted-foreground">
           The sticky bar shows below 768px only (resize to see it).
         </p>
+      </section>
+
+      <section aria-labelledby="ds-register" className="space-y-4">
+        <SectionHeader id="ds-register" title="Registration" />
+        <div className="grid gap-8 md:grid-cols-2">
+          <div>
+            <RegProgress step={1} total={4} label="Your details" />
+            <IdTypeToggle value={idType} onChange={setIdType} />
+            <TextField
+              id="ds-name"
+              label="Full name"
+              value="Thandi Naidoo"
+              onChange={() => undefined}
+              autoComplete="name"
+            />
+            <TextField
+              id="ds-id"
+              label={idType === "sa_id" ? "ID number" : "Passport number"}
+              value={idNumber}
+              onChange={setIdNumber}
+              inputMode="numeric"
+              maxLength={13}
+              hint={idType === "sa_id" ? "13 digits." : undefined}
+              error={
+                idType === "sa_id" && idNumber.length < 13
+                  ? "Enter all 13 digits"
+                  : undefined
+              }
+            />
+            <TextField
+              id="ds-cell"
+              label="Cell number"
+              value={cell}
+              onChange={setCell}
+              prefix="+27"
+              inputMode="tel"
+              autoComplete="tel-national"
+              hint="We call you about lots you win."
+            />
+          </div>
+          <div>
+            <RegProgress step={2} total={4} label="ID" />
+            <UploadSlot
+              label="ID front"
+              file={idFront}
+              onFile={(f) => {
+                setIdFront({ name: f.name, size: f.size });
+              }}
+            />
+            <UploadSlot label="ID back" onFile={() => undefined} />
+            <UploadSlot
+              label="Proof of address"
+              onFile={() => undefined}
+              uploading
+            />
+            <UploadSlot
+              label="Passport photo page"
+              onFile={() => undefined}
+              error="File is too large. Use one under 10 MB."
+            />
+          </div>
+        </div>
+        <div className="grid gap-8 md:grid-cols-2">
+          <div className="rounded-md border border-border px-3.5 py-1">
+            <h3 className="mt-3 mb-1 text-[17px] font-semibold">Pay by EFT</h3>
+            <CopyRow label="Bank" value="First National Bank" />
+            <CopyRow label="Account number" value="62 1234 5678" />
+            <CopyRow
+              label="Reference. Use exactly"
+              value="AB-7K3F2"
+              highlight
+            />
+            <p className="py-2.5 text-sm text-muted-foreground">
+              Refunds go back to the account you paid from.
+            </p>
+          </div>
+          <div>
+            <RegStatusList
+              rows={[
+                { key: "d", title: "Your details", sub: "Saved", tone: "ok" },
+                {
+                  key: "id",
+                  title: "ID",
+                  sub: "Under review",
+                  tone: "pending",
+                },
+                {
+                  key: "poa",
+                  title: "Proof of address",
+                  sub: "Needs replacing",
+                  tone: "bad",
+                  action: (
+                    <Button size="sm" onClick={() => undefined}>
+                      Replace
+                    </Button>
+                  ),
+                },
+                {
+                  key: "dep",
+                  title: "Deposit",
+                  sub: "R 5 000 · not yet received",
+                  tone: "neutral",
+                  action: <a href="#ds-register">Pay now</a>,
+                },
+              ]}
+            />
+            <WhyBox
+              reason="The bill is older than 3 months. Upload one from the last 3 months."
+              checkedAt={Date.UTC(2026, 10, 22, 9, 40)}
+            />
+          </div>
+        </div>
       </section>
 
       <section aria-labelledby="ds-frame" className="space-y-4">
