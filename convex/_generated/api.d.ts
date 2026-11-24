@@ -96,6 +96,7 @@ import type * as userActivity from "../userActivity.js";
 import type * as userPreferences from "../userPreferences.js";
 import type * as users from "../users.js";
 import type * as watchlist from "../watchlist.js";
+import type * as watchAlerts from "../watchAlerts.js";
 import type * as wbtDemo from "../wbtDemo.js";
 import type * as wbtImport from "../wbtImport.js";
 
@@ -194,6 +195,7 @@ declare const fullApi: ApiFromModules<{
   userPreferences: typeof userPreferences;
   users: typeof users;
   watchlist: typeof watchlist;
+  watchAlerts: typeof watchAlerts;
   wbtDemo: typeof wbtDemo;
   wbtImport: typeof wbtImport;
 }>;

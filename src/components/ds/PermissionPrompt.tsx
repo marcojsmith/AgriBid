@@ -10,6 +10,8 @@ interface PermissionPromptProps {
   onAllow: () => void;
   /** The sentence under the title, e.g. "So we can tell you when this sale opens." */
   description: string;
+  /** The confirm button text; defaults to "Allow". */
+  allowLabel?: string;
 }
 
 /**
@@ -22,6 +24,7 @@ interface PermissionPromptProps {
  * @param props.onOpenChange - Called when the prompt asks to open or close
  * @param props.onAllow - Called on Allow
  * @param props.description - The sentence under the title
+ * @param props.allowLabel - The confirm button text (default "Allow")
  * @returns The prompt
  */
 export function PermissionPrompt({
@@ -29,6 +32,7 @@ export function PermissionPrompt({
   onOpenChange,
   onAllow,
   description,
+  allowLabel = "Allow",
 }: PermissionPromptProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -55,7 +59,7 @@ export function PermissionPrompt({
               Not now
             </Button>
             <Button className="flex-1" onClick={onAllow}>
-              Allow
+              {allowLabel}
             </Button>
           </div>
         </Dialog.Content>

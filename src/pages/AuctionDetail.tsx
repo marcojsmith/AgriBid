@@ -51,7 +51,8 @@ import { useScrolledPast } from "@/hooks/useScrolledPast";
 import { useTransportQuote } from "@/hooks/useTransportQuote";
 import { useVatRate } from "@/hooks/useVatRate";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { WATCHING_SAVED_MESSAGE } from "@/lib/auctionRules";
+import { useWatchAlerts } from "@/hooks/useWatchAlerts";
+import { PermissionPrompt } from "@/components/ds/PermissionPrompt";
 import { formatSastDate } from "@/lib/dates";
 import { formatLotCount, telLink, whatsappLink } from "@/lib/homeSales";
 import {
@@ -121,6 +122,7 @@ function LotPage({ id }: { id: string | undefined }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useConvexAuth();
+  const watchAlerts = useWatchAlerts();
   const branding = useBranding();
   const profile = useUserProfile();
   const now = useNow(5000);
@@ -311,7 +313,7 @@ function LotPage({ id }: { id: string | undefined }) {
     }
     try {
       const watching = await toggleWatchlist({ lotId: targetId });
-      if (watching) showToast(WATCHING_SAVED_MESSAGE);
+      if (watching) showToast(await watchAlerts.afterWatch());
       else toast.success("Removed from watchlist");
     } catch {
       toast.error("Failed to update watchlist");
@@ -786,6 +788,7 @@ function LotPage({ id }: { id: string | undefined }) {
         deposit={settings.deposit}
         exampleBid={minimum}
       />
+      <PermissionPrompt {...watchAlerts.promptProps} />
     </>
   );
 }

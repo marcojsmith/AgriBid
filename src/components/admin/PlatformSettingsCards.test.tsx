@@ -19,6 +19,7 @@ vi.mock("convex/_generated/api", () => ({
         updateSellerCosts: "ps:seller",
         updateFinanceContact: "ps:finance",
         updatePushReminders: "ps:push",
+        updateWatchAlerts: "ps:watch",
         updateMinPhotos: "ps:photos",
       },
     },
@@ -32,6 +33,7 @@ const settings = {
   sellerCosts: { commissionPct: 5, listingFee: 0, payoutDays: 7 },
   financeContact: { name: null, company: null, phone: null },
   pushRemindersEnabled: false,
+  watchAlertsEnabled: false,
   minPhotosPerLot: 8,
 };
 
@@ -68,6 +70,7 @@ describe("PlatformSettingsCards", () => {
       "ps:seller",
       "ps:finance",
       "ps:push",
+      "ps:watch",
       "ps:photos",
     ]) {
       mutations[key] = vi.fn().mockResolvedValue({ success: true });
@@ -90,6 +93,7 @@ describe("PlatformSettingsCards", () => {
       "Save seller costs",
       "Save finance contact",
       "Save push reminders",
+      "Save watched-lot alerts",
       "Save minimum photos",
     ]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
@@ -252,6 +256,22 @@ describe("PlatformSettingsCards", () => {
     await waitFor(() => {
       expect(mutations["ps:push"]).toHaveBeenCalledWith({ enabled: true });
     });
+  });
+
+  it("saves watched-lot alerts separately from push reminders", async () => {
+    render(<PlatformSettingsCards />);
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Watched-lot alerts (outbid, closing in 1 hour)",
+      })
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save watched-lot alerts" })
+    );
+    await waitFor(() => {
+      expect(mutations["ps:watch"]).toHaveBeenCalledWith({ enabled: true });
+    });
+    expect(mutations["ps:push"]).not.toHaveBeenCalled();
   });
 
   it("saves the minimum photos and validates the range", async () => {

@@ -4,11 +4,8 @@ import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 
 import { browserNeedsHomeScreenInstall } from "@/lib/homeScreen";
-import {
-  currentSubscription,
-  pushSupported,
-  subscribeToPush,
-} from "@/lib/push";
+import { ensurePushSubscription } from "@/lib/ensurePushSubscription";
+import { currentSubscription, pushSupported } from "@/lib/push";
 import { requestReminderPermission } from "@/lib/reminders";
 
 /** What tapping Remind me should do next. */
@@ -95,8 +92,7 @@ export function usePushReminders(
     if (vapidKey === undefined) return "failed";
     if (vapidKey === null) return "unsupported";
     try {
-      const subscription = await subscribeToPush(vapidKey);
-      await saveSubscription(subscription);
+      await ensurePushSubscription(vapidKey, saveSubscription);
       await setSaleReminder({ auctionId, on: true });
       return "granted";
     } catch {

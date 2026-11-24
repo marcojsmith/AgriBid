@@ -219,6 +219,20 @@ describe("removeSubscription", () => {
 });
 
 describe("sale reminders", () => {
+  it("hasMySubscription is false signed out, true once a subscription is saved", async () => {
+    const t = makeContext();
+    expect(await t.query(api.push.hasMySubscription, {})).toBe(false);
+    const asAlice = t.withIdentity({ subject: ALICE });
+    expect(await asAlice.query(api.push.hasMySubscription, {})).toBe(false);
+    await asAlice.mutation(api.push.saveSubscription, sub());
+    expect(await asAlice.query(api.push.hasMySubscription, {})).toBe(true);
+    expect(
+      await t
+        .withIdentity({ subject: BOB })
+        .query(api.push.hasMySubscription, {})
+    ).toBe(false);
+  });
+
   it("getMySaleReminder is false when signed out", async () => {
     const t = makeContext();
     const id = await makeSale(t, Date.now() + HOUR);

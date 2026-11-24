@@ -5,7 +5,8 @@ import type { MutationCtx } from "../../_generated/server";
 import type { Id } from "../../_generated/dataModel";
 import { requireVerified } from "../../lib/auth";
 import { logActivity } from "../../userActivity";
-import { handleNewBid } from "../proxy_bidding";
+import { notifyOutbidWatcher } from "../../watchAlerts";
+import { getMostRecentBid, handleNewBid } from "../proxy_bidding";
 import { MAX_BID_AMOUNT } from "../../constants";
 
 /**
@@ -98,6 +99,8 @@ export const placeBidHandler = async (
     throw new ConvexError("Auction ended");
   }
 
+  const previousLeader = await getMostRecentBid(ctx, args.lotId);
+
   // Use handleNewBid for all bidding logic (including proxy and regular)
   const result = await handleNewBid(
     ctx,
@@ -106,6 +109,19 @@ export const placeBidHandler = async (
     args.amount,
     args.maxBid
   );
+
+  // Outbid alert: compare the leader before and after, which also covers a
+  // proxy counter-bid that keeps the previous leader on top.
+  const newLeader = await getMostRecentBid(ctx, args.lotId);
+  if (newLeader) {
+    await notifyOutbidWatcher(ctx, {
+      lot,
+      previousLeaderId: previousLeader?.bidderId,
+      newLeaderId: newLeader.bidderId,
+      bidderId: userId,
+      amount: newLeader.amount,
+    });
+  }
 
   // Record the cooldown only after the bid succeeds, so a rejected bid
   // (e.g. "Auction ended") doesn't consume the cooldown window.
