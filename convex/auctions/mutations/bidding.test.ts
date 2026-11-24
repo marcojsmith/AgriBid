@@ -9,8 +9,14 @@ import {
   getProxyBid,
 } from "../proxy_bidding";
 import * as auth from "../../lib/auth";
+import * as guard from "../../lib/bidGuard";
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
+
+vi.mock("../../lib/bidGuard", () => ({
+  requireCanBid: vi.fn(),
+  canUserBid: vi.fn().mockResolvedValue(true),
+}));
 
 vi.mock("../../lib/auth", () => {
   class UnauthorizedError extends Error {
@@ -23,7 +29,6 @@ vi.mock("../../lib/auth", () => {
     getAuthenticatedUserId: vi.fn(),
     requireAdmin: vi.fn(),
     requireAuth: vi.fn(),
-    requireVerified: vi.fn(),
     getCallerRole: vi.fn(),
     getAuthUser: vi.fn(),
     resolveUserId: vi.fn(),
@@ -81,6 +86,7 @@ describe("Bidding Coverage", () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(guard.canUserBid).mockResolvedValue(true);
     mockCtx = {
       db: {
         get: vi.fn(),
@@ -122,7 +128,7 @@ describe("Bidding Coverage", () => {
 
     it("should throw if lot not found", async () => {
       const userId = "u1";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -138,7 +144,7 @@ describe("Bidding Coverage", () => {
 
     it("should refuse bids on a lot that is not open (e.g. under consideration)", async () => {
       const userId = "u2";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -157,7 +163,7 @@ describe("Bidding Coverage", () => {
 
     it("should throw if lot is not assigned to an auction", async () => {
       const userId = "u1";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -182,7 +188,7 @@ describe("Bidding Coverage", () => {
 
     it("should throw if auction not found", async () => {
       const userId = "u1";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -198,7 +204,7 @@ describe("Bidding Coverage", () => {
 
     it("should throw if auction not active", async () => {
       const userId = "u1";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -217,7 +223,7 @@ describe("Bidding Coverage", () => {
 
     it("should throw if the auction's scheduled startTime is in the future (#296)", async () => {
       const userId = "u2";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -236,7 +242,7 @@ describe("Bidding Coverage", () => {
 
     it("should allow bidding once the scheduled startTime has passed", async () => {
       const userId = "u2";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -265,7 +271,7 @@ describe("Bidding Coverage", () => {
 
     it("should reject proxy bid (maxBid) before scheduled startTime (#296)", async () => {
       const userId = "u2";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -286,7 +292,7 @@ describe("Bidding Coverage", () => {
 
     it("should allow proxy bid once scheduled startTime has passed (#296)", async () => {
       const userId = "u2";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -308,7 +314,7 @@ describe("Bidding Coverage", () => {
 
     it("should throw if seller bids on own auction", async () => {
       const userId = "u1";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "seller"),
         userId,
       });
@@ -324,7 +330,7 @@ describe("Bidding Coverage", () => {
 
     it("should throw if auction ended", async () => {
       const userId = "u2";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -343,7 +349,7 @@ describe("Bidding Coverage", () => {
 
     it("should place bid successfully", async () => {
       const userId = "u2";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -377,7 +383,7 @@ describe("Bidding Coverage", () => {
 
     it("should not log activity if the auction is not found", async () => {
       const userId = "u1";
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });
@@ -733,7 +739,7 @@ describe("Bidding Coverage", () => {
 
   describe("placeBidHandler bid cooldown (issue #283)", () => {
     const setupVerifiedUser = (userId: string) => {
-      vi.mocked(auth.requireVerified).mockResolvedValue({
+      vi.mocked(guard.requireCanBid).mockResolvedValue({
         profile: createMockProfile(userId, "buyer"),
         userId,
       });

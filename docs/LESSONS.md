@@ -8,6 +8,7 @@ Dates are the notes' section dates (month-only where the source gave only a mont
 
 ## Convex
 
+- 2026-11-24 - A mutation that throws rolls back every write, including `ctx.storage.delete`, so "delete the bad upload, then throw" cannot work in one mutation; `attachMyDocument` just throws and leaves the file to the orphan sweep. Any new table that references `_storage` must also be added to `REFERENCE_TABLES` in `convex/storageCleanup.ts`, or the sweep deletes its files after a day. `convex-test` stores no `contentType` on `_storage` rows: patch it in the test before checking MIME rules (R1).
 - 2026-11-23 - `toLotSummary` fed every lot list and carried `reservePrice`, `sellerId` and `winnerId`, so every public list leaked them even after `getLotById` was fixed (#418). Public summaries now never include them; seller and admin paths use `toOwnerLotSummaries` after an ownership or `requireAdmin` check. When adding a query that returns lots, use `toLotSummaries` and add it to `publicLeaks.test.ts`.
 - 2026-11-23 - `resolveBuyerPremium` returns `rate: undefined` for the fee-rows case; sum the active buyer percentage rows (`isBuyerPercentageFee`) and add the fixed buyer fees. `platformFees.value` is already a fraction (settlement does `price * value`), so do not run it through `percentToFraction`.
 - 2026-11-23 - `getLotById` used to send `sellerId`, `winnerId`, `sellerEmail` and the reserve amount to every visitor; return booleans (`isSeller`, `isWinner`) and a `reserveState` instead, and mask bidders with a salted per-lot hash (`BIDDER_LABEL_SALT`).

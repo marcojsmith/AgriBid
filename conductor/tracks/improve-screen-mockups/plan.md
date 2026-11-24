@@ -56,6 +56,18 @@ Owner direction:
 
 Order: D1 → D2 → D3 → D4 → D5 → D6 → D7 → D8 → D9, then the Register mockups.
 
+## Register build (from 2026-11-24)
+
+| WP  | Title                                                                                     | Risk                               | Depends | Status    | PR  |
+| --- | ----------------------------------------------------------------------------------------- | ---------------------------------- | ------- | --------- | --- |
+| R1  | Register: schema, buyer backend and bid rule (documents, deposit, bank details, headline) | **risky** (schema, bid guard, PII) | none    | in review |     |
+| R2  | Register screens: details and documents                                                   | low                                | R1      | todo      |     |
+| R3  | Register screens: deposit and review states                                               | low                                | R1, R2  | todo      |     |
+| R4  | Admin: review documents, mark deposit received, refund, bank details                      | **risky** (admin mutations)        | R1      | todo      |     |
+| R5  | Lot page: eligibility-driven bid panel                                                    | **risky** (bid flow UI)            | R1, R3  | todo      |     |
+
+R1 notes: `computeBidEligibility` is pure in `convex/lib/bidEligibility.ts` (importable from `src/`); the database-backed `getBidEligibility` and `requireCanBid` live in `convex/lib/bidGuard.ts` so the pure file does not pull in the Convex runtime. Verified buyers who change ID type are refused (their documents are already approved). An invalid upload is rejected by throwing, so the file is left for the orphan sweep (deleting it in the same mutation would be rolled back).
+
 ## Work packages
 
 ### WP0 · Track docs (Haiku thread, docs-only)

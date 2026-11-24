@@ -3,7 +3,7 @@ import { v, ConvexError } from "convex/values";
 import { mutation } from "../../_generated/server";
 import type { MutationCtx } from "../../_generated/server";
 import type { Id } from "../../_generated/dataModel";
-import { requireVerified } from "../../lib/auth";
+import { requireCanBid } from "../../lib/bidGuard";
 import { logActivity } from "../../userActivity";
 import { notifyOutbidWatcher } from "../../watchAlerts";
 import { getMostRecentBid, handleNewBid } from "../proxy_bidding";
@@ -32,8 +32,8 @@ export const placeBidHandler = async (
     maxBid?: number;
   }
 ) => {
-  // This also returns userId
-  const { userId } = await requireVerified(ctx);
+  // Documents approved and, when the deposit setting is on, deposit received.
+  const { userId } = await requireCanBid(ctx);
 
   // Per-user cooldown check (issue #283). Must happen before handleNewBid so
   // a rejected bid never consumes the cooldown window.

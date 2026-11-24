@@ -324,6 +324,15 @@ export default defineSchema({
     sellerType: v.optional(sellerTypeValidator),
     // Admin-set: how quickly this seller usually replies (public copy).
     sellerResponseTime: v.optional(sellerResponseTimeValidator),
+    // Registration (R1): all optional so existing profiles stay valid.
+    idType: v.optional(v.union(v.literal("sa_id"), v.literal("passport"))),
+    fullName: v.optional(v.string()), // Encrypted PII
+    passportNumber: v.optional(v.string()), // Encrypted PII
+    countryOfIssue: v.optional(v.string()), // Plain text, max 56
+    streetAddress: v.optional(v.string()), // Encrypted PII
+    town: v.optional(v.string()), // Encrypted PII
+    postalCode: v.optional(v.string()), // Encrypted PII
+    registrationSubmittedAt: v.optional(v.number()),
     emailVerified: v.optional(v.boolean()),
     phoneVerified: v.optional(v.boolean()),
     bankingVerified: v.optional(v.boolean()),
@@ -335,6 +344,56 @@ export default defineSchema({
     .index("by_kycStatus", ["kycStatus"])
     .index("by_role", ["role"])
     .index("by_isVerified", ["isVerified"]),
+
+  // Registration documents (one row per user and kind; a replacement updates the row).
+  registrationDocuments: defineTable({
+    userId: v.string(),
+    kind: v.union(
+      v.literal("id_front"),
+      v.literal("id_back"),
+      v.literal("passport_photo"),
+      v.literal("proof_of_address")
+    ),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    fileSize: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected")
+    ),
+    rejectionReason: v.optional(v.string()),
+    uploadedAt: v.number(),
+    reviewedAt: v.optional(v.number()),
+    reviewedBy: v.optional(v.string()),
+  })
+    .index("by_userId_and_kind", ["userId", "kind"])
+    .index("by_storageId", ["storageId"])
+    .index("by_status_and_uploadedAt", ["status", "uploadedAt"]),
+
+  // Registration deposit (manual EFT). One row per user; the reference is permanent.
+  registrationDeposits: defineTable({
+    userId: v.string(),
+    reference: v.string(),
+    status: v.union(
+      v.literal("awaiting"),
+      v.literal("paid_claimed"),
+      v.literal("received"),
+      v.literal("refunded")
+    ),
+    amount: v.number(),
+    paidClaimedAt: v.optional(v.number()),
+    receivedAt: v.optional(v.number()),
+    receivedAmount: v.optional(v.number()),
+    markedReceivedBy: v.optional(v.string()),
+    refundedAt: v.optional(v.number()),
+    refundedBy: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_reference", ["reference"])
+    .index("by_status_and_updatedAt", ["status", "updatedAt"]),
 
   // New Admin Features
   auditLogs: defineTable({

@@ -21,10 +21,16 @@ import {
 const referenceTableValidator = v.union(
   v.literal("lots"),
   v.literal("profiles"),
-  v.literal("auctions")
+  v.literal("auctions"),
+  v.literal("registrationDocuments")
 );
 
-const REFERENCE_TABLES = ["lots", "profiles", "auctions"] as const;
+const REFERENCE_TABLES = [
+  "lots",
+  "profiles",
+  "auctions",
+  "registrationDocuments",
+] as const;
 
 /** Max rows re-read per table by the delete mutation's freshness re-check. */
 const RECHECK_ROW_CAP = 500;
@@ -38,7 +44,11 @@ const RECHECK_ROW_CAP = 500;
  */
 function idsFromRow(
   table: (typeof REFERENCE_TABLES)[number],
-  row: Doc<"lots"> | Doc<"profiles"> | Doc<"auctions">
+  row:
+    | Doc<"lots">
+    | Doc<"profiles">
+    | Doc<"auctions">
+    | Doc<"registrationDocuments">
 ): string[] {
   if (table === "lots") {
     const lot = row as Doc<"lots">;
@@ -49,6 +59,9 @@ function idsFromRow(
   }
   if (table === "profiles") {
     return [...((row as Doc<"profiles">).kycDocuments ?? [])];
+  }
+  if (table === "registrationDocuments") {
+    return [(row as Doc<"registrationDocuments">).storageId];
   }
   const banner = (row as Doc<"auctions">).bannerImage;
   return banner ? [banner] : [];
@@ -130,7 +143,7 @@ export const listSweepCandidates = internalQuery({
  *
  * Race guard: the caller proved the candidates unreferenced as of the scan,
  * which spans many transactions. Here, in ONE transaction, every row of the
- * three reference tables created at or after `scanStartedAt` is re-read and
+ * reference tables created at or after `scanStartedAt` is re-read and
  * any candidate it references is spared. If more than
  * {@link RECHECK_ROW_CAP} such rows exist in any table the re-check cannot
  * finish, so nothing is deleted.
@@ -182,8 +195,8 @@ export const deleteOrphanedFiles = internalMutation({
 /**
  * Orphaned-upload sweep orchestrator.
  *
- * Invariant: a file is deleted ONLY if every row of `lots`, `profiles` and
- * `auctions` was read and none references it. Each table is paged to
+ * Invariant: a file is deleted ONLY if every row of `lots`, `profiles`,
+ * `auctions` and `registrationDocuments` was read and none references it. Each table is paged to
  * completion through {@link listReferencedStorageIdsPage}. If any page query
  * throws, or a table needs more than `maxPagesPerTable` pages, the error
  * propagates BEFORE any candidate is selected, so nothing is deleted.

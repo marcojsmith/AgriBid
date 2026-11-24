@@ -215,6 +215,8 @@ export const MAX_AUCTION_DESCRIPTION_LENGTH = 5000;
 export const MAX_FLAG_DETAILS_LENGTH = 1000;
 export const MAX_PROFILE_BIO_LENGTH = 1000;
 export const MAX_PROFILE_FIELD_LENGTH = 200;
+/** Longest accepted country-of-issue text on a passport registration. */
+export const MAX_COUNTRY_OF_ISSUE_LENGTH = 56;
 export const MAX_ERROR_REPORT_FIELD_LENGTH = 5000;
 
 /**
@@ -310,3 +312,9 @@ export const SALE_REMINDER_STALE_MS = 6 * 3_600_000;
 export const CLOSING_SOON_WINDOW_MS = 60 * 60_000;
 /** Watcher notifications sent per closing-soon cron run; more reschedules it. */
 export const CLOSING_SOON_MAX_NOTIFICATIONS = 200;
+
+/** Largest registration document upload (10 MB). */
+export const MAX_REG_DOC_BYTES = 10_485_760;
+
+/** Prefix of every buyer's unique EFT deposit reference (e.g. AB-7K3F2). */
+export const REG_REFERENCE_PREFIX = "AB-";

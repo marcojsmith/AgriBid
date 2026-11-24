@@ -1,0 +1,664 @@
+/**
+ * Buyer registration: personal details, identity and address documents, and the
+ * EFT deposit. Every function needs a signed-in user and only touches the
+ * caller's own data. Admin review and the deposit "received" step live in the
+ * admin modules.
+ */
+
+import { ConvexError, v } from "convex/values";
+
+import type { Doc, Id } from "./_generated/dataModel";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
+import { decryptPII, encryptPII, logAudit, updateCounter } from "./admin_utils";
+import { getDepositSetting } from "./admin/platformSettings";
+import {
+  MAX_COUNTRY_OF_ISSUE_LENGTH,
+  MAX_PROFILE_FIELD_LENGTH,
+  MAX_REG_DOC_BYTES,
+} from "./constants";
+import { requireAuth, requireProfile } from "./lib/auth";
+import { bidEligibilityValidator, hasAllDetails } from "./lib/bidEligibility";
+import { getBidEligibility } from "./lib/bidGuard";
+import {
+  generateReference,
+  isValidPassportNumber,
+  isValidPostalCode,
+  isValidSaId,
+  requiredKinds,
+  syncKycStatus,
+  type IdType,
+  type RegDocKind,
+} from "./lib/registration";
+import { safeDelete } from "./lib/storage";
+import { logActivity } from "./userActivity";
+
+const idTypeValidator = v.union(v.literal("sa_id"), v.literal("passport"));
+const docKindValidator = v.union(
+  v.literal("id_front"),
+  v.literal("id_back"),
+  v.literal("passport_photo"),
+  v.literal("proof_of_address")
+);
+const docStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("approved"),
+  v.literal("rejected")
+);
+const depositStatusValidator = v.union(
+  v.literal("awaiting"),
+  v.literal("paid_claimed"),
+  v.literal("received"),
+  v.literal("refunded")
+);
+
+/** E.164 phone number, e.g. +27825550147. */
+const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
+
+/** Longest accepted uploaded file name. */
+const MAX_FILE_NAME_LENGTH = 200;
+
+/** MIME types accepted for registration documents (no SVG: it can carry script). */
+const ALLOWED_DOC_TYPES: ReadonlySet<string> = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf",
+]);
+
+/** An upload can be attached for this long after it was stored. */
+const UPLOAD_FRESH_MS = 60 * 60 * 1000;
+
+/** How many times a unique deposit reference is retried before giving up. */
+const REFERENCE_ATTEMPTS = 5;
+
+/** Registration documents read per user (four kinds exist). */
+const DOCUMENT_READ_CAP = 10;
+
+/** ID document kinds that belong to one ID type (proof of address is shared). */
+const ID_KINDS: Record<IdType, RegDocKind[]> = {
+  sa_id: ["id_front", "id_back"],
+  passport: ["passport_photo"],
+};
+
+/**
+ * Loads the caller's profile, throwing when signed out or without a profile.
+ *
+ * @param ctx - Query or mutation context
+ * @returns The profile and user id
+ */
+async function loadCaller(
+  ctx: QueryCtx
+): Promise<{ profile: Doc<"profiles">; userId: string }> {
+  await requireAuth(ctx);
+  return await requireProfile(ctx);
+}
+
+/**
+ * Trims a required text field and enforces a length cap.
+ *
+ * @param label - Field label for errors
+ * @param value - Raw input
+ * @param max - Maximum length
+ * @returns The trimmed value
+ */
+function cleanRequired(label: string, value: string, max: number): string {
+  const trimmed = value.trim();
+  if (trimmed === "") throw new ConvexError(`${label} is required.`);
+  if (trimmed.length > max) {
+    throw new ConvexError(
+      `${label} must be at most ${String(max)} characters.`
+    );
+  }
+  return trimmed;
+}
+
+/**
+ * Loads a user's registration document rows.
+ *
+ * @param ctx - Query context
+ * @param userId - The user
+ * @returns Up to one row per kind
+ */
+async function loadDocuments(
+  ctx: QueryCtx,
+  userId: string
+): Promise<Doc<"registrationDocuments">[]> {
+  return await ctx.db
+    .query("registrationDocuments")
+    .withIndex("by_userId_and_kind", (q) => q.eq("userId", userId))
+    .take(DOCUMENT_READ_CAP);
+}
+
+/** Validator for the caller's decrypted registration details. */
+const DetailsValidator = v.object({
+  idType: v.optional(idTypeValidator),
+  fullName: v.optional(v.string()),
+  phoneNumber: v.optional(v.string()),
+  idNumber: v.optional(v.string()),
+  passportNumber: v.optional(v.string()),
+  countryOfIssue: v.optional(v.string()),
+  streetAddress: v.optional(v.string()),
+  town: v.optional(v.string()),
+  postalCode: v.optional(v.string()),
+});
+
+/**
+ * Buyer: everything the register screens need in one query: eligibility,
+ * decrypted details, documents with signed URLs, the deposit and its settings.
+ * Null when the caller has no profile yet.
+ */
+export const getMyRegistration = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      eligibility: bidEligibilityValidator,
+      details: DetailsValidator,
+      documents: v.array(
+        v.object({
+          kind: docKindValidator,
+          status: docStatusValidator,
+          fileName: v.string(),
+          fileSize: v.number(),
+          rejectionReason: v.optional(v.string()),
+          reviewedAt: v.optional(v.number()),
+          url: v.union(v.string(), v.null()),
+        })
+      ),
+      deposit: v.union(
+        v.null(),
+        v.object({
+          reference: v.string(),
+          status: depositStatusValidator,
+          amount: v.number(),
+          receivedAt: v.optional(v.number()),
+          refundedAt: v.optional(v.number()),
+        })
+      ),
+      depositSettings: v.object({
+        enabled: v.boolean(),
+        amount: v.number(),
+        refundDays: v.number(),
+      }),
+      submittedAt: v.optional(v.number()),
+    })
+  ),
+  handler: async (ctx) => {
+    await requireAuth(ctx);
+    let profile: Doc<"profiles">;
+    let userId: string;
+    try {
+      ({ profile, userId } = await requireProfile(ctx));
+    } catch {
+      return null;
+    }
+
+    const [
+      eligibility,
+      documents,
+      deposit,
+      depositSettings,
+      fullName,
+      phoneNumber,
+      idNumber,
+      passportNumber,
+      streetAddress,
+      town,
+      postalCode,
+      firstName,
+      lastName,
+    ] = await Promise.all([
+      getBidEligibility(ctx, profile),
+      loadDocuments(ctx, userId),
+      ctx.db
+        .query("registrationDeposits")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .unique(),
+      getDepositSetting(ctx),
+      decryptPII(profile.fullName),
+      decryptPII(profile.phoneNumber),
+      decryptPII(profile.idNumber),
+      decryptPII(profile.passportNumber),
+      decryptPII(profile.streetAddress),
+      decryptPII(profile.town),
+      decryptPII(profile.postalCode),
+      decryptPII(profile.firstName),
+      decryptPII(profile.lastName),
+    ]);
+
+    const prefill = [firstName, lastName].filter(Boolean).join(" ");
+    const docRows = await Promise.all(
+      documents.map(async (doc) => ({
+        kind: doc.kind,
+        status: doc.status,
+        fileName: doc.fileName,
+        fileSize: doc.fileSize,
+        rejectionReason: doc.rejectionReason,
+        reviewedAt: doc.reviewedAt,
+        url: await ctx.storage.getUrl(doc.storageId),
+      }))
+    );
+
+    return {
+      eligibility,
+      details: {
+        idType: profile.idType,
+        fullName: fullName ?? (prefill === "" ? undefined : prefill),
+        phoneNumber,
+        idNumber,
+        passportNumber,
+        countryOfIssue: profile.countryOfIssue,
+        streetAddress,
+        town,
+        postalCode,
+      },
+      documents: docRows,
+      deposit: deposit
+        ? {
+            reference: deposit.reference,
+            status: deposit.status,
+            amount: deposit.amount,
+            receivedAt: deposit.receivedAt,
+            refundedAt: deposit.refundedAt,
+          }
+        : null,
+      depositSettings,
+      submittedAt: profile.registrationSubmittedAt,
+    };
+  },
+});
+
+/**
+ * Buyer: just the bid eligibility (no decryption), for gating the bid button.
+ * Null when the caller has no profile yet.
+ */
+export const getMyBidEligibility = query({
+  args: {},
+  returns: v.union(v.null(), bidEligibilityValidator),
+  handler: async (ctx) => {
+    await requireAuth(ctx);
+    try {
+      const { profile } = await requireProfile(ctx);
+      return await getBidEligibility(ctx, profile);
+    } catch {
+      return null;
+    }
+  },
+});
+
+/**
+ * Deletes a registration document row and its stored file.
+ *
+ * @param ctx - Mutation context
+ * @param doc - The row to delete
+ */
+async function deleteDocument(
+  ctx: MutationCtx,
+  doc: Doc<"registrationDocuments">
+): Promise<void> {
+  await safeDelete(ctx, doc.storageId, "registration document");
+  await ctx.db.delete("registrationDocuments", doc._id);
+}
+
+/**
+ * Buyer: save the personal and address details. Switching the ID type deletes
+ * the other type's ID documents and their files and sends the registration
+ * back to "not submitted".
+ */
+export const saveMyDetails = mutation({
+  args: {
+    idType: idTypeValidator,
+    fullName: v.string(),
+    phoneNumber: v.string(),
+    idNumber: v.optional(v.string()),
+    passportNumber: v.optional(v.string()),
+    countryOfIssue: v.optional(v.string()),
+    streetAddress: v.string(),
+    town: v.string(),
+    postalCode: v.string(),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx, args) => {
+    const { profile, userId } = await loadCaller(ctx);
+
+    const fullName = cleanRequired(
+      "Full name",
+      args.fullName,
+      MAX_PROFILE_FIELD_LENGTH
+    );
+    const phoneNumber = args.phoneNumber.trim();
+    if (!E164_PATTERN.test(phoneNumber)) {
+      throw new ConvexError(
+        "Enter a valid mobile number with country code, e.g. +27825550147."
+      );
+    }
+    const streetAddress = cleanRequired(
+      "Street address",
+      args.streetAddress,
+      MAX_PROFILE_FIELD_LENGTH
+    );
+    const town = cleanRequired("Town", args.town, MAX_PROFILE_FIELD_LENGTH);
+    const postalCode = cleanRequired(
+      "Postal code",
+      args.postalCode,
+      MAX_PROFILE_FIELD_LENGTH
+    );
+    if (!isValidPostalCode(postalCode)) {
+      throw new ConvexError("Enter a valid postal code.");
+    }
+
+    let idNumber: string | undefined;
+    let passportNumber: string | undefined;
+    let countryOfIssue: string | undefined;
+    if (args.idType === "sa_id") {
+      idNumber = (args.idNumber ?? "").trim();
+      if (!isValidSaId(idNumber)) {
+        throw new ConvexError(
+          "Enter a valid 13-digit South African ID number."
+        );
+      }
+    } else {
+      passportNumber = (args.passportNumber ?? "").trim().toUpperCase();
+      if (!isValidPassportNumber(passportNumber)) {
+        throw new ConvexError("Enter a valid passport number.");
+      }
+      countryOfIssue = cleanRequired(
+        "Country of issue",
+        args.countryOfIssue ?? "",
+        MAX_COUNTRY_OF_ISSUE_LENGTH
+      );
+    }
+
+    // ID kinds of the previous type, when the buyer is switching types.
+    const staleKinds =
+      profile.idType === undefined || profile.idType === args.idType
+        ? null
+        : ID_KINDS[profile.idType];
+    if (profile.isVerified) {
+      throw new ConvexError(
+        "Your details are locked once your documents are approved. Contact support to change them."
+      );
+    }
+    // While the review is open (submitted, nothing rejected) the reviewer is
+    // looking at these details, so they cannot move underneath them.
+    const reviewRows = await loadDocuments(ctx, userId);
+    if (
+      profile.registrationSubmittedAt !== undefined &&
+      !reviewRows.some((doc) => doc.status === "rejected")
+    ) {
+      throw new ConvexError("Your details are under review.");
+    }
+
+    const [encName, encPhone, encId, encPassport, encStreet, encTown, encPost] =
+      await Promise.all([
+        encryptPII(fullName),
+        encryptPII(phoneNumber),
+        encryptPII(idNumber),
+        encryptPII(passportNumber),
+        encryptPII(streetAddress),
+        encryptPII(town),
+        encryptPII(postalCode),
+      ]);
+
+    const patch: Partial<Doc<"profiles">> = {
+      idType: args.idType,
+      fullName: encName,
+      phoneNumber: encPhone,
+      idNumber: encId,
+      passportNumber: encPassport,
+      countryOfIssue,
+      streetAddress: encStreet,
+      town: encTown,
+      postalCode: encPost,
+      updatedAt: Date.now(),
+    };
+
+    if (staleKinds !== null) {
+      const rows = await loadDocuments(ctx, userId);
+      for (const row of rows) {
+        if (staleKinds.includes(row.kind)) await deleteDocument(ctx, row);
+      }
+      // The old submission no longer covers the required documents.
+      patch.registrationSubmittedAt = undefined;
+      if (profile.kycStatus === "pending") {
+        patch.kycStatus = undefined;
+        await updateCounter(ctx, "profiles", "pending", -1);
+      } else if (profile.kycStatus === "rejected") {
+        patch.kycStatus = undefined;
+        patch.kycRejectionReason = undefined;
+      }
+    }
+
+    await ctx.db.patch("profiles", profile._id, patch);
+    return { success: true };
+  },
+});
+
+/** Buyer: a one-time URL to upload a registration document to. */
+export const generateDocumentUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    await requireAuth(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
+ * Buyer: attach an uploaded file as a registration document. A replacement
+ * overwrites the row, resets it to pending and deletes the old file, with no
+ * limit on tries. An invalid file is rejected (and left for the orphan sweep,
+ * because deleting it here would be rolled back along with the error).
+ */
+export const attachMyDocument = mutation({
+  args: {
+    kind: docKindValidator,
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+  },
+  returns: v.object({ documentId: v.id("registrationDocuments") }),
+  handler: async (ctx, args) => {
+    const { profile, userId } = await loadCaller(ctx);
+    if (profile.idType === undefined) {
+      throw new ConvexError("Save your details before uploading documents.");
+    }
+    if (!requiredKinds(profile.idType).includes(args.kind)) {
+      throw new ConvexError("That document isn't needed for your ID type.");
+    }
+
+    const meta = await ctx.db.system.get("_storage", args.storageId);
+    if (!meta) throw new ConvexError("The uploaded file was not found.");
+    if (!ALLOWED_DOC_TYPES.has(meta.contentType ?? "")) {
+      throw new ConvexError("Upload a photo (JPG, PNG) or a PDF.");
+    }
+    // Only a file uploaded just now can be attached: stops a caller pointing a
+    // document at someone else's older file (and later deleting or reading it).
+    if (Date.now() - meta._creationTime > UPLOAD_FRESH_MS) {
+      throw new ConvexError("That upload has expired. Please upload it again.");
+    }
+    if (meta.size > MAX_REG_DOC_BYTES) {
+      throw new ConvexError("That file is too large. The limit is 10 MB.");
+    }
+    const fileName = cleanRequired(
+      "File name",
+      args.fileName,
+      MAX_FILE_NAME_LENGTH
+    );
+
+    const now = Date.now();
+    // A file can back one document only, across all users: a caller can never
+    // attach, read or (by replacing) delete a file someone else already holds.
+    // Lot images and profile documents have no storage-id index, so they rely
+    // on the freshness check above instead.
+    const claimed = await ctx.db
+      .query("registrationDocuments")
+      .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
+      .first();
+    if (claimed) {
+      throw new ConvexError("That file is already attached to a document.");
+    }
+    const existing = await ctx.db
+      .query("registrationDocuments")
+      .withIndex("by_userId_and_kind", (q) =>
+        q.eq("userId", userId).eq("kind", args.kind)
+      )
+      .unique();
+
+    let documentId: Id<"registrationDocuments">;
+    if (existing) {
+      documentId = existing._id;
+      await ctx.db.patch("registrationDocuments", existing._id, {
+        storageId: args.storageId,
+        fileName,
+        fileSize: meta.size,
+        status: "pending",
+        rejectionReason: undefined,
+        uploadedAt: now,
+        reviewedAt: undefined,
+        reviewedBy: undefined,
+      });
+      if (existing.storageId !== args.storageId) {
+        await safeDelete(ctx, existing.storageId, "replaced document");
+      }
+    } else {
+      documentId = await ctx.db.insert("registrationDocuments", {
+        userId,
+        kind: args.kind,
+        storageId: args.storageId,
+        fileName,
+        fileSize: meta.size,
+        status: "pending",
+        uploadedAt: now,
+      });
+    }
+
+    if (profile.registrationSubmittedAt !== undefined) {
+      await syncKycStatus(ctx, profile);
+    }
+    return { documentId };
+  },
+});
+
+/**
+ * Buyer: send the registration for review. Needs the details and every
+ * required document.
+ */
+export const submitMyDocuments = mutation({
+  args: {},
+  returns: v.object({ submittedAt: v.number() }),
+  handler: async (ctx) => {
+    const { profile, userId } = await loadCaller(ctx);
+    if (profile.idType === undefined || !hasAllDetails(profile)) {
+      throw new ConvexError("Complete your details before submitting.");
+    }
+    const uploaded = new Set(
+      (await loadDocuments(ctx, userId)).map((doc) => doc.kind)
+    );
+    const missing = requiredKinds(profile.idType).filter(
+      (kind) => !uploaded.has(kind)
+    );
+    if (missing.length > 0) {
+      throw new ConvexError(
+        "Upload every required document before submitting."
+      );
+    }
+
+    const submittedAt = Date.now();
+    await ctx.db.patch("profiles", profile._id, {
+      registrationSubmittedAt: submittedAt,
+      updatedAt: submittedAt,
+    });
+    await syncKycStatus(ctx, {
+      ...profile,
+      registrationSubmittedAt: submittedAt,
+    });
+    await logActivity(ctx, {
+      userId,
+      type: "verification_requested",
+      description: "Registration documents submitted for review",
+    });
+    return { submittedAt };
+  },
+});
+
+/**
+ * Buyer: get (or create) the EFT deposit reference. Idempotent: the reference
+ * is permanent. Throws when the deposit is switched off.
+ */
+export const startMyDeposit = mutation({
+  args: {},
+  returns: v.object({ reference: v.string() }),
+  handler: async (ctx) => {
+    const { userId } = await loadCaller(ctx);
+    const setting = await getDepositSetting(ctx);
+    if (!setting.enabled) {
+      throw new ConvexError("A deposit isn't required right now.");
+    }
+
+    const existing = await ctx.db
+      .query("registrationDeposits")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (existing) return { reference: existing.reference };
+
+    for (let attempt = 0; attempt < REFERENCE_ATTEMPTS; attempt++) {
+      const reference = generateReference();
+      const taken = await ctx.db
+        .query("registrationDeposits")
+        .withIndex("by_reference", (q) => q.eq("reference", reference))
+        .first();
+      if (taken) continue;
+      const now = Date.now();
+      await ctx.db.insert("registrationDeposits", {
+        userId,
+        reference,
+        status: "awaiting",
+        amount: setting.amount,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return { reference };
+    }
+    throw new ConvexError("Couldn't create a payment reference. Try again.");
+  },
+});
+
+/**
+ * Buyer: "I've paid". Moves an awaiting (or refunded) deposit to
+ * `paid_claimed` so admins see it in their queue. Safe to repeat.
+ */
+export const claimMyDepositPaid = mutation({
+  args: {},
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx) => {
+    const { userId } = await loadCaller(ctx);
+    const deposit = await ctx.db
+      .query("registrationDeposits")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!deposit) throw new ConvexError("Get your payment reference first.");
+
+    if (deposit.status === "awaiting" || deposit.status === "refunded") {
+      const now = Date.now();
+      await ctx.db.patch("registrationDeposits", deposit._id, {
+        status: "paid_claimed",
+        paidClaimedAt: now,
+        updatedAt: now,
+      });
+      await logAudit(ctx, {
+        action: "DEPOSIT_PAID_CLAIMED",
+        targetId: userId,
+        targetType: "user",
+        details: `Buyer says deposit ${deposit.reference} is paid`,
+      });
+    }
+    return { success: true };
+  },
+});

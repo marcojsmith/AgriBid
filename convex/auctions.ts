@@ -50,6 +50,7 @@ export {
   getLotBidHistory,
   getMyLotBidState,
   getLotNeighbours,
+  getLotHeadline,
 } from "./auctions/queries/lotPage";
 
 // Re-export mutations from the new modular structure

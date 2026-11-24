@@ -3,7 +3,9 @@ import { v } from "convex/values";
 import { query, type QueryCtx } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { getAuthUser, resolveUserId } from "../../lib/auth";
-import { getBidCount } from "../../lib/lotCounters";
+import { getBidCount, SALE_VISIBLE_STATUSES } from "../../lib/lotCounters";
+import { resolveUrlCached } from "../../image_cache";
+import { pickLeadImageRef } from "./events";
 
 /** Public lot statuses whose bid history may be shown. */
 const PUBLIC_STATUSES: readonly string[] = [
@@ -239,4 +241,53 @@ export const getLotNeighbours = query({
   args: { lotId: v.id("lots") },
   returns: v.object({ prev: NeighbourValidator, next: NeighbourValidator }),
   handler: getLotNeighboursHandler,
+});
+
+/**
+ * Public: the few fields a "Continuing to Lot 3" banner needs. Null for a lot
+ * that is not buyer-visible (hidden, not in a sale, not a public status) or
+ * whose sale is a draft. Never returns prices, seller or bidders.
+ *
+ * @param ctx - Query context
+ * @param args - Query arguments
+ * @param args.lotId - The lot
+ * @returns The headline, or null
+ */
+export async function getLotHeadlineHandler(
+  ctx: QueryCtx,
+  args: { lotId: Id<"lots"> }
+) {
+  const lot = await ctx.db.get("lots", args.lotId);
+  if (!lot || lot.hiddenByFlags === true || lot.auctionId === undefined) {
+    return null;
+  }
+  if (!SALE_VISIBLE_STATUSES.some((status) => status === lot.status)) {
+    return null;
+  }
+  const auction = await ctx.db.get("auctions", lot.auctionId);
+  if (!auction || auction.status === "draft") return null;
+
+  const ref = pickLeadImageRef(lot.images);
+  const photoUrl = ref ? await resolveUrlCached(ctx.storage, ref) : undefined;
+  return {
+    lotNumber: lot.lotNumber,
+    title: lot.title,
+    closesAt: lot.extendedEndTime ?? auction.endTime,
+    photoUrl: photoUrl ?? undefined,
+  };
+}
+
+/** Public query: a lot's headline (number, title, close time, photo). */
+export const getLotHeadline = query({
+  args: { lotId: v.id("lots") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      lotNumber: v.optional(v.number()),
+      title: v.string(),
+      closesAt: v.optional(v.number()),
+      photoUrl: v.optional(v.string()),
+    })
+  ),
+  handler: getLotHeadlineHandler,
 });

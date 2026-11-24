@@ -486,3 +486,109 @@ describe("updateMinPhotos / getMinPhotosPerLot", () => {
     expect(await audits(t, "min-photos")).toBe(0);
   });
 });
+
+describe("deposit bank details", () => {
+  const details = {
+    bank: "FNB",
+    accountName: "AgriBid (Pty) Ltd",
+    accountNumber: "62812345678",
+    branchCode: "250655",
+  };
+
+  it("lets an admin set them, audits it and shows them to signed-in users", async () => {
+    const t = makeContext();
+    await seed(t);
+    await asAdmin(t).mutation(
+      api.admin.platformSettings.updateDepositBankDetails,
+      details
+    );
+    expect(await audits(t, "deposit-bank-details")).toBe(1);
+    expect(
+      await t
+        .withIdentity({ subject: BUYER })
+        .query(api.admin.platformSettings.getDepositBankDetails, {})
+    ).toEqual({
+      bank: "FNB",
+      accountName: "AgriBid (Pty) Ltd",
+      accountNumber: "62812345678",
+      branchCode: "250655",
+    });
+  });
+
+  it("returns nulls when unset", async () => {
+    const t = makeContext();
+    await seed(t);
+    expect(
+      await t
+        .withIdentity({ subject: BUYER })
+        .query(api.admin.platformSettings.getDepositBankDetails, {})
+    ).toEqual({
+      bank: null,
+      accountName: null,
+      accountNumber: null,
+      branchCode: null,
+    });
+  });
+
+  it("clears a value with an empty string", async () => {
+    const t = makeContext();
+    await seed(t);
+    await asAdmin(t).mutation(
+      api.admin.platformSettings.updateDepositBankDetails,
+      details
+    );
+    await asAdmin(t).mutation(
+      api.admin.platformSettings.updateDepositBankDetails,
+      { bank: "", accountName: "", accountNumber: "", branchCode: "" }
+    );
+    const result = await t
+      .withIdentity({ subject: BUYER })
+      .query(api.admin.platformSettings.getDepositBankDetails, {});
+    expect(result.bank).toBeNull();
+    expect(result.accountNumber).toBeNull();
+  });
+
+  it("is hidden from signed-out visitors and the public settings", async () => {
+    const t = makeContext();
+    await seed(t);
+    await expect(
+      t.query(api.admin.platformSettings.getDepositBankDetails, {})
+    ).rejects.toThrow("Not authenticated");
+    const pub = await t.query(
+      api.admin.platformSettings.getPlatformSettings,
+      {}
+    );
+    expect(JSON.stringify(pub)).not.toContain("account");
+  });
+
+  it("only lets an admin write", async () => {
+    const t = makeContext();
+    await seed(t);
+    await expect(
+      t
+        .withIdentity({ subject: BUYER })
+        .mutation(api.admin.platformSettings.updateDepositBankDetails, details)
+    ).rejects.toThrow("Admin privileges required");
+    expect(await audits(t, "deposit-bank-details")).toBe(0);
+  });
+
+  it.each([
+    ["a short account number", { accountNumber: "123" }, "6 to 16 digits"],
+    [
+      "a non-numeric account number",
+      { accountNumber: "12ab5678" },
+      "6 to 16 digits",
+    ],
+    ["a short branch code", { branchCode: "250" }, "6 digits"],
+    ["an overlong bank name", { bank: "x".repeat(500) }, "at most"],
+  ])("rejects %s", async (_label, override, message) => {
+    const t = makeContext();
+    await seed(t);
+    await expect(
+      asAdmin(t).mutation(api.admin.platformSettings.updateDepositBankDetails, {
+        ...details,
+        ...override,
+      })
+    ).rejects.toThrow(message);
+  });
+});

@@ -1,9 +1,9 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { mutation, query } from "../_generated/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { logAudit } from "../admin_utils";
-import { requireAdmin } from "../lib/auth";
+import { requireAdmin, requireAuth } from "../lib/auth";
 import * as constants from "../constants";
 
 /** `settings` table keys owned by this module. */
@@ -21,9 +21,15 @@ const KEYS = {
   pushRemindersEnabled: "push_reminders_enabled",
   watchAlertsEnabled: "watch_alerts_enabled",
   minPhotosPerLot: "min_photos_per_lot",
+  depositBankName: "deposit_bank_name",
+  depositAccountName: "deposit_account_name",
+  depositAccountNumber: "deposit_account_number",
+  depositBranchCode: "deposit_branch_code",
 } as const;
 
 const PHONE_PATTERN = /^[+\d][\d\s()-]{6,24}$/;
+const ACCOUNT_NUMBER_PATTERN = /^\d{6,16}$/;
+const BRANCH_CODE_PATTERN = /^\d{6}$/;
 
 const SuccessValidator = v.object({ success: v.boolean() });
 
@@ -175,6 +181,51 @@ export async function getBuyerPremiumPct(ctx: QueryCtx): Promise<number> {
     100,
     false
   );
+}
+
+/**
+ * Whether the registration deposit is required (one setting read).
+ *
+ * @param ctx - Query or mutation context
+ * @returns True when a deposit is required (default on)
+ */
+export async function isDepositEnabled(ctx: QueryCtx): Promise<boolean> {
+  return await readBoolean(
+    ctx,
+    KEYS.depositEnabled,
+    constants.DEFAULT_DEPOSIT_ENABLED
+  );
+}
+
+/**
+ * The registration deposit rules with defaults applied.
+ *
+ * @param ctx - Query or mutation context
+ * @returns Whether a deposit is required, its amount and the refund window
+ */
+export async function getDepositSetting(
+  ctx: QueryCtx
+): Promise<{ enabled: boolean; amount: number; refundDays: number }> {
+  const [enabled, amount, refundDays] = await Promise.all([
+    readBoolean(ctx, KEYS.depositEnabled, constants.DEFAULT_DEPOSIT_ENABLED),
+    readNumber(
+      ctx,
+      KEYS.depositAmount,
+      constants.DEFAULT_DEPOSIT_AMOUNT,
+      0,
+      constants.MAX_DEPOSIT_AMOUNT,
+      true
+    ),
+    readNumber(
+      ctx,
+      KEYS.depositRefundDays,
+      constants.DEFAULT_DEPOSIT_REFUND_DAYS,
+      1,
+      constants.MAX_DEPOSIT_REFUND_DAYS,
+      true
+    ),
+  ]);
+  return { enabled, amount, refundDays };
 }
 
 /** Validator for the resolved platform settings object. */
@@ -542,6 +593,86 @@ export const updateFinanceContact = mutation({
         },
       ],
       "finance-contact"
+    );
+    return { success: true };
+  },
+});
+
+/** Validator for the bank account buyers pay their deposit into. */
+const DepositBankDetailsValidator = v.object({
+  bank: v.union(v.string(), v.null()),
+  accountName: v.union(v.string(), v.null()),
+  accountNumber: v.union(v.string(), v.null()),
+  branchCode: v.union(v.string(), v.null()),
+});
+
+/**
+ * Signed-in users only: the bank account to pay the registration deposit into.
+ * Deliberately not part of the public `getPlatformSettings`.
+ */
+export const getDepositBankDetails = query({
+  args: {},
+  returns: DepositBankDetailsValidator,
+  handler: async (ctx) => {
+    await requireAuth(ctx);
+    const [bank, accountName, accountNumber, branchCode] = await Promise.all([
+      readText(ctx, KEYS.depositBankName),
+      readText(ctx, KEYS.depositAccountName),
+      readText(ctx, KEYS.depositAccountNumber),
+      readText(ctx, KEYS.depositBranchCode),
+    ]);
+    return { bank, accountName, accountNumber, branchCode };
+  },
+});
+
+/**
+ * Admin-only: set the deposit bank details. An empty string clears a value.
+ */
+export const updateDepositBankDetails = mutation({
+  args: {
+    bank: v.string(),
+    accountName: v.string(),
+    accountNumber: v.string(),
+    branchCode: v.string(),
+  },
+  returns: SuccessValidator,
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const bank = cleanContactText("Bank name", args.bank);
+    const accountName = cleanContactText("Account name", args.accountName);
+    const accountNumber = args.accountNumber.trim();
+    const branchCode = args.branchCode.trim();
+    if (accountNumber !== "" && !ACCOUNT_NUMBER_PATTERN.test(accountNumber)) {
+      throw new ConvexError("Account number must be 6 to 16 digits");
+    }
+    if (branchCode !== "" && !BRANCH_CODE_PATTERN.test(branchCode)) {
+      throw new ConvexError("Branch code must be 6 digits");
+    }
+    await saveSettings(
+      ctx,
+      [
+        {
+          key: KEYS.depositBankName,
+          value: bank,
+          description: "Deposit bank name (empty clears)",
+        },
+        {
+          key: KEYS.depositAccountName,
+          value: accountName,
+          description: "Deposit account holder name (empty clears)",
+        },
+        {
+          key: KEYS.depositAccountNumber,
+          value: accountNumber,
+          description: "Deposit account number (empty clears)",
+        },
+        {
+          key: KEYS.depositBranchCode,
+          value: branchCode,
+          description: "Deposit branch code (empty clears)",
+        },
+      ],
+      "deposit-bank-details"
     );
     return { success: true };
   },
