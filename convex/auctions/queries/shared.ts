@@ -151,7 +151,7 @@ export async function calculateUserBidStats(
 }
 
 /** Lot status values surfaced by the public browse filters */
-export type LotStatus = "assigned" | "sold" | "unsold";
+export type LotStatus = "assigned" | "under_consideration" | "sold" | "unsold";
 
 /** Filter options for lot status queries */
 export type StatusFilter = "active" | "closed" | "all";
@@ -168,8 +168,8 @@ export type StatusFilter = "active" | "closed" | "all";
  */
 export function statusesForFilter(filter: StatusFilter): LotStatus[] {
   if (filter === "active") return ["assigned"];
-  if (filter === "closed") return ["sold", "unsold"];
-  return ["assigned", "sold", "unsold"];
+  if (filter === "closed") return ["under_consideration", "sold", "unsold"];
+  return ["assigned", "under_consideration", "sold", "unsold"];
 }
 
 /**

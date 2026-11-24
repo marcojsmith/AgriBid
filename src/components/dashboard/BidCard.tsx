@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
+import { formatSastDate } from "@/lib/dates";
 
 import type { MyBidAuction } from "./bidTypes";
 
@@ -39,6 +40,13 @@ function getStatusDisplay(auction: MyBidAuction): StatusDisplay {
       label: "WON",
       icon: <CheckCircle2 className="h-3 w-3 mr-1" />,
       colorClass: "bg-success hover:bg-success/90 text-success-foreground",
+    };
+  }
+  if (auction.status === "under_consideration") {
+    return {
+      label: "UNDER CONSIDERATION",
+      icon: <Clock className="h-3 w-3 mr-1" />,
+      colorClass: "border-muted-foreground bg-card text-muted-foreground",
     };
   }
   if (auction.status === "unsold") {
@@ -186,7 +194,11 @@ export const BidCard = memo(function BidCard({ auction }: BidCardProps) {
           </div>
           <div className="space-y-0.5 text-right border-l border-border/10 pl-3">
             <p className="text-xs text-muted-foreground font-semibold">
-              {auction.status === "assigned" ? "Next Min" : "Final"}
+              {auction.status === "assigned"
+                ? "Next Min"
+                : auction.status === "under_consideration"
+                  ? "Top bid"
+                  : "Final"}
             </p>
             <p
               className={cn(
@@ -209,6 +221,18 @@ export const BidCard = memo(function BidCard({ auction }: BidCardProps) {
             )}
           </div>
         </div>
+
+        {auction.status === "under_consideration" && (
+          <p className="pb-2 text-xs font-semibold text-muted-foreground">
+            {auction.isWinner
+              ? "Your bid is with the seller"
+              : "The seller is deciding on the top bid"}
+            {auction.considerationDeadline !== undefined
+              ? ` until ${formatSastDate(auction.considerationDeadline)}`
+              : ""}
+            .
+          </p>
+        )}
 
         <div className="flex gap-2">
           <Button

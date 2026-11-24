@@ -27,6 +27,7 @@ vi.mock("./internal", () => ({
   isReserveMet: vi.fn(),
   calculateAndRecordFees: vi.fn(),
   logAuctionSettlementActivity: vi.fn(),
+  enterConsideration: vi.fn(),
 }));
 
 interface MockCtx {
@@ -141,7 +142,7 @@ describe("closeLotEarly mutation", () => {
     );
   });
 
-  it("should mark lot as unsold if reserve is not met", async () => {
+  it("should send the lot under consideration if bids missed the reserve", async () => {
     const lotId = "lot123" as Id<"lots">;
     const lotDoc = {
       _id: lotId,
@@ -174,12 +175,17 @@ describe("closeLotEarly mutation", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(result.finalStatus).toBe("unsold");
-    expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
-      status: "unsold",
-      winnerId: undefined,
-      settledAt: expect.any(Number) as number,
-    });
+    expect(result.finalStatus).toBe("under_consideration");
+    expect(result.winnerId).toBe("bidder123");
+    expect(result.winningAmount).toBe(1500);
+    expect(internal.enterConsideration).toHaveBeenCalledWith(
+      mockCtx as unknown as MutationCtx,
+      lotDoc,
+      winningBid,
+      expect.any(Number)
+    );
+    expect(internal.calculateAndRecordFees).not.toHaveBeenCalled();
+    expect(mockCtx.db.patch).not.toHaveBeenCalled();
   });
 
   it("should return error if not authorized", async () => {

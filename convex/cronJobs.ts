@@ -12,6 +12,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { logAudit } from "./admin_utils";
 import {
   cleanupDraftsHandler,
+  expireConsiderationLotsHandler,
   settleExpiredLotsHandler,
 } from "./auctions/internal";
 import { CRON_JOBS, cronSettingKey, findCronJob } from "./cronRegistry";
@@ -168,6 +169,20 @@ export const settleExpiredAuctions = internalMutation({
       return { settled: 0, hasMore: false };
     }
     return await settleExpiredLotsHandler(ctx);
+  },
+});
+
+/**
+ * Cron wrapper: expire overdue under-consideration lots unless the job is disabled.
+ */
+export const expireConsiderationLots = internalMutation({
+  args: {},
+  returns: v.object({ expired: v.number(), hasMore: v.boolean() }),
+  handler: async (ctx) => {
+    if (!(await isCronJobEnabled(ctx, "expire_consideration_lots"))) {
+      return { expired: 0, hasMore: false };
+    }
+    return await expireConsiderationLotsHandler(ctx);
   },
 });
 

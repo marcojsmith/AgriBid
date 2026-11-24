@@ -145,7 +145,12 @@ export const PublishedAuctionValidator = AuctionValidator.extend({
 });
 
 /** Lot statuses buyers can see. */
-const PUBLIC_LOT_STATUSES = ["assigned", "sold", "unsold"] as const;
+const PUBLIC_LOT_STATUSES = [
+  "assigned",
+  "under_consideration",
+  "sold",
+  "unsold",
+] as const;
 
 /**
  * Picks one image reference (storage id or absolute URL) to represent a lot:

@@ -34,6 +34,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { DashboardListSkeleton } from "@/components/DashboardListSkeleton";
+import { ConsiderationActions } from "@/components/lot/ConsiderationActions";
+import { formatSastDate } from "@/lib/dates";
 import { formatCurrency } from "@/lib/currency";
 import { normalizeListingImages } from "@/lib/normalize-images";
 import type { ListingFormData } from "@/components/listing-wizard/types";
@@ -48,6 +50,7 @@ type StatusFilter =
   | "draft"
   | "pending_review"
   | "active"
+  | "under_consideration"
   | "sold"
   | "unsold"
   | "rejected";
@@ -184,6 +187,7 @@ export default function MyListings() {
           listingStats.active +
           listingStats.pending_review +
           listingStats.draft +
+          listingStats.under_consideration +
           listingStats.sold +
           listingStats.unsold +
           listingStats.rejected
@@ -194,6 +198,8 @@ export default function MyListings() {
         return listingStats.pending_review;
       case "draft":
         return listingStats.draft;
+      case "under_consideration":
+        return listingStats.under_consideration;
       case "sold":
         return listingStats.sold;
       case "unsold":
@@ -261,6 +267,12 @@ export default function MyListings() {
           </TabsTrigger>
           <TabsTrigger value="active" className="flex-1 min-w-[80px]">
             Active ({getStatusCount("active")})
+          </TabsTrigger>
+          <TabsTrigger
+            value="under_consideration"
+            className="flex-1 min-w-[80px]"
+          >
+            Deciding ({getStatusCount("under_consideration")})
           </TabsTrigger>
           <TabsTrigger value="sold" className="flex-1 min-w-[80px]">
             Sold ({getStatusCount("sold")})
@@ -337,18 +349,46 @@ export default function MyListings() {
                       {formatCurrency(auction.currentPrice)}
                     </span>
                   </span>
-                  <span>
-                    {effectiveLotEndTime(auction) !== undefined
-                      ? new Date(
-                          effectiveLotEndTime(auction) ?? 0
-                        ).toLocaleDateString("en-ZA")
-                      : "—"}
-                  </span>
+                  {auction.status === "under_consideration" &&
+                  auction.considerationDeadline !== undefined ? (
+                    <span className="font-semibold text-foreground">
+                      Decide by {formatSastDate(auction.considerationDeadline)}
+                    </span>
+                  ) : (
+                    <span>
+                      {effectiveLotEndTime(auction) !== undefined
+                        ? new Date(
+                            effectiveLotEndTime(auction) ?? 0
+                          ).toLocaleDateString("en-ZA")
+                        : "—"}
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div className="flex flex-wrap md:flex-nowrap gap-2 w-full md:w-auto">
-                {auction.status === "sold" ? (
+                {auction.status === "under_consideration" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 md:flex-none font-bold"
+                      asChild
+                    >
+                      <Link to={`/auction/${auction._id}`}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </Link>
+                    </Button>
+                    <ConsiderationActions
+                      lotId={auction._id}
+                      amount={auction.currentPrice}
+                      deadline={auction.considerationDeadline}
+                      layout="inline"
+                      className="w-full md:w-auto"
+                    />
+                  </>
+                ) : auction.status === "sold" ? (
                   <Button
                     variant="outline"
                     size="sm"

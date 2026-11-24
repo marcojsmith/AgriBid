@@ -6,7 +6,12 @@ import { getAuthUser, resolveUserId } from "../../lib/auth";
 import { getBidCount } from "../../lib/lotCounters";
 
 /** Public lot statuses whose bid history may be shown. */
-const PUBLIC_STATUSES: readonly string[] = ["assigned", "sold", "unsold"];
+const PUBLIC_STATUSES: readonly string[] = [
+  "assigned",
+  "under_consideration",
+  "sold",
+  "unsold",
+];
 
 /** Most bids the lot page lists; the rest are summarised as a count. */
 export const LOT_BID_HISTORY_LIMIT = 20;

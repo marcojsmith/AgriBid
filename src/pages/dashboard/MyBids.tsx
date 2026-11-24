@@ -60,7 +60,10 @@ export default function MyBids() {
       result = result.filter((a) => a.isOutbid && a.status === "assigned");
     } else if (filter === "ended") {
       result = result.filter(
-        (a) => a.status === "sold" || a.status === "unsold"
+        (a) =>
+          a.status === "sold" ||
+          a.status === "unsold" ||
+          a.status === "under_consideration"
       );
     }
 

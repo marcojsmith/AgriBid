@@ -69,6 +69,7 @@ const makeImages = (
 const UNSET_OPTIONAL_LOT_FIELDS = {
   categoryId: undefined,
   durationDays: undefined,
+  considerationDeadline: undefined,
   auctionId: undefined,
   auctionStartTime: undefined,
   auctionStatus: undefined,
@@ -183,6 +184,33 @@ describe("BidCard", () => {
     renderCard(makeBid(overrides));
 
     expect(screen.getByTestId("status-badge")).toHaveTextContent(label);
+  });
+
+  it("tells the top bidder their bid is with the seller until the deadline", () => {
+    renderCard(
+      makeBid({
+        status: "under_consideration",
+        isWinner: true,
+        considerationDeadline: Date.UTC(2026, 10, 26, 9, 0),
+      })
+    );
+
+    expect(screen.getByTestId("status-badge")).toHaveTextContent(
+      "UNDER CONSIDERATION"
+    );
+    expect(screen.getByText("Top bid")).toBeInTheDocument();
+    expect(
+      screen.getByText("Your bid is with the seller until Thu 26 Nov, 11:00.")
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("countdown-timer")).not.toBeInTheDocument();
+  });
+
+  it("tells other bidders the seller is deciding", () => {
+    renderCard(makeBid({ status: "under_consideration", isWinner: false }));
+
+    expect(
+      screen.getByText("The seller is deciding on the top bid.")
+    ).toBeInTheDocument();
   });
 
   it("flags an outbid lot and links to raising the bid", () => {

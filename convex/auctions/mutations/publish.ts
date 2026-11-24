@@ -18,6 +18,7 @@ import type { MutationCtx } from "../../_generated/server";
 import {
   calculateAndRecordFees,
   logAuctionSettlementActivity,
+  enterConsideration,
   findWinningBid,
   isReserveMet,
 } from "../internal";
@@ -269,6 +270,32 @@ export const closeLotEarlyHandler = async (
   const hasBids = winningBid !== undefined;
   const reserveMet =
     hasBids && isReserveMet(winningBid.amount, lot.reservePrice);
+
+  if (hasBids && !reserveMet) {
+    // Bids but the reserve was not met: the seller decides within 48 hours.
+    await enterConsideration(ctx, lot, winningBid, Date.now());
+    const authUser = await getAuthUser(ctx);
+    await logAudit(ctx, {
+      action: "auction_early_closure",
+      targetId: args.lotId,
+      targetType: "lot",
+      details: JSON.stringify({
+        adminId: authUser ? resolveUserId(authUser) : "unknown",
+        title: lot.title,
+        finalStatus: "under_consideration",
+        winnerId: winningBid.bidderId,
+        winningAmount: winningBid.amount,
+        reserveMet,
+        bidCount: 1,
+      }),
+    });
+    return {
+      success: true,
+      finalStatus: "under_consideration",
+      winnerId: winningBid.bidderId,
+      winningAmount: winningBid.amount,
+    };
+  }
 
   type AuctionStatus = "sold" | "unsold";
   let finalStatus: AuctionStatus;

@@ -374,6 +374,63 @@ describe("AdminLots", () => {
     });
   });
 
+  it("explains the 48-hour decision when a force end holds the lot under consideration", async () => {
+    closeAuctionEarlyMock.mockResolvedValue({
+      success: true,
+      finalStatus: "under_consideration",
+      winnerId: "bidder1",
+      winningAmount: 90,
+    });
+
+    renderComponent();
+
+    openDropdown(getRowActionButton(getRowByText("John Deere Tractor")));
+    await waitFor(() => {
+      expect(screen.getByText("Force End")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText("Force End"));
+    await waitFor(() => {
+      expect(screen.getByText("Close Lot Early?")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Close Lot" }));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith(
+        expect.stringContaining("48 hours")
+      );
+    });
+  });
+
+  it("shows the deadline and accept/decline for a lot under consideration", () => {
+    (usePaginatedQuery as Mock).mockReturnValue({
+      results: [
+        {
+          _id: "auction7",
+          title: "Deciding Item",
+          status: "under_consideration",
+          currentPrice: 90,
+          reservePrice: 100,
+          considerationDeadline: Date.UTC(2026, 10, 26, 9, 0),
+          make: "m",
+          model: "m",
+          year: 2020,
+          categoryName: "Tractors",
+        },
+      ],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    });
+
+    renderComponent();
+
+    expect(screen.getByText("Under consideration")).toBeInTheDocument();
+    expect(screen.getByText(/Decide by Thu 26 Nov, 11:00/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Accept R/ })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
+  });
+
   it("handles bulk status update to approved", async () => {
     bulkUpdateAuctionsMock.mockResolvedValue({ success: true });
 

@@ -55,7 +55,11 @@ describe("cronJobs", () => {
   it("enables only the lightweight engagement jobs by default", () => {
     expect(
       CRON_JOBS.filter((job) => job.defaultEnabled).map((job) => job.key)
-    ).toEqual(["purge_lot_viewers", "refresh_engagement_scores"]);
+    ).toEqual([
+      "expire_consideration_lots",
+      "purge_lot_viewers",
+      "refresh_engagement_scores",
+    ]);
   });
 
   it("rejects non-admins", async () => {

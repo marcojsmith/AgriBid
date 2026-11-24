@@ -8,6 +8,8 @@ export const AUCTION_STATUS = {
   PENDING_REVIEW: "pending_review",
   /** Listing is live and accepting bids */
   ACTIVE: "active",
+  /** Bidding ended with bids below reserve; the seller has 48 hours to accept the top bid */
+  UNDER_CONSIDERATION: "under_consideration",
   /** Bidding period has ended and the reserve price was met */
   SOLD: "sold",
   /** Bidding period has ended but the reserve price was not met */

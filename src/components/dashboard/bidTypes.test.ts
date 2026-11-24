@@ -24,6 +24,7 @@ describe("isMyBidAuction", () => {
       "pending_review",
       "approved",
       "assigned",
+      "under_consideration",
       "sold",
       "unsold",
       "rejected",

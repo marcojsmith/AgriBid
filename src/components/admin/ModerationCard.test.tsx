@@ -43,6 +43,7 @@ describe("ModerationCard", () => {
     currentPrice: 150000,
     minIncrement: 500,
     durationDays: undefined,
+    considerationDeadline: undefined,
     sellerId: "seller-1",
     status: "pending_review" as const,
     auctionId: undefined,

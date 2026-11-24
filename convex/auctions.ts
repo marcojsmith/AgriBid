@@ -86,7 +86,17 @@ export { placeBid } from "./auctions/mutations/bidding";
 export { getMyProxyBid } from "./auctions/proxy_bidding";
 
 // Re-export internal mutations
-export { settleExpiredLots, cleanupDrafts } from "./auctions/internal";
+export {
+  settleExpiredLots,
+  expireConsiderationLots,
+  cleanupDrafts,
+} from "./auctions/internal";
+
+// Seller decision on a lot that closed below its reserve
+export {
+  acceptTopBid,
+  declineTopBid,
+} from "./auctions/mutations/consideration";
 
 // Re-export helpers and validators
 export {

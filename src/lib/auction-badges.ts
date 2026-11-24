@@ -9,6 +9,7 @@ export const AUCTION_STATUS_BADGE_VARIANTS: Record<string, BadgeVariant> = {
   pending_review: "outline",
   approved: "default",
   assigned: "default",
+  under_consideration: "outline",
   sold: "default",
   unsold: "destructive",
   rejected: "destructive",

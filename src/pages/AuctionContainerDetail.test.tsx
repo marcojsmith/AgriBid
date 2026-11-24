@@ -643,7 +643,7 @@ describe("AuctionContainerDetail", () => {
       fireEvent.click(
         screen.getByRole("button", { name: "Under consideration 1" })
       );
-      expect(lastLotsArgs().outcome).toBeUndefined();
+      expect(lastLotsArgs()).toMatchObject({ outcome: "under_consideration" });
       expect(screen.getByText(/1 under consideration/)).toBeVisible();
     });
   });

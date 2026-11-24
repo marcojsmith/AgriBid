@@ -43,7 +43,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ConsiderationActions } from "@/components/lot/ConsiderationActions";
 import { formatCurrency } from "@/lib/currency";
+import { formatSastDate } from "@/lib/dates";
 import type { LotSpecValues } from "@/lib/lotSpecs";
 import { getErrorMessage } from "@/lib/utils";
 import type { Province } from "@/lib/provinces";
@@ -217,8 +219,12 @@ export default function AdminLots() {
           toast.success(
             `Lot closed successfully. Awarded to highest bidder for ${formatCurrency(result.winningAmount)}`
           );
+        } else if (result.finalStatus === "under_consideration") {
+          toast.success(
+            "Lot closed. Reserve price not met—the seller has 48 hours to accept the top bid"
+          );
         } else {
-          toast.success("Lot closed. Reserve price not met—marked as unsold");
+          toast.success("Lot closed with no bids—marked as unsold");
         }
       } else {
         toast.error(result.error ?? "Failed to close lot");
@@ -274,6 +280,15 @@ export default function AdminLots() {
         return (
           <Badge className="bg-muted text-muted-foreground font-semibold text-xs">
             Draft
+          </Badge>
+        );
+      case "under_consideration":
+        return (
+          <Badge
+            variant="outline"
+            className="text-muted-foreground font-semibold text-xs"
+          >
+            Under consideration
           </Badge>
         );
       case "sold":
@@ -462,14 +477,26 @@ export default function AdminLots() {
                     <TableCell>
                       <div className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
-                        {effectiveLotEndTime(a)
-                          ? new Date(
-                              effectiveLotEndTime(a) ?? 0
-                            ).toLocaleDateString()
-                          : "—"}
+                        {a.status === "under_consideration" &&
+                        a.considerationDeadline !== undefined
+                          ? `Decide by ${formatSastDate(a.considerationDeadline)}`
+                          : effectiveLotEndTime(a)
+                            ? new Date(
+                                effectiveLotEndTime(a) ?? 0
+                              ).toLocaleDateString()
+                            : "—"}
                       </div>
                     </TableCell>
                     <TableCell className="text-right pr-6">
+                      {a.status === "under_consideration" ? (
+                        <ConsiderationActions
+                          lotId={a._id}
+                          amount={a.currentPrice}
+                          deadline={a.considerationDeadline}
+                          layout="inline"
+                          className="mb-1 justify-end"
+                        />
+                      ) : null}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -631,7 +658,8 @@ export default function AdminLots() {
                     <div className="pt-2 border-t text-warning text-sm font-medium">
                       ⚠️ This action will immediately close the lot. If the
                       reserve price is met, the highest bidder will be awarded
-                      the item. If not met, the lot will be marked as unsold.
+                      the item. If not met, the seller gets 48 hours to accept
+                      the top bid; with no bids the lot is marked as unsold.
                     </div>
                   </div>
                 )}

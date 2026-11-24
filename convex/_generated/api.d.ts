@@ -30,6 +30,7 @@ import type * as auctions_mutations_assignment from "../auctions/mutations/assig
 import type * as auctions_mutations_bidding from "../auctions/mutations/bidding.js";
 import type * as auctions_mutations_create from "../auctions/mutations/create.js";
 import type * as auctions_mutations_delete from "../auctions/mutations/delete.js";
+import type * as auctions_mutations_consideration from "../auctions/mutations/consideration.js";
 import type * as auctions_mutations_publish from "../auctions/mutations/publish.js";
 import type * as auctions_mutations_update from "../auctions/mutations/update.js";
 import type * as auctions_proxy_bidding from "../auctions/proxy_bidding.js";
@@ -122,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   "auctions/mutations/bidding": typeof auctions_mutations_bidding;
   "auctions/mutations/create": typeof auctions_mutations_create;
   "auctions/mutations/delete": typeof auctions_mutations_delete;
+  "auctions/mutations/consideration": typeof auctions_mutations_consideration;
   "auctions/mutations/publish": typeof auctions_mutations_publish;
   "auctions/mutations/update": typeof auctions_mutations_update;
   "auctions/proxy_bidding": typeof auctions_proxy_bidding;

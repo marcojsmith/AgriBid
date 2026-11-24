@@ -82,11 +82,13 @@ vi.mock("../../admin_utils", () => ({
 const {
   calculateAndRecordFees,
   logAuctionSettlementActivity,
+  enterConsideration,
   findWinningBid,
   isReserveMet,
 } = vi.hoisted(() => ({
   calculateAndRecordFees: vi.fn().mockResolvedValue(undefined),
   logAuctionSettlementActivity: vi.fn().mockResolvedValue(undefined),
+  enterConsideration: vi.fn().mockResolvedValue(undefined),
   findWinningBid: vi.fn().mockResolvedValue(undefined),
   isReserveMet: vi.fn().mockReturnValue(false),
 }));
@@ -94,6 +96,7 @@ const {
 vi.mock("../internal", () => ({
   calculateAndRecordFees,
   logAuctionSettlementActivity,
+  enterConsideration,
   findWinningBid,
   isReserveMet,
 }));
@@ -615,7 +618,7 @@ describe("Publish Mutations", () => {
       expect(result.winnerId).toBe("u3");
     });
 
-    it("should close as unsold when reserve not met", async () => {
+    it("should hold the lot under consideration when reserve not met", async () => {
       vi.mocked(auth.requireAdmin).mockResolvedValue({} as Doc<"profiles">);
       mockCtx.db.get.mockResolvedValue({
         _id: "a1",
@@ -636,8 +639,10 @@ describe("Publish Mutations", () => {
         mockCtx as unknown as MutationCtx,
         { lotId: "a1" as Id<"lots"> }
       );
-      expect(result.finalStatus).toBe("unsold");
-      expect(result.winnerId).toBeUndefined();
+      expect(result.finalStatus).toBe("under_consideration");
+      expect(result.winnerId).toBe("u2");
+      expect(result.winningAmount).toBe(1500);
+      expect(enterConsideration).toHaveBeenCalledTimes(1);
       expect(calculateAndRecordFees).not.toHaveBeenCalled();
     });
 

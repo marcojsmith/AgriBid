@@ -158,10 +158,7 @@ function EventPage({ id }: { id: string | undefined }) {
           make: applied.make ?? undefined,
           minPrice: applied.price.min,
           maxPrice: applied.price.max,
-          outcome:
-            applied.outcome === "sold" || applied.outcome === "not_sold"
-              ? applied.outcome
-              : undefined,
+          outcome: applied.outcome ?? undefined,
           sort: applied.sort,
           limit,
         }

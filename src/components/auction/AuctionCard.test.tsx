@@ -74,6 +74,7 @@ const mockAuction = {
   isSeller: false,
   isWinner: false,
   durationDays: undefined,
+  considerationDeadline: undefined,
   status: "assigned",
   auctionId: "auction123" as Id<"auctions">,
   auctionStatus: "published" as const,

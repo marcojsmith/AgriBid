@@ -10,6 +10,7 @@
 /** Identifier of a toggleable background job. */
 export type CronJobKey =
   | "settle_expired_auctions"
+  | "expire_consideration_lots"
   | "cleanup_abandoned_drafts"
   | "cleanup_presence_records"
   | "sweep_orphaned_uploads"
@@ -37,6 +38,14 @@ export const CRON_JOBS: readonly CronJobDefinition[] = [
       "Marks lots as sold/unsold and closes auctions once their end time passes. Disabling it means no lot will settle.",
     schedule: "Every 1 minute",
     defaultEnabled: false,
+  },
+  {
+    key: "expire_consideration_lots",
+    label: "Expire lots under consideration",
+    description:
+      "Marks lots as not sold when the seller's 48 hours to accept the top bid pass. Disabling it leaves those lots waiting past the deadline.",
+    schedule: "Every 5 minutes",
+    defaultEnabled: true,
   },
   {
     key: "cleanup_presence_records",

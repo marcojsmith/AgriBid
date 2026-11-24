@@ -38,10 +38,10 @@ export type ActiveAuctionsArgs = {
 
 function statusesForFilter(
   filter: StatusFilter
-): ("assigned" | "sold" | "unsold")[] {
+): ("assigned" | "under_consideration" | "sold" | "unsold")[] {
   if (filter === "active") return ["assigned"];
-  if (filter === "closed") return ["sold", "unsold"];
-  return ["assigned", "sold", "unsold"];
+  if (filter === "closed") return ["under_consideration", "sold", "unsold"];
+  return ["assigned", "under_consideration", "sold", "unsold"];
 }
 
 /**
@@ -421,7 +421,7 @@ export const getLotByIdHandler = async (
   const lot = await ctx.db.get("lots", args.lotId);
   if (!lot) return null;
 
-  const PUBLIC_STATUSES = ["assigned", "sold", "unsold"];
+  const PUBLIC_STATUSES = ["assigned", "under_consideration", "sold", "unsold"];
   if (!PUBLIC_STATUSES.includes(lot.status)) {
     const auth = await getAuthenticatedProfile(ctx);
     if (!auth?.profile) return null;

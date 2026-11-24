@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-11-23
+Last updated: 2026-11-24
 
 ## How to keep this file useful
 
@@ -14,6 +14,7 @@ Last updated: 2026-11-23
 
 ## In progress
 
+- Branch `feat/under-consideration` (track `improve-screen-mockups`, phase 2 D6, 0.32.0): lots that close with bids below reserve go to `under_consideration` for 48 h while the seller accepts (-> sold, fees settled once) or declines/lets it expire (-> unsold). New `lots.considerationDeadline`, mutations `auctions:acceptTopBid` / `declineTopBid`, cron `expire_consideration_lots` (every 5 min, on by default). **Owed ops:** `bunx convex deploy` before the frontend ships (schema + new functions + cron); no migration. The settle cron (`settle_expired_auctions`) is still off by default: it must be enabled on `/admin/performance` for lots to settle at all.
 - Branch `feat/home-r8-real-data` (track `improve-screen-mockups`, phase 2 D3b, 0.31.0): Home rebuilt to `home-r8` (photo right 56% with a short fade, multi-sale rows and per-sale lot groups), `formatRand` U+00A0, wordmark-only header, finance company on the lot page, plus real webuytractors.shop data: `scripts/import-wbt.ts`, `auctions.seedId`, `weeklyReset` now only re-times imported sales (deletes nothing), old US demo seed retired. **Owed ops, in order:** (1) `bunx convex deploy`; (2) `bun scripts/import-wbt.ts <wbt-data.json>` with `CONVEX_URL` and `CONVEX_ADMIN_KEY` set; (3) `bun scripts/import-wbt.ts x --retire-old-demo`, review the list, then add `--apply`. Runbook: `docs/runbooks/import-wbt.md`.
 - Branch `fix/lot-summary-leaks` (#418, 0.30.1): public lot lists drop `reservePrice`, `sellerId`, `winnerId` (summaries return `reserveState`, `isSeller`, `isWinner`); owner/admin queries keep raw values; `getLotBids` hides `bidderId` from buyers. Owed ops: `bunx convex deploy` before the frontend ships.
 - Branch `feat/lot-r4` (track `improve-screen-mockups`, phase 2 D5, 0.30.0): lot page rebuilt to `lot-r4` with the confirm-before-every-bid sheet, all BidPanel states, sticky bar, gallery and viewer. New queries `getLotBidHistory`, `getMyLotBidState`, `getLotNeighbours`; `getLotById` privacy tightened. Owed ops: `bunx convex deploy` first, set `BIDDER_LABEL_SALT`. Watch copy is honest until D9 adds notifications.
