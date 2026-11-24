@@ -46,6 +46,10 @@ vi.mock("convex/_generated/api", () => ({
       getAdminStats: "admin:getAdminStats",
       reviewKYC: "admin:reviewKYC",
       setSellerResponseTime: "admin:setSellerResponseTime",
+      registration: {
+        getRegistrationForReview: "reg:getForReview",
+        reviewDocument: "reg:reviewDocument",
+      },
     },
     users: {
       listAllProfiles: "users:listAllProfiles",
@@ -270,9 +274,12 @@ describe("AdminUsers Page", () => {
     const reviewButton = screen.getByRole("button", { name: "Review KYC" });
     fireEvent.click(reviewButton);
 
-    expect(
-      mockMutations[api.users.getProfileForKYC as unknown as string]
-    ).toHaveBeenCalledWith({ userId: "user2" });
+    // The registration lookup runs first; the legacy profile follows it.
+    await waitFor(() => {
+      expect(
+        mockMutations[api.users.getProfileForKYC as unknown as string]
+      ).toHaveBeenCalledWith({ userId: "user2" });
+    });
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();

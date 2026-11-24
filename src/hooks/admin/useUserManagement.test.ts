@@ -25,6 +25,10 @@ vi.mock("convex/_generated/api", () => ({
     },
     admin: {
       reviewKYC: "admin:reviewKYC",
+      registration: {
+        getRegistrationForReview: "reg:getForReview",
+        reviewDocument: "reg:reviewDocument",
+      },
     },
   },
 }));
@@ -34,6 +38,8 @@ describe("useUserManagement hook", () => {
   const mockPromoteToAdmin = vi.fn();
   const mockReviewKYC = vi.fn();
   const mockGetProfileForKYC = vi.fn();
+  const mockGetRegistration = vi.fn();
+  const mockReviewDocument = vi.fn();
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -42,7 +48,147 @@ describe("useUserManagement hook", () => {
       if (apiPath === "users:promoteToAdmin") return mockPromoteToAdmin;
       if (apiPath === "admin:reviewKYC") return mockReviewKYC;
       if (apiPath === "users:getProfileForKYC") return mockGetProfileForKYC;
+      if (apiPath === "reg:getForReview") return mockGetRegistration;
+      if (apiPath === "reg:reviewDocument") return mockReviewDocument;
       return vi.fn();
+    });
+  });
+
+  describe("per-document registration review", () => {
+    const registration = {
+      details: { idType: "sa_id" as const, fullName: "Thandi Nkosi" },
+      documents: [
+        {
+          id: "d1",
+          kind: "id_front" as const,
+          status: "pending" as const,
+          fileName: "front.jpg",
+          fileSize: 10,
+          uploadedAt: 1,
+        },
+      ],
+      deposit: null,
+      legacy: false,
+    };
+
+    it("opens the registration review and skips the legacy profile", async () => {
+      mockGetRegistration.mockResolvedValue(registration);
+      const { result } = renderHook(() => useUserManagement());
+      await act(async () => {
+        await result.current.handleReviewKYCClick("u1");
+      });
+      expect(result.current.registrationReview).toEqual(registration);
+      expect(result.current.kycReviewUser?.userId).toBe("u1");
+      expect(mockGetProfileForKYC).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the legacy profile for a legacy registration", async () => {
+      mockGetRegistration.mockResolvedValue({ ...registration, legacy: true });
+      mockGetProfileForKYC.mockResolvedValue({
+        userId: "u1",
+        kycDocumentCount: 1,
+      });
+      const { result } = renderHook(() => useUserManagement());
+      await act(async () => {
+        await result.current.handleReviewKYCClick("u1");
+      });
+      expect(result.current.registrationReview).toBeNull();
+      expect(result.current.kycReviewUser?.kycDocumentCount).toBe(1);
+    });
+
+    it("records an approval locally and closes cleanly", async () => {
+      mockGetRegistration.mockResolvedValue(registration);
+      mockReviewDocument.mockResolvedValue({
+        success: true,
+        kycStatus: "pending",
+      });
+      const { result } = renderHook(() => useUserManagement());
+      await act(async () => {
+        await result.current.handleReviewKYCClick("u1");
+      });
+      let saved = false;
+      await act(async () => {
+        saved = await result.current.handleReviewDocument(
+          registration.documents[0] as never,
+          "approve"
+        );
+      });
+      expect(saved).toBe(true);
+      expect(mockReviewDocument).toHaveBeenCalledWith({
+        documentId: "d1",
+        expectedUploadedAt: 1,
+        decision: "approve",
+        reason: undefined,
+      });
+      expect(result.current.registrationReview?.documents[0]).toMatchObject({
+        status: "approved",
+      });
+      expect(toast.success).toHaveBeenCalledWith("Document approved");
+      act(() => {
+        result.current.closeKycReview();
+      });
+      expect(result.current.registrationReview).toBeNull();
+    });
+
+    it("sends a trimmed reason with a rejection and keeps it on the document", async () => {
+      mockGetRegistration.mockResolvedValue(registration);
+      mockReviewDocument.mockResolvedValue({ success: true });
+      const { result } = renderHook(() => useUserManagement());
+      await act(async () => {
+        await result.current.handleReviewKYCClick("u1");
+      });
+      await act(async () => {
+        await result.current.handleReviewDocument(
+          registration.documents[0] as never,
+          "reject",
+          " Blurry "
+        );
+      });
+      expect(mockReviewDocument).toHaveBeenCalledWith({
+        documentId: "d1",
+        expectedUploadedAt: 1,
+        decision: "reject",
+        reason: "Blurry",
+      });
+      expect(result.current.registrationReview?.documents[0]).toMatchObject({
+        status: "rejected",
+        rejectionReason: "Blurry",
+      });
+      expect(toast.success).toHaveBeenCalledWith("Document rejected");
+    });
+
+    it("shows the server message and leaves the document alone on failure", async () => {
+      mockGetRegistration.mockResolvedValue(registration);
+      mockReviewDocument.mockRejectedValue(new Error("Document not found."));
+      const { result } = renderHook(() => useUserManagement());
+      await act(async () => {
+        await result.current.handleReviewKYCClick("u1");
+      });
+      let saved = true;
+      await act(async () => {
+        saved = await result.current.handleReviewDocument(
+          registration.documents[0] as never,
+          "approve"
+        );
+      });
+      expect(saved).toBe(false);
+      expect(toast.error).toHaveBeenCalledWith("Document not found.");
+      expect(result.current.registrationReview?.documents[0]?.status).toBe(
+        "pending"
+      );
+    });
+
+    it("does nothing without an open registration", async () => {
+      const { result } = renderHook(() => useUserManagement());
+      let saved = true;
+      await act(async () => {
+        saved = await result.current.handleReviewDocument(
+          registration.documents[0] as never,
+          "approve"
+        );
+      });
+      expect(saved).toBe(false);
+      expect(mockReviewDocument).not.toHaveBeenCalled();
     });
   });
 

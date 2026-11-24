@@ -62,6 +62,9 @@ export default function AdminUsers() {
     handleReviewKYCClick,
     handleKycReview,
     closeKycReview,
+    registrationReview,
+    isReviewingDocument,
+    handleReviewDocument,
     promoteTarget,
     setPromoteTarget,
     isPromoting,
@@ -364,11 +367,13 @@ export default function AdminUsers() {
         isOpen={!!kycReviewUser}
         onClose={closeKycReview}
         onReview={handleKycReview}
-        isProcessing={isKycProcessing}
+        isProcessing={isKycProcessing || isReviewingDocument}
         rejectionReason={kycRejectionReason}
         setRejectionReason={setKycRejectionReason}
         showFullId={showFullId}
         setShowFullId={setShowFullId}
+        registration={registrationReview}
+        onReviewDocument={handleReviewDocument}
       />
       <SellerResponseTimeDialog
         user={responseTimeTarget}

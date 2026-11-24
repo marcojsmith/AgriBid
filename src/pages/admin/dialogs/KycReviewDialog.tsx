@@ -23,7 +23,13 @@ import { Label } from "@/components/ui/label";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
 import { useProtectedDocument } from "@/hooks/useDocumentPreview";
 import { DetailItem } from "@/components/admin/DetailItem";
-import type { KycReviewUser } from "@/hooks/admin/useUserManagement";
+import type {
+  KycReviewUser,
+  RegistrationReview,
+  ReviewDocument,
+} from "@/hooks/admin/useUserManagement";
+
+import { RegistrationReviewPanel } from "./RegistrationReviewPanel";
 
 /**
  * One legacy KYC file, read through the auth-checked document route. Images
@@ -88,6 +94,8 @@ function LegacyDocument({ userId, index }: { userId: string; index: number }) {
  * @param props.setRejectionReason - Updates the rejection reason state
  * @param props.showFullId - When true, displays the full ID/passport number; otherwise masks it
  * @param props.setShowFullId - Toggles the visibility of the full ID/passport number
+ * @param props.registration - When set, the buyer registered with per-document review and the dialog shows one card per document instead of the legacy view
+ * @param props.onReviewDocument - Saves one document decision; resolves true when it was saved
  * @returns A KYC review dialog component
  */
 export function KycReviewDialog({
@@ -100,6 +108,8 @@ export function KycReviewDialog({
   setRejectionReason,
   showFullId,
   setShowFullId,
+  registration = null,
+  onReviewDocument,
 }: {
   user: KycReviewUser | null;
   isOpen: boolean;
@@ -110,6 +120,12 @@ export function KycReviewDialog({
   setRejectionReason: (reason: string) => void;
   showFullId: boolean;
   setShowFullId: (show: boolean) => void;
+  registration?: RegistrationReview | null;
+  onReviewDocument?: (
+    doc: ReviewDocument,
+    decision: "approve" | "reject",
+    reason?: string
+  ) => Promise<boolean>;
 }) {
   const isKycReasonEmpty = !rejectionReason.trim();
 
@@ -120,7 +136,7 @@ export function KycReviewDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold tracking-tight">
             KYC Verification Review
@@ -130,7 +146,16 @@ export function KycReviewDialog({
             verification.
           </DialogDescription>
         </DialogHeader>
-        {user && (
+        {user && registration && onReviewDocument && (
+          <RegistrationReviewPanel
+            registration={registration}
+            showFullId={showFullId}
+            setShowFullId={setShowFullId}
+            busy={isProcessing}
+            onReviewDocument={onReviewDocument}
+          />
+        )}
+        {user && !(registration && onReviewDocument) && (
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-4">
