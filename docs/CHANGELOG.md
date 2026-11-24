@@ -7,6 +7,8 @@ build checklist. Dates are merge dates.
 
 ## 2026-11
 
+- Polish (v0.34.2): the link-preview lot card shrinks long titles to 44px (58px up to 18 characters) so "Massey Ferguson 8670" is no longer cut off; the bottom sheet starts focus on the sheet instead of the close button (no focus ring on open) and the close button shows a design-system ring for keyboard focus only; the transport quote province select shows "Choose a province".
+
 - Fix: the link-preview image function failed to load on Vercel (v0.34.1). Vercel compiles only the function entry and `.ts` helpers, so `api/_lib/ogLayout.tsx` was never emitted and `/api/og` returned 500. The layout is now JSX-free `ogLayout.ts` and the entry is `api/og.ts`; a test fails if a `.tsx` appears in `api/_lib` or a relative import in `api/` does not resolve to a `.ts` file. Also: a place no longer repeats the province when the stored town already ends with it ("Marble Hall, Limpopo, Limpopo").
 
 - Link previews and the app icon set (D7 of improve-screen-mockups phase 2, v0.34.0): shared links now show the page they point at. `vercel.json` rewrites preview crawlers (WhatsApp, Facebook, Twitter, LinkedIn, Slack, Telegram, Discord and similar; not Googlebot) to `api/share.ts`, which returns the lot, sale or home meta tags with absolute URLs on the live domain and no tagline; `api/og.tsx` draws the 1200x630 card (lot photo, sale collage, or a photo-free home card). New public queries `share:getLotShare`, `share:getSaleShare`, `share:getHomeShare` return only public fields. New favicon, Apple touch icon, 192/512 icons and `manifest.webmanifest` replace `vite.svg`; `og-image.png` removed. Ops: `bunx convex deploy` ships with the Vercel build; optional env `SITE_URL` / `VITE_SITE_URL`.

@@ -70,7 +70,8 @@ export function splitDateTime(timestamp: number): {
 }
 
 /**
- * Font size of a sale title in the band: 58px up to 18 characters, else 44px.
+ * Font size of a lot or sale title in the band: 58px up to 18 characters,
+ * else 44px.
  *
  * @param title - The sale title
  * @returns The size in px
@@ -339,7 +340,11 @@ function lotBody(card: Extract<OgCard, { kind: "lot" }>): Child[] {
     column({ left: 40, width: 230, gap: 0 }, wordmark(44)),
     column(
       { left: 307, width: 590, gap: 14 },
-      line(card.title, { fontFamily: "Lora", fontWeight: 600, fontSize: 58 }),
+      line(card.title, {
+        fontFamily: "Lora",
+        fontWeight: 600,
+        fontSize: saleTitleSize(card.title),
+      }),
       priceRow(card.priceLabel, card.price, true)
     ),
     rightColumn(card.timeLabel, card.timestamp),
