@@ -10,11 +10,10 @@ const mocks = vi.hoisted(() => ({
   sendNotification: vi.fn(),
 }));
 
+// web-push v4 is ESM with named exports only (no default export).
 vi.mock("web-push", () => ({
-  default: {
-    setVapidDetails: mocks.setVapidDetails,
-    sendNotification: mocks.sendNotification,
-  },
+  setVapidDetails: mocks.setVapidDetails,
+  sendNotification: mocks.sendNotification,
 }));
 
 const modules = import.meta.glob("./**/*.*s");
