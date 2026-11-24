@@ -156,6 +156,7 @@ export default function DesignSystem() {
 
   const [idType, setIdType] = useState<IdType>("sa_id");
   const [cell, setCell] = useState("");
+  const [fullName, setFullName] = useState("Thandi Naidoo");
   const [idNumber, setIdNumber] = useState("90010");
   const [idFront, setIdFront] = useState<UploadSlotFile | undefined>({
     name: "id-front.jpg",
@@ -543,8 +544,8 @@ export default function DesignSystem() {
             <TextField
               id="ds-name"
               label="Full name"
-              value="Thandi Naidoo"
-              onChange={() => undefined}
+              value={fullName}
+              onChange={setFullName}
               autoComplete="name"
             />
             <TextField
@@ -552,8 +553,8 @@ export default function DesignSystem() {
               label={idType === "sa_id" ? "ID number" : "Passport number"}
               value={idNumber}
               onChange={setIdNumber}
-              inputMode="numeric"
-              maxLength={13}
+              inputMode={idType === "sa_id" ? "numeric" : "text"}
+              maxLength={idType === "sa_id" ? 13 : 12}
               hint={idType === "sa_id" ? "13 digits." : undefined}
               error={
                 idType === "sa_id" && idNumber.length < 13
@@ -624,7 +625,11 @@ export default function DesignSystem() {
                   sub: "Needs replacing",
                   tone: "bad",
                   action: (
-                    <Button size="sm" onClick={() => undefined}>
+                    <Button
+                      size="sm"
+                      className="min-h-11"
+                      onClick={() => undefined}
+                    >
                       Replace
                     </Button>
                   ),

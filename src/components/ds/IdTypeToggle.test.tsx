@@ -11,12 +11,8 @@ describe("IdTypeToggle", () => {
     const passport = screen.getByRole("button", { name: "Passport" });
     expect(saId).toHaveAttribute("aria-pressed", "true");
     expect(passport).toHaveAttribute("aria-pressed", "false");
-    expect(saId).toHaveClass(
-      "bg-primary",
-      "text-primary-foreground",
-      "min-h-12"
-    );
-    expect(passport).not.toHaveClass("bg-primary");
+    expect(saId).toHaveClass("bg-btn", "text-btn-foreground", "min-h-12");
+    expect(passport).not.toHaveClass("bg-btn");
     expect(passport).toHaveClass("rounded-md");
   });
 

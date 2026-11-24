@@ -16,8 +16,8 @@ describe("CopyRow", () => {
     render(<CopyRow label="Account number" value="62 1234 5678" />);
     expect(screen.getByText("Account number")).toBeInTheDocument();
     expect(screen.getByText("62 1234 5678")).toHaveClass(
-      "text-[17px]",
-      "font-bold"
+      "text-base",
+      "font-semibold"
     );
     const btn = screen.getByRole("button", { name: "Copy Account number" });
     expect(btn).toHaveClass("min-h-11");

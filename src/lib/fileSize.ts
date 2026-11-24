@@ -5,6 +5,8 @@
  * @returns The display string
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / 1024).toFixed(1)} KB`;
+  const kb = (bytes / 1024).toFixed(1);
+  // Switch to MB once the KB figure would round up to "1024.0".
+  if (Number(kb) < 1024) return `${kb} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

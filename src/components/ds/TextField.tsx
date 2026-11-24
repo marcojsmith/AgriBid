@@ -55,7 +55,7 @@ export function TextField({
   const helpId = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
   return (
     <div data-slot="text-field" className={cn("mb-3.5", className)}>
-      <label htmlFor={id} className="mb-1 block text-[15px] font-semibold">
+      <label htmlFor={id} className="mb-1 block text-sm font-semibold">
         {label}
       </label>
       <div
@@ -65,7 +65,10 @@ export function TextField({
         )}
       >
         {prefix ? (
-          <span className="border-r border-border pr-2.5 text-[17px] text-muted-foreground">
+          <span
+            id={`${id}-prefix`}
+            className="border-r border-border pr-2.5 text-[17px] text-muted-foreground"
+          >
             {prefix}
           </span>
         ) : null}
@@ -79,8 +82,12 @@ export function TextField({
           autoComplete={autoComplete}
           maxLength={maxLength}
           aria-invalid={error ? true : undefined}
-          aria-describedby={helpId}
-          className="num h-full min-w-0 flex-1 border-0 bg-transparent text-[17px] font-medium text-foreground outline-none placeholder:text-muted-foreground/80"
+          aria-describedby={
+            [prefix ? `${id}-prefix` : null, helpId]
+              .filter(Boolean)
+              .join(" ") || undefined
+          }
+          className="num h-full min-w-0 flex-1 border-0 bg-transparent text-[17px] font-medium text-foreground outline-none"
         />
       </div>
       {error ? (

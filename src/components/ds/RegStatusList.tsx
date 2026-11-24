@@ -74,7 +74,7 @@ export function RegStatusList({ rows, className }: RegStatusListProps) {
               </small>
             </span>
             {row.action ? (
-              <span className="shrink-0 text-[15px] font-semibold text-primary underline">
+              <span className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap text-[15px] font-semibold text-primary underline">
                 {row.action}
               </span>
             ) : null}

@@ -8,7 +8,11 @@ import { showToast } from "./showToast";
 interface CopyRowProps {
   label: string;
   value: string;
-  /** Tint the row (the deposit reference): `primary-soft` background, 20px value. */
+  /**
+   * Tint the row (the deposit reference): `primary-soft` background, 20px
+   * value. Meant for the last row of a card with 14px side padding (it bleeds
+   * out with a negative margin).
+   */
   highlight?: boolean;
   /** Called after the value was copied. Defaults to the "Copied" toast. */
   onCopied?: () => void;
@@ -50,17 +54,21 @@ export function CopyRow({
     <div
       data-slot="copy-row"
       className={cn(
-        "flex items-center justify-between gap-2.5 border-t border-border py-2.5 first:border-t-0",
+        "flex items-center justify-between gap-2.5 border-t border-border py-2.5 first:border-t-0 [h2+&]:border-t-0 [h3+&]:border-t-0",
         highlight && "-mx-3.5 rounded-b bg-primary-soft px-3.5",
         className
       )}
     >
       <span className="min-w-0">
-        <small className="block text-sm text-muted-foreground">{label}</small>
+        <small className="block text-[13px] text-muted-foreground">
+          {label}
+        </small>
         <b
           className={cn(
-            "num block break-words font-bold",
-            highlight ? "text-xl tracking-[0.02em]" : "text-[17px]"
+            "num block break-words",
+            highlight
+              ? "text-xl font-bold tracking-[0.02em]"
+              : "text-base font-semibold"
           )}
         >
           {value}

@@ -35,7 +35,7 @@ export function RegProgress({
       role="group"
       aria-label={`Step ${String(step)} of ${String(total)}, ${label}`}
       data-slot="reg-progress"
-      className={cn("my-1 mb-3.5", className)}
+      className={cn("mt-1 mb-3.5", className)}
     >
       <div
         aria-hidden="true"

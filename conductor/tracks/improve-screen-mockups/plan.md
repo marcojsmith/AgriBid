@@ -62,7 +62,7 @@ Order: D1 → D2 → D3 → D4 → D5 → D6 → D7 → D8 → D9, then the Regi
 | --- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ------- | --------- | --- |
 | R1  | Register: schema, buyer backend and bid rule (documents, deposit, bank details, headline)                            | **risky** (schema, bid guard, PII) | none    | in review |     |
 | R2  | Register design-system components (RegProgress, TextField, IdTypeToggle, UploadSlot, CopyRow, RegStatusList, WhyBox) | low                                | R1      | in review |     |
-| R3  | Register screens: deposit and review states                                                                          | low                                | R1, R2  | todo      |     |
+| R3  | Register screens: details, documents, deposit and review states                                                      | low                                | R1, R2  | todo      |     |
 | R4  | Admin: review documents, mark deposit received, refund, bank details                                                 | **risky** (admin mutations)        | R1      | todo      |     |
 | R5  | Lot page: eligibility-driven bid panel                                                                               | **risky** (bid flow UI)            | R1, R3  | todo      |     |
 

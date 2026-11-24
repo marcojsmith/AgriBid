@@ -50,8 +50,8 @@ export function IdTypeToggle({
             className={cn(
               "min-h-12 flex-1 rounded-md border px-3 text-base font-medium transition-colors",
               selected
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-input bg-background text-foreground hover:bg-accent"
+                ? "border-btn bg-btn text-btn-foreground"
+                : "border-border bg-card text-foreground hover:bg-accent"
             )}
           >
             {option.label}

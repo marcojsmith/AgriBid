@@ -69,8 +69,9 @@ describe("UploadSlot", () => {
         }}
       />
     );
-    expect(screen.getByText("id-front.jpg")).toBeInTheDocument();
-    expect(screen.getByText("1.2 MB")).toBeInTheDocument();
+    expect(screen.getByText(/id-front\.jpg/)).toHaveTextContent(
+      "id-front.jpg · 1.2 MB"
+    );
     expect(container.querySelector("img")).toHaveAttribute("src", "blob:abc");
     expect(
       screen.queryByRole("button", { name: /Take photo/ })
@@ -93,7 +94,9 @@ describe("UploadSlot", () => {
       />
     );
     expect(container.querySelector("img")).not.toBeInTheDocument();
-    expect(screen.getByText("200.0 KB")).toBeInTheDocument();
+    expect(screen.getByText(/bill\.pdf/)).toHaveTextContent(
+      "bill.pdf · 200.0 KB"
+    );
     expect(
       container.querySelector("[data-slot='upload-thumb'] svg")
     ).toHaveAttribute("aria-hidden", "true");
@@ -130,5 +133,34 @@ describe("UploadSlot", () => {
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("File is too large");
     expect(alert).toHaveClass("text-destructive");
+  });
+
+  it("names each button after its slot and announces uploading", () => {
+    render(
+      <UploadSlot label="ID back" onFile={vi.fn()} uploading error="Bad" />
+    );
+    expect(
+      screen.getByRole("button", { name: "Take photo, ID back" })
+    ).toHaveAccessibleDescription("Bad");
+    expect(
+      screen.getByRole("button", { name: "Choose file, ID back" })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Uploading ID back");
+  });
+
+  it("keeps the hidden inputs out of the tab order and resets them", () => {
+    const onFile = vi.fn();
+    const { container } = render(
+      <UploadSlot label="ID back" onFile={onFile} />
+    );
+    const [camera, choose] = inputs(container);
+    for (const input of [camera, choose]) {
+      expect(input).toHaveAttribute("aria-hidden", "true");
+      expect(input).toHaveAttribute("tabindex", "-1");
+    }
+    const file = new File(["x"], "p.jpg", { type: "image/jpeg" });
+    fireEvent.change(camera, { target: { files: [file] } });
+    expect(onFile).toHaveBeenCalledWith(file);
+    expect(camera.value).toBe("");
   });
 });

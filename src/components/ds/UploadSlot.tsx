@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent } from "react";
+import { useId, useRef, type ChangeEvent } from "react";
 import { Camera, FileText, Loader2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,11 @@ export interface UploadSlotFile {
   name: string;
   /** Size in bytes. */
   size: number;
-  /** An object or storage URL for an image thumbnail; omit for a PDF. */
+  /**
+   * An object or storage URL for an image thumbnail; omit for a PDF. The
+   * caller owns the URL and must `URL.revokeObjectURL` an object URL when it
+   * is replaced or the slot unmounts.
+   */
   previewUrl?: string;
 }
 
@@ -49,6 +53,7 @@ export function UploadSlot({
 }: UploadSlotProps) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const chooseRef = useRef<HTMLInputElement>(null);
+  const errorId = useId();
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files?.[0];
@@ -91,17 +96,18 @@ export function UploadSlot({
             </div>
             <div className="min-w-0 flex-1">
               <b className="block text-base">{label}</b>
-              <span className="block truncate text-sm text-muted-foreground">
-                {file.name}
-              </span>
-              <span className="num block text-sm text-muted-foreground">
-                {formatFileSize(file.size)}
+              <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+                {file.name} ·{" "}
+                <span className="num">{formatFileSize(file.size)}</span>
               </span>
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="min-h-11"
+              aria-label={`Replace ${label}`}
+              aria-describedby={error ? errorId : undefined}
               disabled={uploading}
               onClick={() => chooseRef.current?.click()}
             >
@@ -116,6 +122,8 @@ export function UploadSlot({
               <Button
                 type="button"
                 className="flex-1 px-2.5"
+                aria-label={`Take photo, ${label}`}
+                aria-describedby={error ? errorId : undefined}
                 disabled={uploading}
                 onClick={() => cameraRef.current?.click()}
               >
@@ -126,6 +134,8 @@ export function UploadSlot({
                 type="button"
                 variant="outline"
                 className="flex-1 px-2.5"
+                aria-label={`Choose file, ${label}`}
+                aria-describedby={error ? errorId : undefined}
                 disabled={uploading}
                 onClick={() => chooseRef.current?.click()}
               >
@@ -155,8 +165,17 @@ export function UploadSlot({
           onChange={onChange}
         />
       </div>
+      {uploading ? (
+        <span role="status" className="sr-only">
+          {`Uploading ${label}`}
+        </span>
+      ) : null}
       {error ? (
-        <p role="alert" className="mt-1 text-sm font-medium text-destructive">
+        <p
+          id={errorId}
+          role="alert"
+          className="mt-1 text-sm font-medium text-destructive"
+        >
           {error}
         </p>
       ) : null}

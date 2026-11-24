@@ -53,6 +53,13 @@ describe("TextField", () => {
     expect(input).toHaveAttribute("aria-describedby", alert.id);
   });
 
+  it("has no aria-describedby without hint, error or prefix", () => {
+    render(<TextField id="n" label="Name" value="" onChange={vi.fn()} />);
+    expect(screen.getByLabelText("Name")).not.toHaveAttribute(
+      "aria-describedby"
+    );
+  });
+
   it("renders a prefix segment and passes input attributes", () => {
     render(
       <TextField
@@ -68,6 +75,10 @@ describe("TextField", () => {
       />
     );
     expect(screen.getByText("+27")).toBeInTheDocument();
+    expect(screen.getByLabelText("Cell number")).toHaveAttribute(
+      "aria-describedby",
+      "cell-prefix"
+    );
     const input = screen.getByLabelText("Cell number");
     expect(input).toHaveAttribute("inputmode", "tel");
     expect(input).toHaveAttribute("autocomplete", "tel-national");
