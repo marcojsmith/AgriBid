@@ -19,6 +19,9 @@ vi.mock("convex/react", async () => {
   return { useQuery: t.mockUseQuery, useMutation: t.mockUseMutation };
 });
 vi.mock("@/components/ds/showToast", () => ({ showToast }));
+vi.mock("@/hooks/useDocumentPreview", () => ({
+  useDocumentPreview: () => ({ isPdf: false, loading: false }),
+}));
 vi.mock("@/hooks/useRegistrationUpload", () => ({
   useRegistrationUpload: () => ({
     upload: vi.fn(),

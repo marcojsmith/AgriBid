@@ -1,8 +1,7 @@
 import { useCallback, useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "convex/_generated/api";
-import type { Id } from "convex/_generated/dataModel";
+import { useAuth } from "@clerk/clerk-react";
 
+import { getConvexSiteUrl } from "@/lib/documentRoutes";
 import { getErrorMessage } from "@/lib/utils";
 
 import { MAX_REG_DOC_BYTES } from "../../convex/constants";
@@ -34,15 +33,15 @@ const ALLOWED_TYPES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Uploads a registration document: asks for a one-time URL, POSTs the file to
- * it, then attaches the stored file to the buyer's registration. Attaching a
- * replacement resets that document to "pending" on the server.
+ * Uploads a registration document: POSTs the raw file to the server's
+ * `/documents/upload` route with the Clerk token as a bearer. The server
+ * checks the file's real type, encrypts it, stores it and attaches it to the
+ * buyer's registration; a replacement resets that document to "pending".
  *
  * @returns The `upload` function plus the slot being uploaded and any error
  */
 export function useRegistrationUpload(): RegistrationUpload {
-  const generateUrl = useMutation(api.registration.generateDocumentUploadUrl);
-  const attach = useMutation(api.registration.attachMyDocument);
+  const { getToken } = useAuth();
   const [uploadingKind, setUploadingKind] = useState<RegDocKind | null>(null);
   const [error, setError] = useState<UploadError | null>(null);
 
@@ -63,17 +62,23 @@ export function useRegistrationUpload(): RegistrationUpload {
 
       setUploadingKind(kind);
       try {
-        const url = await generateUrl({});
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-        if (!response.ok) throw new Error("Upload failed");
-        const { storageId } = (await response.json()) as {
-          storageId: Id<"_storage">;
-        };
-        await attach({ kind, storageId, fileName: file.name });
+        const token = await getToken({ template: "convex" });
+        if (!token) throw new Error("Sign in again to upload documents.");
+        const query = new URLSearchParams({ kind, fileName: file.name });
+        const response = await fetch(
+          `${getConvexSiteUrl()}/documents/upload?${query.toString()}`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: file,
+          }
+        );
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          throw new Error(body?.error ?? "Upload failed");
+        }
         return true;
       } catch (err) {
         setError({
@@ -88,7 +93,7 @@ export function useRegistrationUpload(): RegistrationUpload {
         setUploadingKind(null);
       }
     },
-    [generateUrl, attach]
+    [getToken]
   );
 
   return { upload, uploadingKind, error };

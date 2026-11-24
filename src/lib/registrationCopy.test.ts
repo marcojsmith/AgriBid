@@ -235,18 +235,33 @@ describe("buildStatusRows", () => {
     expect(rows[3]?.sub).toBe(`R${NBSP}5${NBSP}000 received`);
   });
 
-  it("keeps Pay now for a claimed or refunded deposit", () => {
-    for (const status of ["paid_claimed", "refunded"] as const) {
-      const rows = buildStatusRows(
-        makeRegistration({
-          deposit: { reference: "AB-7K3F2", status, amount: 4000 },
-        })
-      );
-      expect(rows[3]).toMatchObject({
-        sub: `R${NBSP}4${NBSP}000 · not yet received`,
-        action: { label: "Pay now" },
-      });
-    }
+  it("keeps Pay now for a refunded deposit", () => {
+    const rows = buildStatusRows(
+      makeRegistration({
+        deposit: { reference: "AB-7K3F2", status: "refunded", amount: 4000 },
+      })
+    );
+    expect(rows[3]).toMatchObject({
+      sub: `R${NBSP}4${NBSP}000 · not yet received`,
+      action: { label: "Pay now" },
+    });
+  });
+
+  it("says the payment is being checked, with no Pay now, once it is claimed", () => {
+    const rows = buildStatusRows(
+      makeRegistration({
+        deposit: {
+          reference: "AB-7K3F2",
+          status: "paid_claimed",
+          amount: 5000,
+        },
+      })
+    );
+    expect(rows[3]).toMatchObject({
+      sub: `R${NBSP}5${NBSP}000 · payment being checked`,
+      tone: "neutral",
+    });
+    expect(rows[3]).not.toHaveProperty("action");
   });
 
   it("has no deposit row when the deposit is off", () => {

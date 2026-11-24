@@ -61,6 +61,7 @@ Order: D1 → D2 → D3 → D4 → D5 → D6 → D7 → D8 → D9, then the Regi
 | WP  | Title                                                                                                                | Risk                               | Depends | Status    | PR  |
 | --- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ------- | --------- | --- |
 | R1  | Register: schema, buyer backend and bid rule (documents, deposit, bank details, headline)                            | **risky** (schema, bid guard, PII) | none    | in review |     |
+| R1b | Encrypted, auth-gated personal documents (AES-GCM at rest, upload and download HTTP routes, legacy KYC migration)    | **risky** (security, PII)          | R1, R3  | in review |     |
 | R2  | Register design-system components (RegProgress, TextField, IdTypeToggle, UploadSlot, CopyRow, RegStatusList, WhyBox) | low                                | R1      | in review |     |
 | R3  | Register screens: details, documents, deposit and review states                                                      | low                                | R1, R2  | in review |     |
 | R4  | Admin: review documents, mark deposit received, refund, bank details                                                 | **risky** (admin mutations)        | R1      | todo      |     |

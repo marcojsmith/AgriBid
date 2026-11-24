@@ -65,6 +65,16 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// Legacy KYC files are read through the auth-checked route; stub the fetch.
+vi.mock("@/hooks/useDocumentPreview", () => ({
+  useProtectedDocument: () => ({
+    isPdf: false,
+    loading: false,
+    src: "blob:doc1",
+    href: "blob:doc1",
+  }),
+}));
+
 // Mock window.open
 const windowOpenMock = vi.fn();
 vi.stubGlobal("open", windowOpenMock);
@@ -125,8 +135,7 @@ const mockKycDetails = {
   idNumber: "ID123456",
   phoneNumber: "+1234567890",
   kycEmail: "jane@example.com",
-  kycDocumentIds: ["doc1"],
-  kycDocumentUrls: ["https://example.com/doc1.jpg"],
+  kycDocumentCount: 1,
 };
 
 describe("AdminUsers Page", () => {
@@ -287,15 +296,12 @@ describe("AdminUsers Page", () => {
     expect(within(dialog).getByText("****3456")).toBeInTheDocument();
 
     // View document
-    const viewDocButton = within(dialog).getByRole("button", {
+    const viewDoc = within(dialog).getByRole("link", {
       name: /View Document 1/i,
     });
-    fireEvent.click(viewDocButton);
-    expect(windowOpenMock).toHaveBeenCalledWith(
-      "https://example.com/doc1.jpg",
-      "_blank",
-      "noopener,noreferrer"
-    );
+    expect(viewDoc).toHaveAttribute("href", "blob:doc1");
+    expect(viewDoc).toHaveAttribute("target", "_blank");
+    expect(viewDoc).toHaveAttribute("rel", "noopener noreferrer");
 
     // Approve
     const approveButton = within(dialog).getByRole("button", {
@@ -551,8 +557,7 @@ describe("AdminUsers Page", () => {
       idNumber: "",
       phoneNumber: "",
       kycEmail: "",
-      kycDocumentIds: [],
-      kycDocumentUrls: [],
+      kycDocumentCount: 0,
     };
     mockMutations[
       api.users.getProfileForKYC as unknown as string

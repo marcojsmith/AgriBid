@@ -256,6 +256,13 @@ export function buildStatusRows(registration: Registration): StatusRowData[] {
             : `${amount} received ${formatSastDate(deposit.receivedAt)}`,
         tone: "ok",
       });
+    } else if (deposit?.status === "paid_claimed") {
+      rows.push({
+        key: "deposit",
+        title: "Deposit",
+        sub: `${amount} · payment being checked`,
+        tone: "neutral",
+      });
     } else {
       rows.push({
         key: "deposit",

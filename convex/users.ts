@@ -15,22 +15,12 @@ import {
   getAuthenticatedUserId,
 } from "./lib/auth";
 import type { Id, Doc } from "./_generated/dataModel";
-import {
-  logAudit,
-  encryptPII,
-  decryptPII,
-  updateCounter,
-  countQuery,
-} from "./admin_utils";
+import { logAudit, decryptPII, updateCounter, countQuery } from "./admin_utils";
 import { logActivity } from "./userActivity";
 import { sellerResponseTimeValidator } from "./lib/provinces";
 import { getPresenceThresholdMs } from "./presence";
 import { sellerTypeValidator, type SellerType } from "./lib/lotSpecs";
-import {
-  MAX_PROFILE_BIO_LENGTH,
-  MAX_PROFILE_FIELD_LENGTH,
-  KYC_RATE_LIMIT_WINDOW_MS,
-} from "./constants";
+import { MAX_PROFILE_BIO_LENGTH, MAX_PROFILE_FIELD_LENGTH } from "./constants";
 
 /**
  * Validator for a profile document from the database.
@@ -46,7 +36,6 @@ export const ProfileValidator = v.object({
   kycStatus: v.optional(
     v.union(v.literal("pending"), v.literal("verified"), v.literal("rejected"))
   ),
-  kycDocuments: v.optional(v.array(v.id("_storage"))),
   kycRejectionReason: v.optional(v.string()),
   firstName: v.optional(v.string()),
   lastName: v.optional(v.string()),
@@ -91,7 +80,8 @@ export const UserProfileValidator = v.object({
  * Validator for profile with decrypted PII (used in getProfileForKYC).
  */
 export const ProfileForKYCValidator = ProfileValidator.extend({
-  kycDocumentUrls: v.array(v.string()),
+  /** How many legacy KYC files the user has; read file `n` via `/documents/file`. */
+  kycDocumentCount: v.number(),
 });
 
 /**
@@ -103,9 +93,28 @@ export const KYCDetailsValidator = v.object({
   idNumber: v.optional(v.string()),
   phoneNumber: v.optional(v.string()),
   kycEmail: v.optional(v.string()),
-  kycDocumentIds: v.optional(v.array(v.id("_storage"))),
-  kycDocumentUrls: v.optional(v.array(v.string())),
+  kycDocumentCount: v.optional(v.number()),
 });
+
+/**
+ * Strips the stored-file references from a profile before it leaves the
+ * server: clients never see storage ids (`/api/storage/<id>` has no access
+ * check), only a document count and the auth-checked download route.
+ *
+ * @param profile - The profile row
+ * @returns The profile without `kycDocuments` / `kycDocumentsEncrypted`
+ */
+function withoutDocumentRefs(
+  profile: Doc<"profiles">
+): Omit<Doc<"profiles">, "kycDocuments" | "kycDocumentsEncrypted"> {
+  const rest: Partial<Doc<"profiles">> = { ...profile };
+  delete rest.kycDocuments;
+  delete rest.kycDocumentsEncrypted;
+  return rest as Omit<
+    Doc<"profiles">,
+    "kycDocuments" | "kycDocumentsEncrypted"
+  >;
+}
 
 /**
  * Handler for synchronizing user with profile.
@@ -194,7 +203,7 @@ export const getMyProfileHandler = async (ctx: QueryCtx) => {
       userId: authUser.userId ?? undefined,
       name: authUser.name ?? undefined,
       email: authUser.email ?? undefined,
-      profile: profile ?? null,
+      profile: profile ? withoutDocumentRefs(profile) : null,
     };
   } catch (err) {
     if (err instanceof Error && !err.message.includes("Unauthenticated")) {
@@ -342,26 +351,14 @@ export const getProfileForKYCHandler = async (
 
   if (!profile) return null;
 
-  const [
-    decIdNumber,
-    decFirstName,
-    decLastName,
-    decPhone,
-    decEmail,
-    kycDocUrls,
-  ] = await Promise.all([
-    decryptPII(profile.idNumber),
-    decryptPII(profile.firstName),
-    decryptPII(profile.lastName),
-    decryptPII(profile.phoneNumber),
-    decryptPII(profile.kycEmail),
-    Promise.all(
-      (profile.kycDocuments ?? []).map(async (id: Id<"_storage">) => {
-        const url = await ctx.storage.getUrl(id);
-        return url;
-      })
-    ),
-  ]);
+  const [decIdNumber, decFirstName, decLastName, decPhone, decEmail] =
+    await Promise.all([
+      decryptPII(profile.idNumber),
+      decryptPII(profile.firstName),
+      decryptPII(profile.lastName),
+      decryptPII(profile.phoneNumber),
+      decryptPII(profile.kycEmail),
+    ]);
 
   await logAudit(ctx, {
     action: "VIEW_KYC_DETAILS",
@@ -370,7 +367,7 @@ export const getProfileForKYCHandler = async (
   });
 
   return {
-    ...profile,
+    ...withoutDocumentRefs(profile),
     name: profile.name,
     email: profile.email,
     firstName: decFirstName,
@@ -378,7 +375,7 @@ export const getProfileForKYCHandler = async (
     phoneNumber: decPhone,
     kycEmail: decEmail,
     idNumber: decIdNumber,
-    kycDocumentUrls: kycDocUrls.filter((url): url is string => url !== null),
+    kycDocumentCount: (profile.kycDocuments ?? []).length,
   };
 };
 
@@ -515,110 +512,6 @@ export const promoteToAdmin = mutation({
 });
 
 /**
- * Handler for submitting KYC documents.
- * @param ctx - Convex mutation context
- * @param args - KYC submission details
- * @param args.documents - Storage IDs of the uploaded KYC documents
- * @param args.firstName - User's first name
- * @param args.lastName - User's last name
- * @param args.phoneNumber - User's phone number
- * @param args.idNumber - User's national ID number
- * @param args.email - User's KYC contact email
- * @returns Promise<{ success: boolean }>
- */
-export const submitKYCHandler = async (
-  ctx: MutationCtx,
-  args: {
-    documents: Id<"_storage">[];
-    firstName: string;
-    lastName: string;
-    phoneNumber: string;
-    idNumber: string;
-    email: string;
-  }
-) => {
-  const authUser = await requireAuth(ctx);
-  const userId = resolveUserId(authUser);
-  if (!userId) throw new Error("Unable to determine user ID");
-
-  // Validate documents are actual storage IDs
-  for (const id of args.documents) {
-    const url = await ctx.storage.getUrl(id);
-    if (!url) {
-      throw new Error(`Invalid storage ID provided: ${id}`);
-    }
-  }
-
-  const profile = await ctx.db
-    .query("profiles")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .unique();
-
-  if (!profile) throw new Error("Profile not found");
-
-  // Rate limiting: max MAX_KYC_SUBMISSIONS_PER_WINDOW per KYC_RATE_LIMIT_WINDOW_MS
-  const now = Date.now();
-  const windowStart = now - KYC_RATE_LIMIT_WINDOW_MS;
-  if (profile.kycStatus === "pending" && profile.updatedAt >= windowStart) {
-    throw new ConvexError(
-      "You're submitting KYC documents too quickly. Please wait before submitting again."
-    );
-  }
-
-  const [encFirstName, encLastName, encPhone, encIdNumber, encEmail] =
-    await Promise.all([
-      encryptPII(args.firstName),
-      encryptPII(args.lastName),
-      encryptPII(args.phoneNumber),
-      encryptPII(args.idNumber),
-      encryptPII(args.email),
-    ]);
-
-  const wasPending = profile.kycStatus === "pending";
-
-  await ctx.db.patch("profiles", profile._id, {
-    kycStatus: "pending",
-    kycDocuments: args.documents,
-    firstName: encFirstName,
-    lastName: encLastName,
-    phoneNumber: encPhone,
-    idNumber: encIdNumber,
-    kycEmail: encEmail,
-    updatedAt: Date.now(),
-  });
-
-  if (!wasPending) {
-    await updateCounter(ctx, "profiles", "pending", 1);
-  }
-
-  // Every submission gets a fresh activity entry so a rejected-then-resubmitted
-  // user's feed reflects the new review request.
-  await logActivity(ctx, {
-    userId,
-    type: "verification_requested",
-    description: "Identity documents submitted for review",
-  });
-
-  return { success: true };
-};
-
-/**
- * User: Submit KYC documents for verification.
- */
-export const submitKYC = mutation({
-  args: {
-    documents: v.array(v.id("_storage")),
-    firstName: v.string(),
-    lastName: v.string(),
-    phoneNumber: v.string(),
-    idNumber: v.string(),
-    email: v.string(),
-  },
-  returns: v.object({ success: v.boolean() }),
-  handler: submitKYCHandler,
-});
-
-/**
  * Handler for getting user's own KYC details.
  * @param ctx - Convex query context
  * @returns Promise<null | KYCDetails>
@@ -638,26 +531,14 @@ export const getMyKYCDetailsHandler = async (ctx: QueryCtx) => {
 
     if (!profile) return null;
 
-    const [
-      decFirstName,
-      decLastName,
-      decIdNumber,
-      decPhone,
-      decEmail,
-      kycDocUrls,
-    ] = await Promise.all([
-      decryptPII(profile.firstName),
-      decryptPII(profile.lastName),
-      decryptPII(profile.idNumber),
-      decryptPII(profile.phoneNumber),
-      decryptPII(profile.kycEmail),
-      Promise.all(
-        (profile.kycDocuments ?? []).map(async (id) => {
-          const url = await ctx.storage.getUrl(id);
-          return url;
-        })
-      ),
-    ]);
+    const [decFirstName, decLastName, decIdNumber, decPhone, decEmail] =
+      await Promise.all([
+        decryptPII(profile.firstName),
+        decryptPII(profile.lastName),
+        decryptPII(profile.idNumber),
+        decryptPII(profile.phoneNumber),
+        decryptPII(profile.kycEmail),
+      ]);
 
     return {
       firstName: decFirstName,
@@ -665,8 +546,7 @@ export const getMyKYCDetailsHandler = async (ctx: QueryCtx) => {
       idNumber: decIdNumber,
       phoneNumber: decPhone,
       kycEmail: decEmail,
-      kycDocumentIds: profile.kycDocuments,
-      kycDocumentUrls: kycDocUrls.filter((url): url is string => url !== null),
+      kycDocumentCount: (profile.kycDocuments ?? []).length,
     };
   } catch (err) {
     if (err instanceof Error && !err.message.includes("Unauthenticated")) {

@@ -1,7 +1,11 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import { internalMutation } from "./_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  internalQuery,
+} from "./_generated/server";
 import { countQuery, getCounter, updateCounter } from "./admin_utils";
 import {
   auctionLotCounterName,
@@ -11,6 +15,9 @@ import {
   recountAuctionLots,
   watcherCounterName,
 } from "./lib/lotCounters";
+import { encryptBytes } from "./lib/documentCrypto";
+import { sniffDocumentType } from "./lib/documentSniff";
+import { extractImageStorageIds } from "./lib/storage";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
@@ -507,4 +514,337 @@ export const backfillWatcherCounts = internalMutation({
   }),
   handler: async (ctx, args) =>
     backfillWatcherCountsHandler(ctx, { cursor: args.cursor ?? null }),
+});
+
+// ---------------------------------------------------------------------------
+// R1b: encrypt personal documents that were stored in plain text
+// ---------------------------------------------------------------------------
+
+/** Profiles / document rows examined per `encryptLegacyKycDocuments` batch. */
+export const DOCUMENT_ENCRYPT_BATCH = 5;
+
+const documentPhaseValidator = v.union(
+  v.literal("kyc"),
+  v.literal("registration")
+);
+
+/**
+ * One page of profiles that still hold plain legacy KYC files.
+ * Profiles already marked encrypted, or without files, are left out.
+ */
+export const listLegacyKycBatch = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.object({
+    items: v.array(
+      v.object({
+        profileId: v.id("profiles"),
+        storageIds: v.array(v.id("_storage")),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("profiles")
+      .paginate({ numItems: DOCUMENT_ENCRYPT_BATCH, cursor: args.cursor });
+    const items = page.page.flatMap((profile) =>
+      (profile.kycDocuments ?? []).length > 0 &&
+      profile.kycDocumentsEncrypted !== true
+        ? [{ profileId: profile._id, storageIds: profile.kycDocuments ?? [] }]
+        : []
+    );
+    return {
+      items,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
+  },
+});
+
+/**
+ * One page of registration document rows that are not yet encrypted
+ * (created by R1/R3 before encryption existed).
+ */
+export const listPlainRegistrationDocuments = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.object({
+    items: v.array(
+      v.object({
+        documentId: v.id("registrationDocuments"),
+        storageId: v.id("_storage"),
+      })
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("registrationDocuments")
+      .paginate({ numItems: DOCUMENT_ENCRYPT_BATCH, cursor: args.cursor });
+    const items = page.page
+      .filter((row) => row.encrypted !== true)
+      .map((row) => ({ documentId: row._id, storageId: row.storageId }));
+    return {
+      items,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    };
+  },
+});
+
+/**
+ * Swaps a profile's plain legacy files for their encrypted copies and marks
+ * it encrypted. Refuses (returns false) when the profile's list changed since
+ * it was read, so a concurrent edit is never overwritten.
+ */
+export const commitEncryptedKycDocuments = internalMutation({
+  args: {
+    profileId: v.id("profiles"),
+    oldIds: v.array(v.id("_storage")),
+    newIds: v.array(v.id("_storage")),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const profile = await ctx.db.get("profiles", args.profileId);
+    const current = profile?.kycDocuments ?? [];
+    const unchanged =
+      current.length === args.oldIds.length &&
+      current.every((id, i) => id === args.oldIds[i]);
+    if (!profile || profile.kycDocumentsEncrypted === true || !unchanged) {
+      return false;
+    }
+    await ctx.db.patch("profiles", args.profileId, {
+      kycDocuments: args.newIds,
+      kycDocumentsEncrypted: true,
+    });
+    return true;
+  },
+});
+
+/**
+ * Points a registration document at its encrypted copy and records the real
+ * content type. Refuses when the row already moved on (replaced or encrypted).
+ */
+export const commitEncryptedRegistrationDocument = internalMutation({
+  args: {
+    documentId: v.id("registrationDocuments"),
+    oldStorageId: v.id("_storage"),
+    newStorageId: v.id("_storage"),
+    contentType: v.string(),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get("registrationDocuments", args.documentId);
+    if (!row || row.encrypted === true || row.storageId !== args.oldStorageId) {
+      return false;
+    }
+    await ctx.db.patch("registrationDocuments", args.documentId, {
+      storageId: args.newStorageId,
+      contentType: args.contentType,
+      encrypted: true,
+    });
+    return true;
+  },
+});
+
+/**
+ * Whether any row other than `exceptProfileId`'s own list still points at a
+ * stored file (another profile, a registration document, a lot or a sale).
+ * The old `submitKYC` accepted any storage id, so a "KYC file" can really be
+ * someone else's document or a public image; the migration must not delete it.
+ */
+export const isStorageReferencedElsewhere = internalQuery({
+  args: {
+    storageId: v.id("_storage"),
+    exceptProfileId: v.optional(v.id("profiles")),
+    exceptDocumentId: v.optional(v.id("registrationDocuments")),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const doc = await ctx.db
+      .query("registrationDocuments")
+      .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
+      .first();
+    if (doc && doc._id !== args.exceptDocumentId) return true;
+    for await (const profile of ctx.db.query("profiles")) {
+      if (
+        profile._id !== args.exceptProfileId &&
+        (profile.kycDocuments ?? []).includes(args.storageId)
+      ) {
+        return true;
+      }
+    }
+    for await (const lot of ctx.db.query("lots")) {
+      if (
+        extractImageStorageIds(lot.images).includes(args.storageId) ||
+        lot.conditionReportUrl === args.storageId ||
+        lot.coldStartVideo === args.storageId
+      ) {
+        return true;
+      }
+    }
+    for await (const auction of ctx.db.query("auctions")) {
+      if (auction.bannerImage === args.storageId) return true;
+    }
+    return false;
+  },
+});
+
+/**
+ * Reads a plain stored file, encrypts it and stores the ciphertext.
+ *
+ * @param ctx - Action context (storage access)
+ * @param ctx.storage - File storage
+ * @param ctx.storage.get - Reads a stored file
+ * @param ctx.storage.store - Stores a new file
+ * @param storageId - The plain file
+ * @returns The new storage id and the sniffed type, or null when the file is gone
+ */
+async function sealStoredFile(
+  ctx: {
+    storage: {
+      get: (id: Id<"_storage">) => Promise<Blob | null>;
+      store: (blob: Blob) => Promise<Id<"_storage">>;
+    };
+  },
+  storageId: Id<"_storage">
+): Promise<{ newId: Id<"_storage">; contentType: string } | null> {
+  const blob = await ctx.storage.get(storageId);
+  if (blob === null) return null;
+  const plain = await blob.arrayBuffer();
+  const contentType =
+    sniffDocumentType(new Uint8Array(plain)) ?? "application/octet-stream";
+  const newId = await ctx.storage.store(
+    new Blob([await encryptBytes(plain)], { type: "application/octet-stream" })
+  );
+  return { newId, contentType };
+}
+
+/**
+ * Encrypts every personal document stored in plain text: first the legacy
+ * `profiles.kycDocuments` files, then `registrationDocuments` rows without
+ * `encrypted: true`. Run with `bunx convex run migrations:encryptLegacyKycDocuments`
+ * after setting `DOCUMENT_ENCRYPTION_KEY`.
+ *
+ * Batched: each call handles one page, then schedules itself for the next, so
+ * it resumes from the profile (or row) cursor. Idempotent: encrypted
+ * profiles/rows are skipped, the id swap commits before the plain file is
+ * deleted, and a swap that lost a race removes its own new copy.
+ */
+export const encryptLegacyKycDocuments = internalAction({
+  args: {
+    phase: v.optional(documentPhaseValidator),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.object({
+    phase: documentPhaseValidator,
+    processed: v.number(),
+    encrypted: v.number(),
+    isDone: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const phase = args.phase ?? "kyc";
+    const cursor = args.cursor ?? null;
+    let processed = 0;
+    let encrypted = 0;
+    let isDone = false;
+    let next: { phase: "kyc" | "registration"; cursor: string | null } | null =
+      null;
+
+    if (phase === "kyc") {
+      const page = await ctx.runQuery(internal.migrations.listLegacyKycBatch, {
+        cursor,
+      });
+      for (const item of page.items) {
+        processed++;
+        const sealed: {
+          oldId: Id<"_storage">;
+          newId: Id<"_storage">;
+        }[] = [];
+        // A file already gone from storage is dropped from the list.
+        for (const oldId of item.storageIds) {
+          const result = await sealStoredFile(ctx, oldId);
+          if (result) sealed.push({ oldId, newId: result.newId });
+        }
+        const committed = await ctx.runMutation(
+          internal.migrations.commitEncryptedKycDocuments,
+          {
+            profileId: item.profileId,
+            oldIds: item.storageIds,
+            newIds: sealed.map((entry) => entry.newId),
+          }
+        );
+        if (committed) {
+          encrypted++;
+          for (const oldId of new Set(sealed.map((entry) => entry.oldId))) {
+            const shared = await ctx.runQuery(
+              internal.migrations.isStorageReferencedElsewhere,
+              { storageId: oldId, exceptProfileId: item.profileId }
+            );
+            if (shared) {
+              console.warn(`Kept plain file ${oldId}: referenced elsewhere`);
+              continue;
+            }
+            try {
+              await ctx.storage.delete(oldId);
+            } catch (err) {
+              console.warn(`Could not delete plain file ${oldId}`, err);
+            }
+          }
+        } else {
+          for (const entry of sealed) await ctx.storage.delete(entry.newId);
+        }
+      }
+      next = page.isDone
+        ? { phase: "registration", cursor: null }
+        : { phase: "kyc", cursor: page.continueCursor };
+    } else {
+      const page = await ctx.runQuery(
+        internal.migrations.listPlainRegistrationDocuments,
+        { cursor }
+      );
+      for (const item of page.items) {
+        processed++;
+        const result = await sealStoredFile(ctx, item.storageId);
+        if (result === null) continue;
+        const committed = await ctx.runMutation(
+          internal.migrations.commitEncryptedRegistrationDocument,
+          {
+            documentId: item.documentId,
+            oldStorageId: item.storageId,
+            newStorageId: result.newId,
+            contentType: result.contentType,
+          }
+        );
+        if (committed) {
+          encrypted++;
+          const shared = await ctx.runQuery(
+            internal.migrations.isStorageReferencedElsewhere,
+            { storageId: item.storageId, exceptDocumentId: item.documentId }
+          );
+          if (shared) {
+            console.warn(
+              `Kept plain file ${item.storageId}: referenced elsewhere`
+            );
+          } else {
+            await ctx.storage.delete(item.storageId);
+          }
+        } else {
+          await ctx.storage.delete(result.newId);
+        }
+      }
+      if (page.isDone) isDone = true;
+      else next = { phase: "registration", cursor: page.continueCursor };
+    }
+
+    if (next) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.migrations.encryptLegacyKycDocuments,
+        next
+      );
+    }
+    return { phase, processed, encrypted, isDone };
+  },
 });

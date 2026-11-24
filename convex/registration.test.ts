@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { convexTest } from "convex-test";
 
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { MAX_REG_DOC_BYTES } from "./constants";
 import { decryptPII } from "./lib/encryption";
@@ -112,12 +112,47 @@ async function attach(
   type = "image/jpeg"
 ) {
   const storageId = await storeFile(t, type);
-  const result = await asBuyer(t).mutation(api.registration.attachMyDocument, {
+  const result = await attachRaw(t, {
     kind,
     storageId,
     fileName: `${kind}.jpg`,
+    contentType: type,
   });
   return { storageId, ...result };
+}
+
+/**
+ * Calls the internal attach mutation the upload route uses.
+ *
+ * @param t - Test context
+ * @param args - Attach arguments; the user defaults to the buyer
+ * @param args.kind
+ * @param args.storageId
+ * @param args.fileName
+ * @param args.userId
+ * @param args.fileSize
+ * @param args.contentType
+ * @returns The new document id
+ */
+async function attachRaw(
+  t: Ctx,
+  args: {
+    kind: "id_front" | "id_back" | "passport_photo" | "proof_of_address";
+    storageId: Id<"_storage">;
+    fileName: string;
+    userId?: string;
+    fileSize?: number;
+    contentType?: string;
+  }
+) {
+  return await t.mutation(internal.documents.attachEncryptedDocument, {
+    userId: args.userId ?? BUYER,
+    kind: args.kind,
+    storageId: args.storageId,
+    fileName: args.fileName,
+    fileSize: args.fileSize ?? 10,
+    contentType: args.contentType ?? "image/jpeg",
+  });
 }
 
 /**
@@ -379,28 +414,18 @@ describe("saveMyDetails", () => {
   });
 });
 
-describe("attachMyDocument", () => {
+describe("attachEncryptedDocument", () => {
   it("needs details first", async () => {
     const t = makeContext();
     await seed(t);
     const storageId = await storeFile(t);
     await expect(
-      asBuyer(t).mutation(api.registration.attachMyDocument, {
+      attachRaw(t, {
         kind: "id_front",
         storageId,
         fileName: "a.pdf",
       })
     ).rejects.toThrow("Save your details");
-  });
-
-  it("returns a signed upload URL", async () => {
-    const t = makeContext();
-    await seed(t);
-    const url = await asBuyer(t).mutation(
-      api.registration.generateDocumentUploadUrl,
-      {}
-    );
-    expect(typeof url).toBe("string");
   });
 
   it("rejects the wrong MIME type", async () => {
@@ -409,50 +434,37 @@ describe("attachMyDocument", () => {
     await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
     const storageId = await storeFile(t, "text/plain");
     await expect(
-      asBuyer(t).mutation(api.registration.attachMyDocument, {
+      attachRaw(t, {
         kind: "id_front",
         storageId,
         fileName: "a.txt",
+        contentType: "text/plain",
       })
     ).rejects.toThrow("JPG, PNG");
   });
 
-  it("rejects SVG, an old upload and a file reused for another kind", async () => {
+  it("rejects SVG and a file reused for another kind", async () => {
     const t = makeContext();
     await seed(t);
     await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
     const svg = await storeFile(t, "image/svg+xml");
     await expect(
-      asBuyer(t).mutation(api.registration.attachMyDocument, {
+      attachRaw(t, {
         kind: "id_front",
         storageId: svg,
         fileName: "a.svg",
+        contentType: "image/svg+xml",
       })
     ).rejects.toThrow("JPG, PNG");
 
     const first = await attach(t, "id_front");
     await expect(
-      asBuyer(t).mutation(api.registration.attachMyDocument, {
+      attachRaw(t, {
         kind: "id_back",
         storageId: first.storageId,
         fileName: "again.jpg",
       })
     ).rejects.toThrow("already attached");
-
-    const stale = await storeFile(t, "image/png");
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(Date.now() + 2 * 60 * 60 * 1000);
-    try {
-      await expect(
-        asBuyer(t).mutation(api.registration.attachMyDocument, {
-          kind: "id_back",
-          storageId: stale,
-          fileName: "old.png",
-        })
-      ).rejects.toThrow("expired");
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   it("rejects a file over 10 MB", async () => {
@@ -465,10 +477,11 @@ describe("attachMyDocument", () => {
       MAX_REG_DOC_BYTES + 1
     );
     await expect(
-      asBuyer(t).mutation(api.registration.attachMyDocument, {
+      attachRaw(t, {
         kind: "id_front",
         storageId,
         fileName: "big.pdf",
+        fileSize: MAX_REG_DOC_BYTES + 1,
       })
     ).rejects.toThrow("10 MB");
   });
@@ -479,7 +492,7 @@ describe("attachMyDocument", () => {
     await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
     const storageId = await storeFile(t, "image/png");
     await expect(
-      asBuyer(t).mutation(api.registration.attachMyDocument, {
+      attachRaw(t, {
         kind: "passport_photo",
         storageId,
         fileName: "p.png",
@@ -576,7 +589,26 @@ describe("submitMyDocuments", () => {
       depositReceived: false,
     });
     expect(reg?.documents).toHaveLength(2);
-    expect(reg?.documents[0]?.url).toEqual(expect.any(String));
+    // No URL and no storage id ever leave the server: only metadata and an id.
+    for (const doc of reg?.documents ?? []) {
+      expect(doc).not.toHaveProperty("url");
+      expect(doc).not.toHaveProperty("storageId");
+      expect(
+        Object.keys(doc).every((key) =>
+          [
+            "id",
+            "kind",
+            "status",
+            "fileName",
+            "fileSize",
+            "contentType",
+            "rejectionReason",
+            "reviewedAt",
+          ].includes(key)
+        )
+      ).toBe(true);
+    }
+    expect(reg?.documents[0]?.contentType).toBe("image/jpeg");
   });
 });
 
@@ -743,7 +775,8 @@ describe("storage ownership", () => {
     const other = t.withIdentity({ subject: OTHER });
     await other.mutation(api.registration.saveMyDetails, saDetails);
     const storageId = await storeFile(t, "image/png");
-    await other.mutation(api.registration.attachMyDocument, {
+    await attachRaw(t, {
+      userId: OTHER,
       kind: "id_front",
       storageId,
       fileName: "theirs.png",
@@ -751,7 +784,7 @@ describe("storage ownership", () => {
 
     await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
     await expect(
-      asBuyer(t).mutation(api.registration.attachMyDocument, {
+      attachRaw(t, {
         kind: "id_front",
         storageId,
         fileName: "stolen.png",
@@ -874,21 +907,12 @@ describe("every public function needs sign-in", () => {
   it("throws Not authenticated when signed out", async () => {
     const t = makeContext();
     await seed(t);
-    const storageId = await storeFile(t);
     const calls: Record<string, () => Promise<unknown>> = {
       getMyRegistration: () => t.query(api.registration.getMyRegistration, {}),
       getMyBidEligibility: () =>
         t.query(api.registration.getMyBidEligibility, {}),
       saveMyDetails: () =>
         t.mutation(api.registration.saveMyDetails, saDetails),
-      generateDocumentUploadUrl: () =>
-        t.mutation(api.registration.generateDocumentUploadUrl, {}),
-      attachMyDocument: () =>
-        t.mutation(api.registration.attachMyDocument, {
-          kind: "id_front",
-          storageId,
-          fileName: "a.pdf",
-        }),
       submitMyDocuments: () =>
         t.mutation(api.registration.submitMyDocuments, {}),
       startMyDeposit: () => t.mutation(api.registration.startMyDeposit, {}),
