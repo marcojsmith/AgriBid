@@ -128,10 +128,14 @@ export const getEventFacetsHandler = async (
   ctx: QueryCtx,
   args: { auctionId: Id<"auctions"> }
 ) => {
-  const { lots, capped } = await loadEventLots(ctx, args.auctionId);
+  const { auction, lots, capped } = await loadEventLots(ctx, args.auctionId);
   // The chips tally the lots read (capped); the sale's total is exact, from its
-  // counter, whenever the backfill has created it.
-  const exactTotal = await getAuctionLotCount(ctx, args.auctionId);
+  // counter, whenever the backfill has created it. Only `total` is exact: the
+  // chip counts, price range and sold figures still come from the capped read.
+  // A draft or missing sale reads nothing, so its counter is never exposed.
+  const exactTotal = auction
+    ? await getAuctionLotCount(ctx, args.auctionId)
+    : null;
 
   const categoryNames = new Map<Id<"equipmentCategories">, string>();
   const categoryIds = [

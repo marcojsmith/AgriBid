@@ -17,7 +17,11 @@ import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCounter, updateCounter } from "./admin_utils";
-import { bidCounterName, watcherCounterName } from "./lib/lotCounters";
+import {
+  bidCounterName,
+  syncAuctionLotCount,
+  watcherCounterName,
+} from "./lib/lotCounters";
 import {
   DEMO_BIDDER_IDS,
   WBT_SEED_PREFIX,
@@ -129,6 +133,11 @@ async function resetOpenLot(ctx: MutationCtx, lot: Doc<"lots">): Promise<void> {
       winnerId: undefined,
       settledAt: undefined,
       extendedEndTime: undefined,
+    });
+    await syncAuctionLotCount(ctx, lot, {
+      status: "assigned",
+      auctionId: lot.auctionId,
+      hiddenByFlags: lot.hiddenByFlags,
     });
   }
 }

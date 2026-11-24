@@ -399,4 +399,28 @@ describe("exact lot counts in the public reads", () => {
     });
     expect(facets).toMatchObject({ total, capped: false });
   });
+
+  it("does not expose a draft sale's lot count through the public facets", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const draft = await t.run(async (ctx) =>
+      ctx.db.insert("auctions", {
+        title: "Draft sale",
+        status: "draft",
+        startTime: Date.now() + 60_000,
+        endTime: Date.now() + 600_000,
+        createdBy: ADMIN,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+    await insertLot(t, world, { status: "assigned", auctionId: draft });
+    await runBackfill(t);
+    expect(await counterOf(t, draft)).toBe(1);
+
+    const facets = await t.query(api.auctions.getEventFacets, {
+      auctionId: draft,
+    });
+    expect(facets).toMatchObject({ total: 0 });
+  });
 });
