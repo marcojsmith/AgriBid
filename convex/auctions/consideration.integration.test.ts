@@ -11,6 +11,7 @@ import { convexTest } from "convex-test";
 
 import { api, internal } from "../_generated/api";
 import { CONSIDERATION_WINDOW_MS, SETTLEMENT_BATCH_SIZE } from "../constants";
+import { cronSettingKey } from "../cronRegistry";
 import schema from "../schema";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -333,7 +334,7 @@ describe("acceptTopBid", () => {
 
     const result = await accept(t, SELLER, lotId);
 
-    expect(result).toEqual({ status: "sold" });
+    expect(result).toEqual({ status: "sold", expired: false });
     const lot = await readLot(t, lotId);
     expect(lot.status).toBe("sold");
     expect(lot.winnerId).toBe(BIDDER_A);
@@ -411,13 +412,38 @@ describe("acceptTopBid", () => {
     expect(row?.details).toContain('"actor":"admin"');
   });
 
-  it("refuses after the deadline, leaving expiry to settle it", async () => {
+  it("settles it as expired instead of accepting once the deadline has passed", async () => {
     const t = createTestContext();
     const { lotId } = await seedConsideration(t);
     await backdateDeadline(t, lotId);
 
-    await expect(accept(t, SELLER, lotId)).rejects.toThrow(/48 hours/);
+    expect(await accept(t, SELLER, lotId)).toEqual({
+      status: "unsold",
+      expired: true,
+    });
 
+    const lot = await readLot(t, lotId);
+    expect(lot.status).toBe("unsold");
+    expect(lot.considerationDeadline).toBeUndefined();
+    expect(await readFees(t, lotId)).toHaveLength(0);
+    expect((await readCounters(t)).soldCount).toBe(0);
+    expect(await auditActions(t)).toContain("CONSIDERATION_EXPIRED");
+    expect(await auditActions(t)).not.toContain("CONSIDERATION_ACCEPTED");
+  });
+
+  it("refuses a no-bid accept instead of reporting a successful unsold", async () => {
+    const t = createTestContext();
+    const { lotId } = await seedConsideration(t);
+    await t.run(async (ctx) => {
+      for (const bid of await ctx.db
+        .query("bids")
+        .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+        .collect()) {
+        await ctx.db.patch("bids", bid._id, { status: "voided" });
+      }
+    });
+
+    await expect(accept(t, SELLER, lotId)).rejects.toThrow(/no valid bid left/);
     expect((await readLot(t, lotId)).status).toBe("under_consideration");
     expect(await readFees(t, lotId)).toHaveLength(0);
   });
@@ -455,22 +481,6 @@ describe("acceptTopBid", () => {
     expect(lot.winnerId).toBe(BIDDER_B);
     expect(lot.currentPrice).toBe(START_PRICE);
   });
-
-  it("falls back to unsold when every bid was voided", async () => {
-    const t = createTestContext();
-    const { lotId } = await seedConsideration(t);
-    await t.run(async (ctx) => {
-      for (const bid of await ctx.db
-        .query("bids")
-        .withIndex("by_lot", (q) => q.eq("lotId", lotId))
-        .collect()) {
-        await ctx.db.patch("bids", bid._id, { status: "voided" });
-      }
-    });
-
-    expect(await accept(t, SELLER, lotId)).toEqual({ status: "unsold" });
-    expect(await readFees(t, lotId)).toHaveLength(0);
-  });
 });
 
 describe("declineTopBid", () => {
@@ -478,7 +488,10 @@ describe("declineTopBid", () => {
     const t = createTestContext();
     const { lotId } = await seedConsideration(t);
 
-    expect(await decline(t, SELLER, lotId)).toEqual({ status: "unsold" });
+    expect(await decline(t, SELLER, lotId)).toEqual({
+      status: "unsold",
+      expired: false,
+    });
 
     const lot = await readLot(t, lotId);
     expect(lot.status).toBe("unsold");
@@ -501,6 +514,19 @@ describe("declineTopBid", () => {
     const { lotId } = await seedConsideration(t);
     await decline(t, ADMIN, lotId);
     expect((await readLot(t, lotId)).status).toBe("unsold");
+  });
+
+  it("lets an admin clear a lot stuck past its deadline", async () => {
+    const t = createTestContext();
+    const { lotId } = await seedConsideration(t);
+    await backdateDeadline(t, lotId);
+
+    expect(await decline(t, ADMIN, lotId)).toEqual({
+      status: "unsold",
+      expired: true,
+    });
+    expect((await readLot(t, lotId)).status).toBe("unsold");
+    expect(await auditActions(t)).toContain("CONSIDERATION_EXPIRED");
   });
 });
 
@@ -565,6 +591,48 @@ describe("guards around a lot under consideration", () => {
     expect(lot.status).toBe("under_consideration");
     expect(lot.winnerId).toBe(BIDDER_B);
     expect(lot.currentPrice).toBe(START_PRICE);
+  });
+
+  it("tells the new top bidder when a void hands them the lot", async () => {
+    const t = createTestContext();
+    const { lotId } = await seedConsideration(t);
+    const topBid = await t.run(async (ctx) =>
+      ctx.db
+        .query("bids")
+        .withIndex("by_lot_amount", (q) => q.eq("lotId", lotId))
+        .order("desc")
+        .first()
+    );
+    if (!topBid) throw new Error("no bids");
+    const before = (await notificationsFor(t, BIDDER_B)).length;
+
+    await t
+      .withIdentity({ subject: ADMIN })
+      .mutation(api.admin.mutations.voidBid, {
+        bidId: topBid._id,
+        reason: "shill bid",
+      });
+
+    const after = await notificationsFor(t, BIDDER_B);
+    expect(after).toHaveLength(before + 1);
+    expect(after[after.length - 1]?.title).toBe("Your bid is with the seller");
+  });
+
+  it("records the real bid count when an admin closes below reserve early", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const lotId = await createLot(t, world);
+    await placeBid(t, BIDDER_A, lotId, START_PRICE);
+    await placeBid(t, BIDDER_B, lotId, START_PRICE + MIN_INCREMENT);
+    await t
+      .withIdentity({ subject: ADMIN })
+      .mutation(api.auctions.closeLotEarly, { lotId });
+
+    const rows = await t.run(async (ctx) =>
+      ctx.db.query("auditLogs").collect()
+    );
+    const row = rows.find((r) => r.action === "auction_early_closure");
+    expect(row?.details).toContain('"bidCount":2');
   });
 
   it("closes it as not sold when an admin voids the last valid bid", async () => {
@@ -739,6 +807,81 @@ describe("expiry job", () => {
     expect(await readFees(t, lotId)).toHaveLength(fees);
   });
 
+  describe("when the cron is switched off", () => {
+    const disableCron = async (t: TestContext) => {
+      await t.run(async (ctx) => {
+        await ctx.db.insert("settings", {
+          key: cronSettingKey("expire_consideration_lots"),
+          value: false,
+          description: "test",
+          updatedAt: Date.now(),
+        });
+      });
+    };
+
+    it("leaves overdue lots alone but the seller can still clear them", async () => {
+      const t = createTestContext();
+      const { lotId } = await seedConsideration(t);
+      await backdateDeadline(t, lotId);
+      await disableCron(t);
+
+      const result = await t.mutation(
+        internal.cronJobs.expireConsiderationLots,
+        {}
+      );
+      expect(result).toEqual({ expired: 0, hasMore: false });
+      expect((await readLot(t, lotId)).status).toBe("under_consideration");
+
+      // Not stuck: the first decision attempt settles it as expired.
+      expect(await accept(t, SELLER, lotId)).toEqual({
+        status: "unsold",
+        expired: true,
+      });
+      expect((await readLot(t, lotId)).status).toBe("unsold");
+    });
+
+    it("keeps a backlog chain on the gated wrapper so the toggle stops it", async () => {
+      const t = createTestContext();
+      const world = await seedWorld(t);
+      await t.run(async (ctx) => {
+        for (let i = 0; i < SETTLEMENT_BATCH_SIZE + 2; i++) {
+          await ctx.db.insert("lots", {
+            title: `Lot ${String(i)}`,
+            make: "Make",
+            model: "Model",
+            year: 2020,
+            operatingHours: 1,
+            location: "Iowa",
+            categoryId: world.categoryId,
+            reservePrice: RESERVE,
+            startingPrice: START_PRICE,
+            currentPrice: START_PRICE,
+            minIncrement: MIN_INCREMENT,
+            sellerId: SELLER,
+            status: "under_consideration",
+            winnerId: BIDDER_A,
+            considerationDeadline: Date.now() - 1_000 - i,
+            images: { additional: [] },
+            createdAt: Date.now(),
+          });
+        }
+      });
+
+      const first = await t.mutation(
+        internal.cronJobs.expireConsiderationLots,
+        {}
+      );
+      expect(first.hasMore).toBe(true);
+
+      const scheduled = await t.run(async (ctx) =>
+        ctx.db.system.query("_scheduled_functions").collect()
+      );
+      expect(scheduled.map((job) => job.name)).toContain(
+        "cronJobs:expireConsiderationLots"
+      );
+    });
+  });
+
   it("wins against a late accept", async () => {
     const t = createTestContext();
     const { lotId } = await seedConsideration(t);
@@ -827,6 +970,34 @@ describe("public queries", () => {
     expect(stats.sold).toBe(0);
     expect(stats.unsold).toBe(0);
     expect(stats.all).toBe(1);
+  });
+
+  it("never leaks the reserve, seller or bidder ids in public payloads", async () => {
+    const t = createTestContext();
+    const { world, lotId } = await seedConsideration(t);
+
+    const payloads = [
+      await t.query(api.auctions.getEventLots, { auctionId: world.auctionId }),
+      await t.query(api.auctions.getEventFacets, {
+        auctionId: world.auctionId,
+      }),
+      await t.query(api.auctions.getLotById, { lotId }),
+      await t.query(api.auctions.getActiveLots, {
+        paginationOpts: { numItems: 10, cursor: null },
+        statusFilter: "closed",
+      }),
+      await t
+        .withIdentity({ subject: STRANGER })
+        .query(api.auctions.getLotById, { lotId }),
+    ];
+    for (const payload of payloads) {
+      const json = JSON.stringify(payload);
+      expect(json).not.toContain(SELLER);
+      expect(json).not.toContain(BIDDER_A);
+      expect(json).not.toContain(BIDDER_B);
+      expect(json).not.toContain(String(RESERVE));
+      expect(json).not.toContain("reservePrice");
+    }
   });
 
   it("shows closed browse results including it", async () => {

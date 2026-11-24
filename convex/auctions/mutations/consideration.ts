@@ -6,15 +6,20 @@ import { resolveConsideration, type ConsiderationActor } from "../internal";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
-/** What a seller decision returns. */
+/**
+ * What a seller decision returns. `expired` is true when the deadline had
+ * already passed, so the lot was settled as not sold instead of the decision.
+ */
 const decisionResult = v.object({
   status: v.union(v.literal("sold"), v.literal("unsold")),
+  expired: v.boolean(),
 });
 
 /**
  * Shared body of {@link acceptTopBid} and {@link declineTopBid}. Only the lot's
  * seller or an admin may decide, only while the lot is `under_consideration`
- * and before its deadline. Convex mutations are serialisable, so two callers
+ * and, for a real decision, before its deadline (after it the lot is settled
+ * as expired). Convex mutations are serialisable, so two callers
  * (a double accept, or an accept racing the expiry job) cannot both pass the
  * status check: the loser sees a non-`under_consideration` lot and is rejected,
  * and fees are settled by exactly one of them.
@@ -30,7 +35,7 @@ async function decide(
   lotId: Id<"lots">,
   outcome: "accepted" | "declined",
   expectedAmount?: number
-): Promise<{ status: "sold" | "unsold" }> {
+): Promise<{ status: "sold" | "unsold"; expired: boolean }> {
   const auth = await getAuthWithProfile(ctx);
   if (!auth) throw new ConvexError("Not authenticated");
 
@@ -48,19 +53,33 @@ async function decide(
     throw new ConvexError("This lot is no longer awaiting a decision");
   }
   const now = Date.now();
-  if (
-    lot.considerationDeadline === undefined ||
-    lot.considerationDeadline <= now
-  ) {
-    // The expiry job turns it into unsold; the seller can no longer accept.
-    throw new ConvexError("The 48 hours to decide have passed");
-  }
-
   const actor: ConsiderationActor = {
     kind: "user",
     userId: auth.userId,
     role: isAdmin ? "admin" : "seller",
   };
+
+  // Past the deadline the lot can no longer be accepted. Rather than leave it
+  // stuck when the expiry cron is off or missed a run, settle it as expired
+  // right here (idempotent: the expiry job skips it afterwards) and tell the
+  // caller. Both accept and decline land here, so an admin can always clear it.
+  if (
+    lot.considerationDeadline === undefined ||
+    lot.considerationDeadline <= now
+  ) {
+    const expiredStatus = await resolveConsideration(
+      ctx,
+      lot._id,
+      "expired",
+      actor,
+      now
+    );
+    if (expiredStatus === null) {
+      throw new ConvexError("This lot is no longer awaiting a decision");
+    }
+    return { status: expiredStatus, expired: true };
+  }
+
   const status = await resolveConsideration(
     ctx,
     lot._id,
@@ -72,7 +91,7 @@ async function decide(
   if (status === null) {
     throw new ConvexError("This lot is no longer awaiting a decision");
   }
-  return { status };
+  return { status, expired: false };
 }
 
 /**

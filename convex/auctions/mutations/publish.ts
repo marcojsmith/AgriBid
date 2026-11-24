@@ -9,6 +9,7 @@ import {
   resolveUserId,
 } from "../../lib/auth";
 import { logAudit, updateCounter } from "../../admin_utils";
+import { getBidCount } from "../../lib/lotCounters";
 import {
   AUCTION_FLAG_AUTO_HIDE_THRESHOLD,
   MAX_FLAG_DETAILS_LENGTH,
@@ -286,7 +287,7 @@ export const closeLotEarlyHandler = async (
         winnerId: winningBid.bidderId,
         winningAmount: winningBid.amount,
         reserveMet,
-        bidCount: 1,
+        bidCount: await getBidCount(ctx, lot._id),
       }),
     });
     return {

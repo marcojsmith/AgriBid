@@ -17,6 +17,7 @@ import { internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCounter, updateCounter } from "./admin_utils";
+import { findWinningBid } from "./auctions/internal";
 import { bidCounterName, watcherCounterName } from "./lib/lotCounters";
 import {
   DEMO_BIDDER_IDS,
@@ -129,7 +130,23 @@ async function resetOpenLot(ctx: MutationCtx, lot: Doc<"lots">): Promise<void> {
       winnerId: undefined,
       settledAt: undefined,
       extendedEndTime: undefined,
+      considerationDeadline: undefined,
     });
+    if (lot.status === "under_consideration") {
+      // Settlement released the lot's `active` slot when it entered
+      // consideration; reopening it takes the slot back.
+      await updateCounter(ctx, "lots", "active", 1);
+    }
+  } else if (lot.status === "under_consideration") {
+    // Only real bids remain: the seller is now deciding on the best of those,
+    // not on a demo bid that was just deleted.
+    const top = await findWinningBid(ctx, lot._id);
+    if (top) {
+      await ctx.db.patch("lots", lot._id, {
+        currentPrice: top.amount,
+        winnerId: top.bidderId,
+      });
+    }
   }
 }
 
@@ -148,6 +165,8 @@ async function shiftClosedLot(
 ): Promise<void> {
   await ctx.db.patch("lots", lot._id, {
     settledAt: shiftTimestamp(lot.settledAt, delta),
+    // A lot under consideration keeps its 48h window relative to the close.
+    considerationDeadline: shiftTimestamp(lot.considerationDeadline, delta),
   });
   const bids = await ctx.db
     .query("bids")

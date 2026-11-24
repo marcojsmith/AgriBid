@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
@@ -59,6 +59,25 @@ export function ConsiderationActions({
   const declineTopBid = useMutation(api.auctions.declineTopBid);
   const [pending, setPending] = useState<Decision | null>(null);
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Flip to the "time has passed" state the moment the deadline arrives.
+  useEffect(() => {
+    if (deadline === undefined) return;
+    const remaining = deadline - Date.now();
+    // Already past: the initial `now` state has the answer.
+    if (remaining <= 0) return;
+    const timer = setTimeout(
+      () => {
+        setNow(Date.now());
+      },
+      // setTimeout overflows past ~24.8 days; the window is 48 hours.
+      Math.min(remaining, 2 ** 31 - 1)
+    );
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [deadline]);
 
   const handleConfirm = async (event: React.MouseEvent) => {
     // Keep the dialog open until the server has answered.
@@ -67,11 +86,19 @@ export function ConsiderationActions({
     setBusy(true);
     try {
       if (pending === "accept") {
-        await acceptTopBid({ lotId, expectedAmount: amount });
-        toast.success(`Sold for ${formatRand(amount)}`);
+        const result = await acceptTopBid({ lotId, expectedAmount: amount });
+        if (result.expired) {
+          toast.info("The 48 hours had passed, so the lot was not sold.");
+        } else {
+          toast.success(`Sold for ${formatRand(amount)}`);
+        }
       } else {
-        await declineTopBid({ lotId });
-        toast.success("Top bid declined. The lot is not sold.");
+        const result = await declineTopBid({ lotId });
+        toast.success(
+          result.expired
+            ? "The 48 hours had passed, so the lot was not sold."
+            : "Top bid declined. The lot is not sold."
+        );
       }
       setPending(null);
     } catch (error) {
@@ -84,6 +111,19 @@ export function ConsiderationActions({
       setBusy(false);
     }
   };
+
+  // Past the deadline the seller can no longer decide: the lot is closed out as
+  // not sold shortly, so the buttons give way to a short note.
+  if (deadline !== undefined && now >= deadline) {
+    return (
+      <p
+        data-slot="consideration-actions"
+        className={cn("text-sm text-muted-foreground", className)}
+      >
+        The time to decide has passed. This lot will be marked not sold.
+      </p>
+    );
+  }
 
   const stacked = layout === "stacked";
   return (

@@ -18,7 +18,12 @@ import { v } from "convex/values";
 
 import { mutation } from "../_generated/server";
 import { requireAdmin, getAuthUser, resolveUserId } from "../lib/auth";
-import { findWinningBid, resolveConsideration } from "../auctions/internal";
+import {
+  findWinningBid,
+  formatNotificationRand,
+  notifyUser,
+  resolveConsideration,
+} from "../auctions/internal";
 import { logAudit, updateCounter } from "../admin_utils";
 import { adjustBidCount } from "../lib/lotCounters";
 import { sellerResponseTimeValidator } from "../lib/provinces";
@@ -88,6 +93,16 @@ export const voidBid = mutation({
           currentPrice: top.amount,
           winnerId: top.bidderId,
         });
+        if (top.bidderId !== lot.winnerId) {
+          // A different bidder is now the one the seller is deciding on.
+          await notifyUser(ctx, {
+            recipientId: top.bidderId,
+            type: "info",
+            title: "Your bid is with the seller",
+            message: `${lot.title}: your bid of ${formatNotificationRand(top.amount)} is now the top bid and is with the seller, who has until their deadline to accept it.`,
+            link: `/auction/${lot._id}`,
+          });
+        }
       } else {
         // Nothing left to accept: close it as not sold.
         await resolveConsideration(

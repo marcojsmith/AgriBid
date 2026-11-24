@@ -360,8 +360,13 @@ export async function logAuctionSettlementActivity(
   }
 }
 
-// Money as shown in notifications, e.g. `R 428 000`.
-function formatNotificationRand(amount: number): string {
+/**
+ * Format money as shown in notifications, e.g. `R 428 000`.
+ *
+ * @param amount - The amount in rand.
+ * @returns The formatted amount.
+ */
+export function formatNotificationRand(amount: number): string {
   return `R ${Math.round(amount)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`;
@@ -378,7 +383,7 @@ function formatNotificationRand(amount: number): string {
  * @param notification.message - Body text.
  * @param notification.link - In-app path the notification opens.
  */
-async function notifyUser(
+export async function notifyUser(
   ctx: MutationCtx,
   notification: {
     recipientId: string;
@@ -495,6 +500,11 @@ export async function resolveConsideration(
   const topBid =
     outcome === "accepted" ? await findWinningBid(ctx, lot._id) : undefined;
   const bidderId = lot.winnerId ?? undefined;
+  if (outcome === "accepted" && !topBid) {
+    // Every bid was voided: there is nothing to accept. Fail loudly instead of
+    // reporting a successful "unsold" to a seller who thinks they accepted.
+    throw new ConvexError("There is no valid bid left to accept on this lot.");
+  }
   if (
     outcome === "accepted" &&
     topBid &&
@@ -536,6 +546,7 @@ export async function resolveConsideration(
       auctionId: undefined,
       lotNumber: undefined,
     });
+    await logAuctionSettlementActivity(ctx, lot, "unsold");
   }
 
   const amount = formatNotificationRand(topBid?.amount ?? lot.currentPrice);
@@ -629,9 +640,11 @@ export const expireConsiderationLotsHandler = async (ctx: MutationCtx) => {
   }
 
   if (hasMore) {
+    // Reschedule through the gated cron wrapper so switching the job off on
+    // /admin/performance also stops a backlog chain that is already running.
     await ctx.scheduler.runAfter(
       0,
-      internal.auctions.expireConsiderationLots,
+      internal.cronJobs.expireConsiderationLots,
       {}
     );
   }

@@ -74,6 +74,10 @@ vi.mock("../../lib/auth", () => {
   };
 });
 
+vi.mock("../../lib/lotCounters", () => ({
+  getBidCount: vi.fn().mockResolvedValue(1),
+}));
+
 vi.mock("../../admin_utils", () => ({
   updateCounter: vi.fn(),
   logAudit: vi.fn(),
