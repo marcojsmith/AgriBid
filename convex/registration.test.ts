@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api } from "./_generated/api";
@@ -348,7 +348,7 @@ describe("saveMyDetails", () => {
     expect(row?.kycRejectionReason).toBeUndefined();
   });
 
-  it("refuses to change the ID type once documents are approved", async () => {
+  it("locks the details once documents are approved", async () => {
     const t = makeContext();
     await seed(t);
     await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
@@ -361,7 +361,10 @@ describe("saveMyDetails", () => {
     });
     await expect(
       asBuyer(t).mutation(api.registration.saveMyDetails, passportDetails)
-    ).rejects.toThrow("already approved");
+    ).rejects.toThrow("locked once your documents are approved");
+    await expect(
+      asBuyer(t).mutation(api.registration.saveMyDetails, saDetails)
+    ).rejects.toThrow("locked once your documents are approved");
   });
 });
 
@@ -403,6 +406,47 @@ describe("attachMyDocument", () => {
         fileSize: 10,
       })
     ).rejects.toThrow("JPG, PNG");
+  });
+
+  it("rejects SVG, an old upload and a file reused for another kind", async () => {
+    const t = makeContext();
+    await seed(t);
+    await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
+    const svg = await storeFile(t, "image/svg+xml");
+    await expect(
+      asBuyer(t).mutation(api.registration.attachMyDocument, {
+        kind: "id_front",
+        storageId: svg,
+        fileName: "a.svg",
+        fileSize: 10,
+      })
+    ).rejects.toThrow("JPG, PNG");
+
+    const first = await attach(t, "id_front");
+    await expect(
+      asBuyer(t).mutation(api.registration.attachMyDocument, {
+        kind: "id_back",
+        storageId: first.storageId,
+        fileName: "again.jpg",
+        fileSize: 10,
+      })
+    ).rejects.toThrow("already attached");
+
+    const stale = await storeFile(t, "image/png");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 2 * 60 * 60 * 1000);
+    try {
+      await expect(
+        asBuyer(t).mutation(api.registration.attachMyDocument, {
+          kind: "id_back",
+          storageId: stale,
+          fileName: "old.png",
+          fileSize: 10,
+        })
+      ).rejects.toThrow("expired");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rejects a file over 10 MB", async () => {

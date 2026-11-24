@@ -62,6 +62,19 @@ const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
 /** Longest accepted uploaded file name. */
 const MAX_FILE_NAME_LENGTH = 200;
 
+/** MIME types accepted for registration documents (no SVG: it can carry script). */
+const ALLOWED_DOC_TYPES: ReadonlySet<string> = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf",
+]);
+
+/** An upload can be attached for this long after it was stored. */
+const UPLOAD_FRESH_MS = 60 * 60 * 1000;
+
 /** How many times a unique deposit reference is retried before giving up. */
 const REFERENCE_ATTEMPTS = 5;
 
@@ -368,10 +381,9 @@ export const saveMyDetails = mutation({
       profile.idType === undefined || profile.idType === args.idType
         ? null
         : ID_KINDS[profile.idType];
-    const switching = staleKinds !== null;
-    if (switching && profile.isVerified) {
+    if (profile.isVerified) {
       throw new ConvexError(
-        "Your documents are already approved. Contact support to change your ID type."
+        "Your details are locked once your documents are approved. Contact support to change them."
       );
     }
 
@@ -455,9 +467,13 @@ export const attachMyDocument = mutation({
 
     const meta = await ctx.db.system.get("_storage", args.storageId);
     if (!meta) throw new ConvexError("The uploaded file was not found.");
-    const type = meta.contentType ?? "";
-    if (!type.startsWith("image/") && type !== "application/pdf") {
+    if (!ALLOWED_DOC_TYPES.has(meta.contentType ?? "")) {
       throw new ConvexError("Upload a photo (JPG, PNG) or a PDF.");
+    }
+    // Only a file uploaded just now can be attached: stops a caller pointing a
+    // document at someone else's older file (and later deleting or reading it).
+    if (Date.now() - meta._creationTime > UPLOAD_FRESH_MS) {
+      throw new ConvexError("That upload has expired. Please upload it again.");
     }
     if (meta.size > MAX_REG_DOC_BYTES) {
       throw new ConvexError("That file is too large. The limit is 10 MB.");
@@ -469,6 +485,16 @@ export const attachMyDocument = mutation({
     );
 
     const now = Date.now();
+    const mine = await loadDocuments(ctx, userId);
+    if (
+      mine.some(
+        (doc) => doc.storageId === args.storageId && doc.kind !== args.kind
+      )
+    ) {
+      throw new ConvexError(
+        "That file is already attached to another document."
+      );
+    }
     const existing = await ctx.db
       .query("registrationDocuments")
       .withIndex("by_userId_and_kind", (q) =>
