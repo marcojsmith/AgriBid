@@ -166,7 +166,7 @@ describe("settleExpiredLots mutation", () => {
     expect(result.hasMore).toBe(false);
   });
 
-  it("should settle a lot as unsold if reserve is not met", async () => {
+  it("should hold a lot under consideration if reserve is not met", async () => {
     const now = Date.now();
     const lotId = "a2" as unknown as Id<"lots">;
 
@@ -199,10 +199,11 @@ describe("settleExpiredLots mutation", () => {
     );
 
     expect(mockCtx.db.patch).toHaveBeenCalledWith("lots", lotId, {
-      status: "unsold",
-      winnerId: undefined,
+      status: "under_consideration",
+      winnerId: "b2",
+      currentPrice: 500,
       settledAt: expect.any(Number) as number,
-      auctionId: undefined,
+      considerationDeadline: expect.any(Number) as number,
     });
     expect(result.hasMore).toBe(false);
   });

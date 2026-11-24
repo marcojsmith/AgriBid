@@ -11,11 +11,12 @@ import { describe, expect, it } from "vitest";
 import { convexTest } from "convex-test";
 
 import { api } from "./_generated/api";
-import { settleLot } from "./auctions/internal";
+import { resolveConsideration, settleLot } from "./auctions/internal";
 import { AUCTION_SUMMARY_LOT_CAP } from "./constants";
 import {
   auctionLotCounterName,
   getAuctionLotCount,
+  recountAuctionLots,
   syncAuctionLotCount,
 } from "./lib/lotCounters";
 import { backfillAuctionLotCountsHandler } from "./migrations";
@@ -237,6 +238,91 @@ describe("per-sale visible lot counter", () => {
       expect(await settleLot(ctx, lot, Date.now())).toBe("unsold");
     });
     expect(await counterOf(t, world.auctionA)).toBe(1);
+  });
+
+  describe("under consideration", () => {
+    // Live counter and a from-scratch recount must always agree.
+    const expectCounts = async (
+      t: TestContext,
+      auctionId: Id<"auctions">,
+      expected: number
+    ) => {
+      expect(await counterOf(t, auctionId)).toBe(expected);
+      const recount = await t.run(async (ctx) =>
+        recountAuctionLots(ctx, auctionId)
+      );
+      expect(recount).toBe(expected);
+    };
+
+    // A sale of three lots, one of which closes under its reserve.
+    const setup = async () => {
+      const t = createTestContext();
+      const world = await seedWorld(t);
+      const lots: Id<"lots">[] = [];
+      for (let i = 0; i < 3; i++) {
+        lots.push(
+          await insertLot(t, world, {
+            status: "assigned",
+            auctionId: world.auctionA,
+          })
+        );
+      }
+      await runBackfill(t);
+      await expectCounts(t, world.auctionA, 3);
+      const target = lots[0];
+      await t.run(async (ctx) => {
+        await ctx.db.insert("bids", {
+          lotId: target,
+          bidderId: "user_buyer",
+          amount: 50,
+          timestamp: Date.now(),
+          status: "valid",
+        });
+        const lot = await ctx.db.get("lots", target);
+        if (!lot) throw new Error("lot missing");
+        await settleLot(ctx, lot, Date.now());
+      });
+      return { t, world, target };
+    };
+
+    const resolve = (
+      t: TestContext,
+      lotId: Id<"lots">,
+      outcome: "accepted" | "declined" | "expired"
+    ) =>
+      t.run(async (ctx) =>
+        resolveConsideration(
+          ctx,
+          lotId,
+          outcome,
+          { kind: "system" },
+          Date.now()
+        )
+      );
+
+    it("keeps the sale count while a lot is under consideration", async () => {
+      const { t, world, target } = await setup();
+      const status = await t.run(
+        async (ctx) => (await ctx.db.get("lots", target))?.status
+      );
+      expect(status).toBe("under_consideration");
+      await expectCounts(t, world.auctionA, 3);
+    });
+
+    it("keeps the count when the seller accepts", async () => {
+      const { t, world, target } = await setup();
+      expect(await resolve(t, target, "accepted")).toBe("sold");
+      await expectCounts(t, world.auctionA, 3);
+    });
+
+    it.each(["declined", "expired"] as const)(
+      "drops the count by one when the lot is %s",
+      async (outcome) => {
+        const { t, world, target } = await setup();
+        expect(await resolve(t, target, outcome)).toBe("unsold");
+        await expectCounts(t, world.auctionA, 2);
+      }
+    );
   });
 
   it("follows admin status edits, single and bulk, and recounts a missing counter", async () => {

@@ -27,6 +27,7 @@ import { WatchButton } from "@/components/ds/WatchButton";
 import { showToast } from "@/components/ds/showToast";
 import { HomeLotGrid } from "@/components/home/HomeLotGrid";
 import { FlagLotDialog } from "@/components/lot/FlagLotDialog";
+import { ConsiderationActions } from "@/components/lot/ConsiderationActions";
 import { LotGallery } from "@/components/lot/LotGallery";
 import {
   ConditionSection,
@@ -260,6 +261,14 @@ function LotPage({ id }: { id: string | undefined }) {
   const isUpcoming = liveWindow.isUpcoming;
   const isEnded = liveWindow.isEnded;
   const isSold = lot.status === "sold";
+  // Closed below the reserve; the seller has 48 hours to accept the top bid.
+  const isConsidering = lot.status === "under_consideration";
+  // The server only sends the reserve to the seller and admins, who may decide.
+  const canDecide = lot.isSeller || lot.reservePrice !== undefined;
+  const decideBy =
+    lot.considerationDeadline !== undefined
+      ? formatSastDate(lot.considerationDeadline)
+      : undefined;
   const closesAt = liveWindow.effectiveEndTime ?? 0;
   const viewer = viewerState(isAuthenticated, myBidState?.state);
   const extended = isLive && isInExtension(lot, now);
@@ -376,6 +385,8 @@ function LotPage({ id }: { id: string | undefined }) {
         ) : null}
         {isSold ? (
           <StatusPill outcome="sold" />
+        ) : isConsidering ? (
+          <StatusPill outcome="under-consideration" />
         ) : isEnded ? (
           <StatusPill outcome="not-sold" />
         ) : (
@@ -461,6 +472,40 @@ function LotPage({ id }: { id: string | undefined }) {
             refundDays={deposit.refundDays}
           />
         ) : null}
+      </section>
+    ) : isConsidering ? (
+      <section aria-label="Result" className="flex flex-col gap-3">
+        <Money amount={lot.currentPrice} label="Top bid" display />
+        <p className="text-sm text-muted-foreground">
+          {String(lot.bidCount)} {lot.bidCount === 1 ? "bid" : "bids"} · Under
+          consideration
+        </p>
+        {lot.isWinner ? (
+          <Banner kind="info">
+            Your bid is with the seller. They have until {decideBy} to accept.
+            We&apos;ll notify you either way.
+          </Banner>
+        ) : null}
+        {canDecide ? (
+          <>
+            <p className="text-[15px]">
+              {lot.isSeller
+                ? "This closed below your reserve."
+                : "This closed below the reserve."}{" "}
+              {decideBy ? (
+                <b className="font-bold">Decide by {decideBy}.</b>
+              ) : null}
+            </p>
+            <ConsiderationActions
+              lotId={lot._id}
+              amount={lot.currentPrice}
+              deadline={lot.considerationDeadline}
+            />
+          </>
+        ) : null}
+        <Button asChild variant="outline" className="w-full">
+          <Link to="/auctions">See current auctions</Link>
+        </Button>
       </section>
     ) : isEnded ? (
       <section aria-label="Result" className="flex flex-col gap-3">

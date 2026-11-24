@@ -220,6 +220,8 @@ export const LotSummaryValidator = v.object({
   minIncrement: v.number(),
   durationDays: v.optional(v.number()),
   status: v.string(),
+  /** Seller's decision deadline (ms) while `under_consideration`. */
+  considerationDeadline: v.optional(v.number()),
   auctionId: v.optional(v.id("auctions")),
   lotNumber: v.optional(v.number()),
   province: v.optional(provinceValidator),
@@ -326,6 +328,7 @@ export async function toLotSummary(
     minIncrement: lot.minIncrement,
     durationDays: lot.durationDays,
     status: lot.status,
+    considerationDeadline: lot.considerationDeadline,
     auctionId: lot.auctionId,
     lotNumber: lot.lotNumber,
     province: lot.province,
@@ -480,6 +483,8 @@ export const LotDetailValidator = v.object({
   }),
   conditionChecklist: v.optional(ConditionChecklistValidator),
   status: v.string(),
+  /** Seller's decision deadline (ms) while `under_consideration`. */
+  considerationDeadline: v.optional(v.number()),
   currentPrice: v.number(),
   minIncrement: v.number(),
   auctionId: v.optional(v.id("auctions")),
@@ -619,6 +624,7 @@ export async function toLotDetail(ctx: QueryCtx, lot: Doc<"lots">) {
     auctionStatus: auction?.status,
     extendedEndTime: lot.extendedEndTime,
     status: lot.status,
+    considerationDeadline: lot.considerationDeadline,
     isExtended: lot.isExtended,
     seedId: lot.seedId,
     conditionReportUrl: lot.conditionReportUrl,

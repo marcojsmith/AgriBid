@@ -14,8 +14,8 @@ export const lotNumberCounterName = (auctionId: Id<"auctions">) =>
 
 /**
  * Counter row name holding a sale's buyer-visible lot count (in `total`): lots
- * in the sale with status `assigned`, `sold` or `unsold` that are not hidden by
- * flags. Maintained by {@link syncAuctionLotCount}.
+ * in the sale with status `assigned`, `under_consideration`, `sold` or `unsold`
+ * that are not hidden by flags. Maintained by {@link syncAuctionLotCount}.
  * @param auctionId - The auction container id.
  * @returns The counter name.
  */
@@ -28,12 +28,20 @@ export type LotCountState = Pick<
   "status" | "auctionId" | "hiddenByFlags"
 >;
 
-/** Lot statuses buyers can see inside a sale. */
-const SALE_VISIBLE_STATUSES: ReadonlySet<Doc<"lots">["status"]> = new Set([
+/**
+ * Lot statuses buyers can see inside a sale. The single source of truth for the
+ * per-sale counter and the public sale queries, so they cannot drift apart.
+ */
+export const SALE_VISIBLE_STATUSES = [
   "assigned",
+  "under_consideration",
   "sold",
   "unsold",
-]);
+] as const satisfies readonly Doc<"lots">["status"][];
+
+const SALE_VISIBLE_STATUS_SET: ReadonlySet<Doc<"lots">["status"]> = new Set(
+  SALE_VISIBLE_STATUSES
+);
 
 /**
  * The sale a lot counts toward, or null when it counts nowhere (not in a sale,
@@ -46,7 +54,7 @@ export function countedAuctionId(
   lot: LotCountState | null
 ): Id<"auctions"> | null {
   if (lot?.auctionId === undefined) return null;
-  if (!SALE_VISIBLE_STATUSES.has(lot.status)) return null;
+  if (!SALE_VISIBLE_STATUS_SET.has(lot.status)) return null;
   if (lot.hiddenByFlags === true) return null;
   return lot.auctionId;
 }
@@ -65,7 +73,7 @@ export async function recountAuctionLots(
   auctionId: Id<"auctions">
 ): Promise<number> {
   let count = 0;
-  for (const status of ["assigned", "sold", "unsold"] as const) {
+  for (const status of SALE_VISIBLE_STATUSES) {
     for await (const lot of ctx.db
       .query("lots")
       .withIndex("by_status_auctionId", (q) =>

@@ -295,6 +295,14 @@ export const adminUpdateLotHandler = async (
   const oldStatus = lot.status;
   const newStatus = args.updates.status;
 
+  // A lot under consideration only leaves it through Accept / Decline / expiry,
+  // which settle fees, counters and notifications exactly once.
+  if (oldStatus === "under_consideration" && newStatus !== undefined) {
+    throw new ConvexError(
+      "This lot is under consideration. Accept or decline the top bid instead."
+    );
+  }
+
   const { clearProvince, coldStartVideo, ...fieldUpdates } = args.updates;
   const patchData: typeof fieldUpdates & {
     coldStartVideo?: Id<"_storage">;
@@ -484,6 +492,12 @@ export const bulkUpdateLotsHandler = async (
     if (lot) {
       const oldStatus = lot.status;
       const newStatus = args.updates.status;
+
+      // Lots under consideration only settle through Accept / Decline / expiry.
+      if (oldStatus === "under_consideration" && newStatus !== undefined) {
+        skipped.push(id);
+        continue;
+      }
 
       const patchData: typeof args.updates & {
         currentPrice?: number;

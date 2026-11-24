@@ -30,7 +30,8 @@ vi.mock("../helpers", async (importOriginal) => {
   };
 });
 
-vi.mock("../../lib/lotCounters", () => ({
+vi.mock("../../lib/lotCounters", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/lotCounters")>()),
   getAuctionLotCount: vi.fn().mockResolvedValue(null),
 }));
 

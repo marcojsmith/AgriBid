@@ -15,7 +15,12 @@ import { adjustWatcherCount } from "./lib/lotCounters";
 import type { Id, Doc } from "./_generated/dataModel";
 
 /** Lot statuses buyers can see (and therefore watch). */
-const PUBLIC_LOT_STATUSES: readonly string[] = ["assigned", "sold", "unsold"];
+const PUBLIC_LOT_STATUSES: readonly string[] = [
+  "assigned",
+  "under_consideration",
+  "sold",
+  "unsold",
+];
 
 /**
  * Handler for toggling a lot in the user's watchlist.

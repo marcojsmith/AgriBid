@@ -791,6 +791,149 @@ describe("wbtDemo", () => {
     expect(watch.map((w) => w.userId)).toEqual(["user_real"]);
   });
 
+  it("reopens a lot under consideration whose only bids were demo bids", async () => {
+    const t = createTestContext();
+    const sale = await importLive(t, 2);
+    const lots = await t.run((ctx) => ctx.db.query("lots").collect());
+    const target = lots[0];
+    await t.run(async (ctx) => {
+      await ctx.db.insert("counters", {
+        name: "lots",
+        total: 2,
+        active: 1,
+        soldCount: 0,
+        salesVolume: 0,
+        updatedAt: 1,
+      });
+      await ctx.db.insert("bids", {
+        lotId: target._id,
+        bidderId: "mock-buyer-1",
+        amount: 60000,
+        timestamp: 1,
+        status: "valid",
+      });
+      await ctx.db.patch("lots", target._id, {
+        status: "under_consideration",
+        winnerId: "mock-buyer-1",
+        currentPrice: 60000,
+        settledAt: 5,
+        considerationDeadline: Date.now() + MS_PER_DAY,
+      });
+    });
+
+    await t.mutation(internal.wbtDemo.retimeBatch, {
+      auctionId: sale,
+      role: "upcoming",
+      startTime: Date.now() + MS_PER_DAY,
+      endTime: Date.now() + 5 * MS_PER_DAY,
+      status: "published",
+      afterLotNumber: 0,
+    });
+
+    const reset = await t.run((ctx) => ctx.db.get("lots", target._id));
+    expect(reset?.status).toBe("assigned");
+    expect(reset?.winnerId).toBeUndefined();
+    expect(reset?.currentPrice).toBe(reset?.startingPrice);
+    expect(reset?.considerationDeadline).toBeUndefined();
+    const counter = await t.run((ctx) =>
+      ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "lots"))
+        .unique()
+    );
+    // Entering consideration released the slot; reopening takes it back.
+    expect(counter?.active).toBe(2);
+  });
+
+  it("keeps a lot under consideration pointed at the best real bid after the reset", async () => {
+    const t = createTestContext();
+    const sale = await importLive(t, 1);
+    const [lot] = await t.run((ctx) => ctx.db.query("lots").collect());
+    const deadline = Date.now() + MS_PER_DAY;
+    await t.run(async (ctx) => {
+      await ctx.db.insert("bids", {
+        lotId: lot._id,
+        bidderId: "user_real",
+        amount: 50000,
+        timestamp: 1,
+        status: "valid",
+      });
+      await ctx.db.insert("bids", {
+        lotId: lot._id,
+        bidderId: "mock-buyer-1",
+        amount: 60000,
+        timestamp: 2,
+        status: "valid",
+      });
+      await ctx.db.patch("lots", lot._id, {
+        status: "under_consideration",
+        winnerId: "mock-buyer-1",
+        currentPrice: 60000,
+        settledAt: 5,
+        considerationDeadline: deadline,
+      });
+    });
+
+    await t.mutation(internal.wbtDemo.retimeBatch, {
+      auctionId: sale,
+      role: "upcoming",
+      startTime: Date.now() + MS_PER_DAY,
+      endTime: Date.now() + 5 * MS_PER_DAY,
+      status: "published",
+      afterLotNumber: 0,
+    });
+
+    const after = await t.run((ctx) => ctx.db.get("lots", lot._id));
+    expect(after?.status).toBe("under_consideration");
+    expect(after?.winnerId).toBe("user_real");
+    expect(after?.currentPrice).toBe(50000);
+    expect(after?.considerationDeadline).toBe(deadline);
+  });
+
+  it("shifts a closed lot's consideration deadline with its settle time", async () => {
+    const t = createTestContext();
+    const sale = await makeSale(t, "closed", "wbt:auction:3", 1);
+    const closed = { role: "closed" as const, seedId: "wbt:auction:3" };
+    await t.mutation(internal.wbtImport.upsertLots, {
+      auctionId: sale,
+      lots: [
+        buildLotInput(
+          raw({ bidwranglerItemId: 400, lotNumber: 1, lotStatus: "sold" }),
+          closed,
+          0,
+          1,
+          1,
+          []
+        ),
+      ],
+    });
+    const [lot] = await t.run((ctx) => ctx.db.query("lots").collect());
+    const deadline = Date.now() + MS_PER_DAY;
+    await t.run(async (ctx) => {
+      await ctx.db.patch("lots", lot._id, {
+        status: "under_consideration",
+        settledAt: 1000,
+        considerationDeadline: deadline,
+      });
+    });
+    const sold = await t.run((ctx) => ctx.db.get("auctions", sale));
+    const newEnd = (sold?.endTime ?? 0) - 7 * MS_PER_DAY;
+
+    await t.mutation(internal.wbtDemo.retimeBatch, {
+      auctionId: sale,
+      role: "closed",
+      startTime: newEnd - 4 * MS_PER_DAY,
+      endTime: newEnd,
+      status: "closed",
+      afterLotNumber: 0,
+    });
+
+    const after = await t.run((ctx) => ctx.db.get("lots", lot._id));
+    expect(after?.status).toBe("under_consideration");
+    expect(after?.considerationDeadline).toBe(deadline - 7 * MS_PER_DAY);
+    expect(after?.settledAt).toBe(1000 - 7 * MS_PER_DAY);
+  });
+
   it("shifts closed sales without touching outcomes and chains batches", async () => {
     const t = createTestContext();
     const sale = await makeSale(t, "closed", "wbt:auction:2", 1);

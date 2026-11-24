@@ -5,7 +5,10 @@ import type { PaginationOptions } from "convex/server";
 import { query, paginationOptsValidator, type QueryCtx } from "./shared";
 import { OwnerLotSummaryValidator, toOwnerLotSummaries } from "../helpers";
 import { requireAdmin } from "../../lib/auth";
-import { getAuctionLotCount } from "../../lib/lotCounters";
+import {
+  SALE_VISIBLE_STATUSES,
+  getAuctionLotCount,
+} from "../../lib/lotCounters";
 import { parseOffsetCursor } from "../../lib/pagination";
 import { resolveUrlCached } from "../../image_cache";
 import { countQuery } from "../../admin_utils";
@@ -147,8 +150,8 @@ export const PublishedAuctionValidator = AuctionValidator.extend({
   effectiveEndTime: v.number(),
 });
 
-/** Lot statuses buyers can see. */
-const PUBLIC_LOT_STATUSES = ["assigned", "sold", "unsold"] as const;
+/** Lot statuses buyers can see (shared with the per-sale counter). */
+const PUBLIC_LOT_STATUSES = SALE_VISIBLE_STATUSES;
 
 /**
  * Picks one image reference (storage id or absolute URL) to represent a lot:

@@ -854,10 +854,20 @@ describe("Queries Branch Coverage Expansion", () => {
     it("statusesForFilter coverage in shared", async () => {
       const { statusesForFilter } = await import("./queries");
       expect(statusesForFilter("active")).toEqual(["assigned"]);
-      expect(statusesForFilter("closed")).toEqual(["sold", "unsold"]);
-      expect(statusesForFilter("all")).toEqual(["assigned", "sold", "unsold"]);
+      expect(statusesForFilter("closed")).toEqual([
+        "under_consideration",
+        "sold",
+        "unsold",
+      ]);
+      expect(statusesForFilter("all")).toEqual([
+        "assigned",
+        "under_consideration",
+        "sold",
+        "unsold",
+      ]);
       expect(statusesForFilter("invalid" as unknown as StatusFilter)).toEqual([
         "assigned",
+        "under_consideration",
         "sold",
         "unsold",
       ]);

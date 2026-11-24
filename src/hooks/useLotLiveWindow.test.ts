@@ -73,18 +73,20 @@ describe("getLotLiveWindow", () => {
     expect(window.effectiveEndTime).toBe(NOW + 120_000);
   });
 
-  it("treats sold, unsold and rejected lots as ended", () => {
-    for (const status of ["sold", "unsold", "rejected"]) {
+  it("treats sold, unsold, under-consideration and rejected lots as ended", () => {
+    for (const status of [
+      "sold",
+      "unsold",
+      "under_consideration",
+      "rejected",
+    ]) {
       const window = getLotLiveWindow(makeLot({ status }), NOW);
       expect(window.phase).toBe("ended");
     }
   });
 
   it("does not treat an assigned lot with an unpublished parent as live", () => {
-    const window = getLotLiveWindow(
-      makeLot({ auctionStatus: "draft" }),
-      NOW
-    );
+    const window = getLotLiveWindow(makeLot({ auctionStatus: "draft" }), NOW);
     expect(window.phase).toBe("ended");
   });
 });

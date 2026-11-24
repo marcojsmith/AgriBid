@@ -18,8 +18,9 @@ export type MyBidRow = FunctionReturnType<
  * - `pending_review`: Submitted and awaiting admin approval.
  * - `approved`: Approved by an admin, not yet assigned to an auction.
  * - `assigned`: Assigned to an auction and currently open for bidding.
- * - `sold`: Auction ended with a winning bid meeting reserve.
- * - `unsold`: Auction ended without meeting reserve or no bids.
+ * - `under_consideration`: Auction ended with bids below reserve; the seller has 48 hours to accept the top bid.
+ * - `sold`: Auction ended with a winning bid meeting reserve (or the seller accepted it).
+ * - `unsold`: Auction ended without meeting reserve or no bids, or the seller declined.
  * - `rejected`: Admin rejected the listing.
  */
 export type AuctionStatus =
@@ -27,6 +28,7 @@ export type AuctionStatus =
   | "pending_review"
   | "approved"
   | "assigned"
+  | "under_consideration"
   | "sold"
   | "unsold"
   | "rejected";
@@ -40,6 +42,7 @@ export const AUCTION_STATUSES: readonly AuctionStatus[] = [
   "pending_review",
   "approved",
   "assigned",
+  "under_consideration",
   "sold",
   "unsold",
   "rejected",

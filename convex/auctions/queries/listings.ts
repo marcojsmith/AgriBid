@@ -98,6 +98,7 @@ export const getMyListingsCountHandler = async (
       | "pending_review"
       | "approved"
       | "assigned"
+      | "under_consideration"
       | "sold"
       | "unsold"
       | "rejected";
@@ -141,6 +142,7 @@ export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
       draft: 0,
       pending_review: 0,
       active: 0,
+      under_consideration: 0,
       sold: 0,
       unsold: 0,
       rejected: 0,
@@ -156,6 +158,7 @@ export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
     draft: 0,
     pending_review: 0,
     active: 0,
+    under_consideration: 0,
     sold: 0,
     unsold: 0,
     rejected: 0,
@@ -173,6 +176,9 @@ export const getMyListingsStatsHandler = async (ctx: QueryCtx) => {
       case "assigned":
         // Both pre-sale states surface as "active" in the seller dashboard.
         stats.active++;
+        break;
+      case "under_consideration":
+        stats.under_consideration++;
         break;
       case "sold":
         stats.sold++;
@@ -202,6 +208,7 @@ export const getMyListingsStats = query({
     draft: v.number(),
     pending_review: v.number(),
     active: v.number(),
+    under_consideration: v.number(),
     sold: v.number(),
     unsold: v.number(),
     rejected: v.number(),

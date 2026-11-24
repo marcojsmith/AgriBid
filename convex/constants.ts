@@ -149,6 +149,10 @@ export const CLEANUP_BATCH_SIZE = 100;
 // Batch size for settlement cron to process expired lots per run.
 export const SETTLEMENT_BATCH_SIZE = 50;
 
+// How long the seller has to accept the top bid of a lot that closed with bids
+// but below its reserve ("Under consideration"): 48 hours.
+export const CONSIDERATION_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 // Safety cap for admin-only moderation/management views that would otherwise
 // `.collect()` an entire status bucket unbounded.
 export const ADMIN_COLLECTION_CAP = 500;

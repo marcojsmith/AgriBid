@@ -229,15 +229,21 @@ export const AuctionCard = ({
             <div className="absolute top-3 right-3 z-10">
               <Badge
                 variant={
-                  auction.status === "sold" ? "secondary" : "destructive"
+                  auction.status === "sold"
+                    ? "secondary"
+                    : auction.status === "under_consideration"
+                      ? "outline"
+                      : "destructive"
                 }
                 className="font-semibold shadow-lg"
               >
                 {auction.status === "sold"
                   ? "Sold"
-                  : auction.status === "unsold"
-                    ? "Unsold"
-                    : "Closed"}
+                  : auction.status === "under_consideration"
+                    ? "Under consideration"
+                    : auction.status === "unsold"
+                      ? "Unsold"
+                      : "Closed"}
               </Badge>
             </div>
           )}

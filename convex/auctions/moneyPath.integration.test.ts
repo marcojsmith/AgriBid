@@ -866,7 +866,7 @@ describe("settlement (convex-test)", () => {
     expect(auction.status).toBe("closed");
   });
 
-  it("returns an unsold lot to the pool when the reserve is not met", async () => {
+  it("holds the lot under consideration when bids missed the reserve", async () => {
     const t = createTestContext();
     const world = await seedWorld(t);
     const lotId = await createLot(t, world, {
@@ -879,9 +879,9 @@ describe("settlement (convex-test)", () => {
     expect(await settleExpiredLots(t)).toEqual({ settled: 1, hasMore: false });
 
     const lot = await readLot(t, lotId);
-    expect(lot.status).toBe("unsold");
-    expect(lot.winnerId).toBeUndefined();
-    expect(lot.auctionId).toBeUndefined();
+    expect(lot.status).toBe("under_consideration");
+    expect(lot.winnerId).toBe(BIDDER_A);
+    expect(lot.auctionId).toBe(world.auctionId);
     expect(lot.currentPrice).toBe(SECOND_BID);
 
     expect(await readLotFees(t, lotId)).toEqual([]);
@@ -893,6 +893,20 @@ describe("settlement (convex-test)", () => {
 
     expect(await readActivityTypes(t, SELLER)).not.toContain("listing_sold");
     expect(await readActivityTypes(t, BIDDER_A)).not.toContain("bid_won");
+  });
+
+  it("returns a lot with no bids to the pool as unsold", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const lotId = await createLot(t, world);
+    await expireAuction(t, world.auctionId);
+
+    expect(await settleExpiredLots(t)).toEqual({ settled: 1, hasMore: false });
+
+    const lot = await readLot(t, lotId);
+    expect(lot.status).toBe("unsold");
+    expect(lot.auctionId).toBeUndefined();
+    expect(await readLotFees(t, lotId)).toEqual([]);
   });
 
   it("ignores voided bids when picking the winner", async () => {
@@ -1046,7 +1060,7 @@ describe("early closure by an admin (convex-test)", () => {
     expect(feeCounter?.sellerTotal).toBe(2120);
   });
 
-  it("closes a lot as unsold when the reserve is not met", async () => {
+  it("holds a lot under consideration when the reserve is not met", async () => {
     const t = createTestContext();
     const world = await seedWorld(t);
     const lotId = await createLot(t, world, {
@@ -1057,11 +1071,11 @@ describe("early closure by an admin (convex-test)", () => {
 
     const result = await closeLotEarlyAsAdmin(t, lotId);
     expect(result.success).toBe(true);
-    expect(result.finalStatus).toBe("unsold");
-    expect(result.winnerId).toBeUndefined();
+    expect(result.finalStatus).toBe("under_consideration");
+    expect(result.winnerId).toBe(BIDDER_A);
 
     const lot = await readLot(t, lotId);
-    expect(lot.status).toBe("unsold");
+    expect(lot.status).toBe("under_consideration");
     expect(await readLotFees(t, lotId)).toEqual([]);
     expect(await readCounter(t, "lotFees")).toBeNull();
     expect((await readCounter(t, "lots"))?.soldCount).toBe(0);

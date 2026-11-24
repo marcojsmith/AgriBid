@@ -89,10 +89,16 @@ export default defineSchema({
       v.literal("pending_review"),
       v.literal("approved"),
       v.literal("assigned"),
+      // Closed with bids but the reserve was not met: the seller has until
+      // `considerationDeadline` to accept the top bid (-> sold) or decline
+      // (-> unsold; also what happens when the deadline passes).
+      v.literal("under_consideration"),
       v.literal("sold"),
       v.literal("unsold"),
       v.literal("rejected")
     ),
+    // Deadline (ms) of the seller's decision while `under_consideration`.
+    considerationDeadline: v.optional(v.number()),
     auctionId: v.optional(v.id("auctions")),
     // Sequential number within the parent sale, assigned on auction assignment
     // from a monotonic per-auction counter. Stable; cleared when `auctionId` is.
@@ -171,6 +177,10 @@ export default defineSchema({
     .index("by_auctionId", ["auctionId"])
     .index("by_auctionId_lotNumber", ["auctionId", "lotNumber"])
     .index("by_status_auctionId", ["status", "auctionId"])
+    .index("by_status_considerationDeadline", [
+      "status",
+      "considerationDeadline",
+    ])
     .index("by_seller_createdAt", ["sellerId", "createdAt"])
     .searchIndex("search_title", {
       searchField: "title",

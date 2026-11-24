@@ -269,6 +269,7 @@ describe("listings queries", () => {
         { status: "pending_review" },
         { status: "approved" },
         { status: "assigned" },
+        { status: "under_consideration" },
         { status: "sold" },
         { status: "unsold" },
         { status: "rejected" },
@@ -278,10 +279,11 @@ describe("listings queries", () => {
       const result = await getMyListingsStatsHandler(makeCtx(chain));
 
       expect(result).toEqual({
-        all: 8,
+        all: 9,
         draft: 1,
         pending_review: 1,
         active: 2,
+        under_consideration: 1,
         sold: 1,
         unsold: 1,
         rejected: 1,
@@ -299,6 +301,7 @@ describe("listings queries", () => {
         draft: 0,
         pending_review: 0,
         active: 0,
+        under_consideration: 0,
         sold: 0,
         unsold: 0,
         rejected: 0,

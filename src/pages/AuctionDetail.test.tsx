@@ -573,6 +573,89 @@ describe("AuctionDetail (lot page)", () => {
     expect(screen.getByText("Highest bid")).toBeInTheDocument();
   });
 
+  describe("under consideration", () => {
+    const considering = (over: Record<string, unknown> = {}) => {
+      setup({
+        status: "under_consideration",
+        bidCount: 6,
+        currentPrice: 395_000,
+        reserveState: "not_met",
+        considerationDeadline: Date.UTC(2026, 10, 26, 9, 0),
+        ...over,
+      });
+    };
+
+    it("shows the pill and the top bid line, with no bid form or sticky bar", () => {
+      h.pastCta = true;
+      considering();
+      renderPage();
+      expect(screen.getAllByText("Under consideration").length).toBeGreaterThan(
+        0
+      );
+      expect(screen.getByText("Top bid")).toBeInTheDocument();
+      expect(clean(screen.getByText(/6 bids/).textContent)).toContain(
+        "Under consideration"
+      );
+      expect(screen.queryByRole("region", { name: "Bidding" })).toBeNull();
+      expect(screen.queryByRole("button", { name: /Accept/ })).toBeNull();
+      expect(screen.queryByText(/Your bid is with the seller/)).toBeNull();
+      expect(screen.queryByText("View & collect")).toBeNull();
+    });
+
+    it("tells the top bidder their bid is with the seller, with the deadline", () => {
+      h.authed = true;
+      considering({ isWinner: true });
+      renderPage();
+      expect(
+        clean(screen.getByText(/Your bid is with the seller/).textContent)
+      ).toBe(
+        "Your bid is with the seller. They have until Thu 26 Nov, 11:00 to accept. We'll notify you either way."
+      );
+      expect(screen.queryByRole("button", { name: /Accept/ })).toBeNull();
+    });
+
+    it("gives the seller Accept and Decline with the deadline", () => {
+      h.authed = true;
+      considering({ isSeller: true, reservePrice: 420_000 });
+      renderPage();
+      expect(
+        screen.getByText(/Decide by Thu 26 Nov, 11:00/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Accept R/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Decline" })
+      ).toBeInTheDocument();
+    });
+
+    it("gives an admin the same actions", () => {
+      h.authed = true;
+      considering({ reservePrice: 420_000 });
+      renderPage();
+      expect(
+        screen.getByRole("button", { name: /Accept R/ })
+      ).toBeInTheDocument();
+    });
+
+    it("accepting asks first, then calls the server", async () => {
+      h.authed = true;
+      considering({ isSeller: true, reservePrice: 420_000 });
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Accept R/ }));
+      expect(h.mutations.acceptTopBid).not.toHaveBeenCalled();
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Yes, accept" })
+      );
+      await waitFor(() => {
+        expect(h.mutations.acceptTopBid).toHaveBeenCalledWith({
+          lotId: "l1",
+          expectedAmount: 395_000,
+        });
+      });
+    });
+  });
+
   it("an upcoming lot shows when it opens and no bid form", () => {
     setup({
       auctionStartTime: NOW + 5 * HOUR,

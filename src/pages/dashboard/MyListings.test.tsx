@@ -26,6 +26,8 @@ const { mockApi } = vi.hoisted(() => ({
   mockApi: {
     auctions: {
       getMyListingsStats: { name: "auctions:getMyListingsStats" },
+      acceptTopBid: { name: "auctions:acceptTopBid" },
+      declineTopBid: { name: "auctions:declineTopBid" },
       mutations: {
         delete: {
           deleteDraft: { name: "auctions/mutations/delete:deleteDraft" },
@@ -138,6 +140,7 @@ describe("MyListings Page", () => {
     draft: 1,
     pending_review: 1,
     active: 1,
+    under_consideration: 0,
     sold: 0,
     unsold: 0,
     rejected: 0,
@@ -256,6 +259,101 @@ describe("MyListings Page", () => {
     expect(screen.getByText(/Drafts \(1\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Pending \(1\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Active \(1\)/i)).toBeInTheDocument();
+  });
+
+  describe("under consideration", () => {
+    const deadline = Date.UTC(2026, 10, 26, 9, 0);
+    const mockAccept = vi.fn();
+    const mockDecline = vi.fn();
+
+    beforeEach(() => {
+      mockAccept.mockReset().mockResolvedValue({ status: "sold" });
+      mockDecline.mockReset().mockResolvedValue({ status: "unsold" });
+      (useQuery as Mock).mockImplementation((apiPath) =>
+        apiPath === mockApi.auctions.getMyListingsStats
+          ? { ...mockListingStats, under_consideration: 1 }
+          : null
+      );
+      (usePaginatedQuery as Mock).mockReturnValue({
+        results: [
+          {
+            _id: "listing4",
+            title: "Under Tractor",
+            status: "under_consideration",
+            make: "John Deere",
+            model: "8R",
+            year: 2022,
+            startingPrice: 100000,
+            reservePrice: 300000,
+            currentPrice: 250000,
+            considerationDeadline: deadline,
+            images: {},
+          },
+        ],
+        status: "Exhausted",
+        loadMore: vi.fn(),
+      });
+      (useMutation as Mock).mockImplementation((apiPath) => {
+        if (apiPath === mockApi.auctions.acceptTopBid) return mockAccept;
+        if (apiPath === mockApi.auctions.declineTopBid) return mockDecline;
+        return vi.fn();
+      });
+    });
+
+    it("shows the deadline, the Deciding tab and both actions", () => {
+      renderMyListings();
+      expect(screen.getByText(/Deciding \(1\)/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Decide by Thu 26 Nov, 11:00/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Accept R/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Decline" })
+      ).toBeInTheDocument();
+    });
+
+    it("asks for confirmation, then accepts the top bid", async () => {
+      renderMyListings();
+      fireEvent.click(screen.getByRole("button", { name: /Accept R/ }));
+      expect(mockAccept).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Yes, accept" }));
+      await waitFor(() => {
+        expect(mockAccept).toHaveBeenCalledWith({
+          lotId: "listing4",
+          expectedAmount: 250000,
+        });
+      });
+      await waitFor(() => {
+        expect(toast.success).toHaveBeenCalledWith(
+          expect.stringContaining("Sold for")
+        );
+      });
+    });
+
+    it("declines the top bid after confirmation", async () => {
+      renderMyListings();
+      fireEvent.click(screen.getByRole("button", { name: "Decline" }));
+      fireEvent.click(screen.getByRole("button", { name: "Yes, decline" }));
+      await waitFor(() => {
+        expect(mockDecline).toHaveBeenCalledWith({ lotId: "listing4" });
+      });
+    });
+
+    it("shows the server's message when the decision is refused", async () => {
+      mockAccept.mockRejectedValue(
+        new Error("The 48 hours to decide have passed")
+      );
+      renderMyListings();
+      fireEvent.click(screen.getByRole("button", { name: /Accept R/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Yes, accept" }));
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith(
+          "The 48 hours to decide have passed"
+        );
+      });
+    });
   });
 
   it("renders the list of listings", () => {
@@ -512,6 +610,7 @@ describe("MyListings Page", () => {
           draft: 1,
           pending_review: 1,
           active: 1,
+          under_consideration: 0,
           sold: 4,
           unsold: 2,
           rejected: 1,

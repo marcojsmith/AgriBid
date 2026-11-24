@@ -20,7 +20,7 @@ export type LotLivePhase = "unavailable" | "upcoming" | "live" | "ended";
  * `extendedEndTime` carrying any per-lot soft-close extension.
  */
 export interface LotLiveWindowInput {
-  /** Lot status (`draft`/`pending_review`/`approved`/`assigned`/`sold`/`unsold`/`rejected`). */
+  /** Lot status (`draft`/`pending_review`/`approved`/`assigned`/`under_consideration`/`sold`/`unsold`/`rejected`). */
   status: string;
   /** Parent auction status, if the lot is assigned to one. */
   auctionStatus?: "draft" | "published" | "closed";
@@ -59,7 +59,10 @@ function deriveLotLiveWindow(
   effectiveEndTime: number | undefined
 ): LotLiveWindow {
   const isTerminal =
-    lot.status === "sold" || lot.status === "unsold" || lot.status === "rejected";
+    lot.status === "sold" ||
+    lot.status === "unsold" ||
+    lot.status === "under_consideration" ||
+    lot.status === "rejected";
   const isScheduled =
     lot.status === "assigned" && lot.auctionStatus === "published";
 
@@ -107,8 +110,7 @@ export function getLotLiveWindow(
   const effectiveEndTime = lot.extendedEndTime ?? lot.auctionEndTime;
   const hasStarted =
     lot.auctionStartTime === undefined || lot.auctionStartTime <= now;
-  const hasEnded =
-    effectiveEndTime === undefined || effectiveEndTime <= now;
+  const hasEnded = effectiveEndTime === undefined || effectiveEndTime <= now;
 
   return deriveLotLiveWindow(lot, hasStarted, hasEnded, effectiveEndTime);
 }
@@ -146,8 +148,7 @@ export function useLotLiveWindow(lot: LotLiveWindowInput): LotLiveWindow {
     };
   }, [effectiveEndTime]);
 
-  const hasEnded =
-    effectiveEndTime === undefined || now >= effectiveEndTime;
+  const hasEnded = effectiveEndTime === undefined || now >= effectiveEndTime;
 
   return deriveLotLiveWindow(lot, hasStarted, hasEnded, effectiveEndTime);
 }

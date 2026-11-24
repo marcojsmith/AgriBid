@@ -17,7 +17,13 @@
 import { v } from "convex/values";
 
 import { mutation } from "../_generated/server";
-import { requireAdmin, getAuthUser } from "../lib/auth";
+import { requireAdmin, getAuthUser, resolveUserId } from "../lib/auth";
+import {
+  findWinningBid,
+  formatNotificationRand,
+  notifyUser,
+  resolveConsideration,
+} from "../auctions/internal";
 import { logAudit, updateCounter } from "../admin_utils";
 import { adjustBidCount } from "../lib/lotCounters";
 import { sellerResponseTimeValidator } from "../lib/provinces";
@@ -67,7 +73,7 @@ export const voidBid = mutation({
   args: { bidId: v.id("bids"), reason: v.string() },
   returns: v.object({ success: v.boolean() }),
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const bid = await ctx.db.get("bids", args.bidId);
     if (!bid) throw new Error("Bid not found");
@@ -78,6 +84,47 @@ export const voidBid = mutation({
 
     const lot = await ctx.db.get("lots", bid.lotId);
     if (!lot) throw new Error("Lot not found");
+
+    if (lot.status === "under_consideration") {
+      // The seller is deciding on the highest valid bid, not the latest one.
+      const top = await findWinningBid(ctx, lot._id);
+      if (top) {
+        await ctx.db.patch("lots", lot._id, {
+          currentPrice: top.amount,
+          winnerId: top.bidderId,
+        });
+        if (top.bidderId !== lot.winnerId) {
+          // A different bidder is now the one the seller is deciding on.
+          await notifyUser(ctx, {
+            recipientId: top.bidderId,
+            type: "info",
+            title: "Your bid is with the seller",
+            message: `${lot.title}: your bid of ${formatNotificationRand(top.amount)} is now the top bid and is with the seller, who has until their deadline to accept it.`,
+            link: `/auction/${lot._id}`,
+          });
+        }
+      } else {
+        // Nothing left to accept: close it as not sold.
+        await resolveConsideration(
+          ctx,
+          lot._id,
+          "declined",
+          {
+            kind: "user",
+            userId: resolveUserId(admin) ?? admin._id,
+            role: "admin",
+          },
+          Date.now()
+        );
+      }
+      await logAudit(ctx, {
+        action: "VOID_BID",
+        targetId: args.bidId,
+        targetType: "bid",
+        details: `Reason: ${args.reason}. Lot under consideration; top bid is now ${top ? String(top.amount) : "none"}`,
+      });
+      return { success: true };
+    }
 
     const latestValidBid = await ctx.db
       .query("bids")

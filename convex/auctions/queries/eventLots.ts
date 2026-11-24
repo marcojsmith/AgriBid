@@ -25,13 +25,22 @@ import {
 import type { Doc, Id } from "../../_generated/dataModel";
 
 /** Lot statuses buyers can see on a sale page. */
-const EVENT_LOT_STATUSES = ["assigned", "sold", "unsold"] as const;
+const EVENT_LOT_STATUSES = [
+  "assigned",
+  "under_consideration",
+  "sold",
+  "unsold",
+] as const;
 
 /** Validator for one lot card on the event page: the Home card plus its status. */
 export const EventLotValidator = HomeLotValidator.extend({
-  /** `assigned` is open for bidding; `sold` and `unsold` are final. */
+  /**
+   * `assigned` is open for bidding; `under_consideration` closed below the
+   * reserve and awaits the seller's decision; `sold` and `unsold` are final.
+   */
   status: v.union(
     v.literal("assigned"),
+    v.literal("under_consideration"),
     v.literal("sold"),
     v.literal("unsold")
   ),
@@ -49,7 +58,7 @@ export const EventFacetsResultValidator = HomeFacetsResultValidator.extend({
   outcomes: v.object({
     sold: v.number(),
     notSold: v.number(),
-    /** Always 0 until lots can be "under consideration" (design D6). */
+    /** Closed below the reserve; the seller is deciding. Not sold yet. */
     underConsideration: v.number(),
     /** What the sold lots sold for, in total (rand). */
     soldTotal: v.number(),
@@ -66,7 +75,13 @@ const eventLotsArgs = {
   minPrice: v.optional(v.number()),
   maxPrice: v.optional(v.number()),
   /** Closed sales: only sold, or only not-sold lots. */
-  outcome: v.optional(v.union(v.literal("sold"), v.literal("not_sold"))),
+  outcome: v.optional(
+    v.union(
+      v.literal("sold"),
+      v.literal("not_sold"),
+      v.literal("under_consideration")
+    )
+  ),
   sort: v.optional(
     v.union(
       v.literal("lot_number"),
@@ -173,7 +188,9 @@ export const getEventFacetsHandler = async (
     outcomes: {
       sold: sold.length,
       notSold: lots.filter((lot) => lot.status === "unsold").length,
-      underConsideration: 0,
+      underConsideration: lots.filter(
+        (lot) => lot.status === "under_consideration"
+      ).length,
       soldTotal: sold.reduce((sum, lot) => sum + lot.currentPrice, 0),
     },
   };
@@ -217,7 +234,12 @@ export const getEventLotsHandler = async (
     .filter(
       (lot) =>
         args.outcome === undefined ||
-        lot.status === (args.outcome === "sold" ? "sold" : "unsold")
+        lot.status ===
+          (args.outcome === "sold"
+            ? "sold"
+            : args.outcome === "under_consideration"
+              ? "under_consideration"
+              : "unsold")
     )
     .filter(
       (lot) =>
@@ -275,7 +297,8 @@ export const getEventLotsHandler = async (
         bids,
         effectiveEndTime: lot.extendedEndTime ?? auction.endTime,
         leadImageUrl: leadImageUrl ?? undefined,
-        status: lot.status as "assigned" | "sold" | "unsold",
+        status: lot.status as
+          "assigned" | "under_consideration" | "sold" | "unsold",
       };
     })
   );

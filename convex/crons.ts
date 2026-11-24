@@ -18,6 +18,16 @@ crons.interval(
 );
 
 /**
+ * Expire lots whose seller did not decide on the top bid within 48 hours
+ * ("Under consideration" -> "Not sold"). Bounded and idempotent.
+ */
+crons.interval(
+  "expire consideration lots",
+  { minutes: 5 },
+  internal.cronJobs.expireConsiderationLots
+);
+
+/**
  * Daily job to delete abandoned drafts older than 30 days.
  */
 crons.daily(

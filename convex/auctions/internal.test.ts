@@ -319,7 +319,7 @@ describe("Internal Logic Coverage", () => {
       );
     });
 
-    it("should settle expired lot as unsold if reserve not met", async () => {
+    it("should hold an expired lot under consideration if reserve not met", async () => {
       const mockLot = {
         _id: "a1",
         title: "Test",
@@ -345,13 +345,23 @@ describe("Internal Logic Coverage", () => {
         "lots",
         "a1",
         expect.objectContaining({
-          status: "unsold",
-          auctionId: undefined,
+          status: "under_consideration",
+          winnerId: "u1",
+          considerationDeadline: expect.any(Number) as number,
         })
+      );
+      expect(mockCtx.db.patch).not.toHaveBeenCalledWith(
+        "lots",
+        "a1",
+        expect.objectContaining({ auctionId: undefined })
       );
       expect(mockCtx.db.insert).not.toHaveBeenCalledWith(
         "userActivity",
         expect.anything()
+      );
+      expect(mockCtx.db.insert).toHaveBeenCalledWith(
+        "notifications",
+        expect.objectContaining({ title: "Your bid is with the seller" })
       );
     });
 

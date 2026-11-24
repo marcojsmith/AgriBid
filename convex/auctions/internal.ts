@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -24,6 +24,7 @@ import {
   CLEANUP_BATCH_SIZE,
   DRAFT_RETENTION_DAYS,
   SETTLEMENT_BATCH_SIZE,
+  CONSIDERATION_WINDOW_MS,
 } from "../constants";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -361,8 +362,330 @@ export async function logAuctionSettlementActivity(
 }
 
 /**
+ * Format money as shown in notifications, e.g. `R 428 000`.
+ *
+ * @param amount - The amount in rand.
+ * @returns The formatted amount.
+ */
+export function formatNotificationRand(amount: number): string {
+  return `R ${Math.round(amount)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`;
+}
+
+/**
+ * Insert an in-app notification for one user.
+ *
+ * @param ctx - The mutation context.
+ * @param notification - Recipient and content.
+ * @param notification.recipientId - The user to notify.
+ * @param notification.type - Severity/tone of the notification.
+ * @param notification.title - Short heading.
+ * @param notification.message - Body text.
+ * @param notification.link - In-app path the notification opens.
+ */
+export async function notifyUser(
+  ctx: MutationCtx,
+  notification: {
+    recipientId: string;
+    type: "info" | "success" | "warning" | "error";
+    title: string;
+    message: string;
+    link: string;
+  }
+): Promise<void> {
+  await ctx.db.insert("notifications", {
+    ...notification,
+    isRead: false,
+    createdAt: Date.now(),
+  });
+}
+
+/**
+ * Move a just-closed lot whose top bid missed the reserve to
+ * `under_consideration`: the seller has {@link CONSIDERATION_WINDOW_MS} to
+ * accept that bid. The lot keeps its sale and lot number (it stays on the
+ * event page), the top bidder is recorded as `winnerId` (the leader), no fees
+ * are charged and nothing counts as sold yet. Notifies the seller and the top
+ * bidder.
+ *
+ * Callers must have verified the lot is `assigned` and the bid is below the
+ * reserve; the `active` counter is released here exactly like any settlement.
+ *
+ * @param ctx - The mutation context.
+ * @param lot - The lot being closed (pre-patch snapshot).
+ * @param winningBid - The highest valid bid.
+ * @param now - The closing timestamp.
+ */
+export async function enterConsideration(
+  ctx: MutationCtx,
+  lot: Doc<"lots">,
+  winningBid: Doc<"bids">,
+  now: number
+): Promise<void> {
+  const deadline = now + CONSIDERATION_WINDOW_MS;
+  await ctx.db.patch("lots", lot._id, {
+    status: "under_consideration",
+    winnerId: winningBid.bidderId,
+    currentPrice: winningBid.amount,
+    settledAt: now,
+    considerationDeadline: deadline,
+  });
+  // Still visible in its sale, so the sale's lot count does not move; the call
+  // keeps the counter honest should the visible set ever change.
+  await syncAuctionLotCount(ctx, lot, {
+    status: "under_consideration",
+    auctionId: lot.auctionId,
+    hiddenByFlags: lot.hiddenByFlags,
+  });
+  await updateCounter(ctx, "lots", "active", -1);
+
+  const amount = formatNotificationRand(winningBid.amount);
+  await notifyUser(ctx, {
+    recipientId: lot.sellerId,
+    type: "warning",
+    title: "Decide on the top bid",
+    message: `${lot.title} closed at ${amount}, below your reserve. Accept or decline within 48 hours.`,
+    link: `/auction/${lot._id}`,
+  });
+  await notifyUser(ctx, {
+    recipientId: winningBid.bidderId,
+    type: "info",
+    title: "Your bid is with the seller",
+    message: `${lot.title} closed below the seller's reserve. Your bid of ${amount} is with the seller, who has 48 hours to accept it.`,
+    link: `/auction/${lot._id}`,
+  });
+  console.warn(
+    `Lot ${lot._id} (${lot.title}) is under consideration until ${new Date(deadline).toISOString()}`
+  );
+}
+
+/** Who resolved an under-consideration lot, for the audit trail. */
+export type ConsiderationActor =
+  | { kind: "user"; userId: string; role: "seller" | "admin" }
+  | { kind: "system" };
+
+/** How an under-consideration lot ended. */
+export type ConsiderationOutcome = "accepted" | "declined" | "expired";
+
+/**
+ * Resolve an `under_consideration` lot. Idempotent against races: it re-reads
+ * the lot and does nothing unless it is still `under_consideration`, so a
+ * double accept, an accept racing the expiry job, or a decline after expiry
+ * can never settle fees twice or flip a settled lot.
+ *
+ * - `accepted`: the lot becomes `sold` to the current top valid bid at its
+ *   amount; the sold counters move and fees are settled once via
+ *   {@link calculateAndRecordFees}. If no valid bid is left (all voided) the
+ *   lot becomes `unsold` instead.
+ * - `declined` / `expired`: the lot becomes `unsold` (winner cleared, back in
+ *   the reassignment pool like any unsold lot).
+ *
+ * Notifies the top bidder and the seller and audits the outcome.
+ *
+ * @param ctx - The mutation context.
+ * @param lotId - The lot to resolve.
+ * @param outcome - How it ended.
+ * @param actor - Who resolved it.
+ * @param now - The resolution timestamp.
+ * @param expectedAmount - For `accepted`: the top bid the seller saw. If the
+ *   current top valid bid differs (e.g. an admin voided it meanwhile) nothing
+ *   is changed and an error is thrown, so the seller never sells at a price
+ *   they did not agree to.
+ * @returns The resulting status, or null when the lot was no longer awaiting a decision.
+ */
+export async function resolveConsideration(
+  ctx: MutationCtx,
+  lotId: Id<"lots">,
+  outcome: ConsiderationOutcome,
+  actor: ConsiderationActor,
+  now: number,
+  expectedAmount?: number
+): Promise<"sold" | "unsold" | null> {
+  const lot = await ctx.db.get("lots", lotId);
+  if (lot?.status !== "under_consideration") return null;
+
+  const topBid =
+    outcome === "accepted" ? await findWinningBid(ctx, lot._id) : undefined;
+  const bidderId = lot.winnerId ?? undefined;
+  if (outcome === "accepted" && !topBid) {
+    // Every bid was voided: there is nothing to accept. Fail loudly instead of
+    // reporting a successful "unsold" to a seller who thinks they accepted.
+    throw new ConvexError("There is no valid bid left to accept on this lot.");
+  }
+  if (
+    outcome === "accepted" &&
+    topBid &&
+    expectedAmount !== undefined &&
+    topBid.amount !== expectedAmount
+  ) {
+    throw new ConvexError(
+      "The top bid has changed. Reload the lot and check the amount before accepting."
+    );
+  }
+
+  let finalStatus: "sold" | "unsold";
+  if (outcome === "accepted" && topBid) {
+    finalStatus = "sold";
+    await ctx.db.patch("lots", lot._id, {
+      status: "sold",
+      winnerId: topBid.bidderId,
+      currentPrice: topBid.amount,
+      settledAt: now,
+      considerationDeadline: undefined,
+    });
+    await syncAuctionLotCount(ctx, lot, {
+      status: "sold",
+      auctionId: lot.auctionId,
+      hiddenByFlags: lot.hiddenByFlags,
+    });
+    await updateCounter(ctx, "lots", "soldCount", 1);
+    await updateCounter(ctx, "lots", "salesVolume", topBid.amount);
+    await calculateAndRecordFees(ctx, lot, topBid.amount);
+    await logAuctionSettlementActivity(
+      ctx,
+      { ...lot, currentPrice: topBid.amount },
+      "sold",
+      topBid.bidderId
+    );
+  } else {
+    finalStatus = "unsold";
+    await ctx.db.patch("lots", lot._id, {
+      status: "unsold",
+      winnerId: undefined,
+      settledAt: now,
+      considerationDeadline: undefined,
+      // Unsold lots return to the pool for admin reassignment.
+      auctionId: undefined,
+      lotNumber: undefined,
+    });
+    // `auctionId` is cleared, so the lot leaves its sale's visible count.
+    await syncAuctionLotCount(ctx, lot, {
+      status: "unsold",
+      auctionId: undefined,
+      hiddenByFlags: lot.hiddenByFlags,
+    });
+    await logAuctionSettlementActivity(ctx, lot, "unsold");
+  }
+
+  const amount = formatNotificationRand(topBid?.amount ?? lot.currentPrice);
+  if (finalStatus === "sold" && topBid) {
+    await notifyUser(ctx, {
+      recipientId: topBid.bidderId,
+      type: "success",
+      title: "You won this lot",
+      message: `The seller accepted your bid of ${amount} on ${lot.title}.`,
+      link: `/auction/${lot._id}`,
+    });
+    await notifyUser(ctx, {
+      recipientId: lot.sellerId,
+      type: "success",
+      title: "Lot sold",
+      message: `${lot.title} sold for ${amount}.`,
+      link: `/auction/${lot._id}`,
+    });
+  } else {
+    const reason =
+      outcome === "expired"
+        ? "the seller's 48 hours to decide passed"
+        : "the top bid was not accepted";
+    if (bidderId) {
+      await notifyUser(ctx, {
+        recipientId: bidderId,
+        type: "info",
+        title: "Not sold",
+        message: `${lot.title} was not sold: ${reason}.`,
+        link: `/auction/${lot._id}`,
+      });
+    }
+    await notifyUser(ctx, {
+      recipientId: lot.sellerId,
+      type: "info",
+      title: "Lot not sold",
+      message: `${lot.title} was not sold${outcome === "expired" ? ": the 48 hours to decide passed" : ""}.`,
+      link: `/auction/${lot._id}`,
+    });
+  }
+
+  await logAudit(ctx, {
+    action: `CONSIDERATION_${outcome.toUpperCase()}`,
+    targetId: lot._id,
+    targetType: "lot",
+    system: actor.kind === "system",
+    details: JSON.stringify({
+      title: lot.title,
+      outcome,
+      finalStatus,
+      actor: actor.kind === "user" ? actor.role : "system",
+      actorId: actor.kind === "user" ? actor.userId : undefined,
+      bidderId: topBid?.bidderId ?? bidderId,
+      amount: topBid?.amount ?? lot.currentPrice,
+    }),
+  });
+
+  return finalStatus;
+}
+
+/**
+ * Expire `under_consideration` lots whose deadline passed (-> `unsold`).
+ * Bounded to {@link SETTLEMENT_BATCH_SIZE} lots per run via the
+ * `by_status_considerationDeadline` index and reschedules itself while more
+ * overdue lots remain. Idempotent: each lot is re-checked inside
+ * {@link resolveConsideration}, so a lot the seller just resolved is skipped.
+ *
+ * @param ctx - The mutation context.
+ * @returns How many lots expired and whether more remain.
+ */
+export const expireConsiderationLotsHandler = async (ctx: MutationCtx) => {
+  const now = Date.now();
+  const overdue = await ctx.db
+    .query("lots")
+    .withIndex("by_status_considerationDeadline", (q) =>
+      q.eq("status", "under_consideration").lte("considerationDeadline", now)
+    )
+    .take(SETTLEMENT_BATCH_SIZE + 1);
+
+  const hasMore = overdue.length > SETTLEMENT_BATCH_SIZE;
+  let expired = 0;
+  for (const lot of overdue.slice(0, SETTLEMENT_BATCH_SIZE)) {
+    const result = await resolveConsideration(
+      ctx,
+      lot._id,
+      "expired",
+      { kind: "system" },
+      now
+    );
+    if (result !== null) expired++;
+  }
+
+  if (hasMore) {
+    // Reschedule through the gated cron wrapper so switching the job off on
+    // /admin/performance also stops a backlog chain that is already running.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.cronJobs.expireConsiderationLots,
+      {}
+    );
+  }
+  return { expired, hasMore };
+};
+
+/** Internal mutation: expire overdue under-consideration lots to unsold. */
+export const expireConsiderationLots = internalMutation({
+  args: {},
+  returns: v.object({ expired: v.number(), hasMore: v.boolean() }),
+  handler: expireConsiderationLotsHandler,
+});
+
+/**
  * Settle a single assigned lot: determine the winning bid (if any), patch the
- * lot to `sold`/`unsold`, update counters, record fees and log activity.
+ * lot to `sold`/`unsold`/`under_consideration`, update counters, record fees
+ * and log activity.
+ *
+ * - Reserve met: `sold`, fees charged.
+ * - Bids but reserve not met: `under_consideration` (seller has 48 hours to
+ *   accept the top bid; no fees until then).
+ * - No bids: `unsold`.
  *
  * Unsold lots have their `auctionId` cleared so admins can filter
  * `status === "unsold"` and re-approve/reassign them.
@@ -373,17 +696,23 @@ export async function logAuctionSettlementActivity(
  * @param ctx - The mutation context.
  * @param lot - The assigned lot to settle.
  * @param now - The settlement timestamp to record.
- * @returns The resulting lot status ("sold" or "unsold").
+ * @returns The resulting lot status.
  */
 export async function settleLot(
   ctx: MutationCtx,
   lot: Doc<"lots">,
   now: number
-): Promise<"sold" | "unsold"> {
+): Promise<"sold" | "unsold" | "under_consideration"> {
   const winningBid = await findWinningBid(ctx, lot._id);
   const hasBids = winningBid !== undefined;
   const reserveMet =
     hasBids && isReserveMet(winningBid.amount, lot.reservePrice);
+
+  if (hasBids && !reserveMet) {
+    await enterConsideration(ctx, lot, winningBid, now);
+    return "under_consideration";
+  }
+
   const finalStatus: "sold" | "unsold" = reserveMet ? "sold" : "unsold";
 
   const winnerId = finalStatus === "sold" ? winningBid?.bidderId : undefined;
