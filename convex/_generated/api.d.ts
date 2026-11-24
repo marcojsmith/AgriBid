@@ -85,6 +85,7 @@ import type * as presence from "../presence.js";
 import type * as profileFlags from "../profileFlags.js";
 import type * as reviews from "../reviews.js";
 import type * as seed from "../seed.js";
+import type * as share from "../share.js";
 import type * as storageCleanup from "../storageCleanup.js";
 import type * as support from "../support.js";
 import type * as transport from "../transport.js";
@@ -179,6 +180,7 @@ declare const fullApi: ApiFromModules<{
   profileFlags: typeof profileFlags;
   reviews: typeof reviews;
   seed: typeof seed;
+  share: typeof share;
   storageCleanup: typeof storageCleanup;
   support: typeof support;
   transport: typeof transport;

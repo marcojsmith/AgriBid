@@ -20,8 +20,8 @@ describe("SEO constants", () => {
     expect(SITE_NAME).toBe("AgriBid");
   });
 
-  it("SITE_URL falls back to agribid.co.za when env var is absent", () => {
-    expect(SITE_URL).toBe("https://agribid.co.za");
+  it("SITE_URL falls back to agribid-iota.vercel.app when env var is absent", () => {
+    expect(SITE_URL).toBe("https://agribid-iota.vercel.app");
   });
 });
 
@@ -47,7 +47,7 @@ describe("getSiteUrl", () => {
       writable: true,
       configurable: true,
     });
-    expect(getSiteUrl()).toBe("https://agribid.co.za");
+    expect(getSiteUrl()).toBe("https://agribid-iota.vercel.app");
     Object.defineProperty(globalThis, "window", {
       value: originalWindow,
       writable: true,
@@ -57,13 +57,24 @@ describe("getSiteUrl", () => {
 });
 
 describe("SEO constants (continued)", () => {
-
   it("DEFAULT_TITLE contains site name", () => {
     expect(DEFAULT_TITLE).toContain(SITE_NAME);
   });
 
   it("DEFAULT_DESCRIPTION is non-empty", () => {
     expect(DEFAULT_DESCRIPTION.length).toBeGreaterThan(0);
+  });
+
+  it("default text is the home text, with no tagline", () => {
+    expect(DEFAULT_TITLE).toBe("AgriBid · Farm equipment auctions");
+    expect(DEFAULT_DESCRIPTION).toBe(
+      "Online farm equipment auctions in South Africa"
+    );
+    expect(DEFAULT_DESCRIPTION).not.toMatch(/built for farmers/i);
+  });
+
+  it("DEFAULT_OG_IMAGE points at the home share image", () => {
+    expect(DEFAULT_OG_IMAGE).toBe(`${SITE_URL}/api/og?kind=home`);
   });
 
   it("DEFAULT_OG_IMAGE is an absolute URL", () => {
@@ -206,7 +217,7 @@ describe("buildAuctionDescription", () => {
 describe("buildBreadcrumbSchema", () => {
   it("returns a BreadcrumbList schema with correct context", () => {
     const schema = buildBreadcrumbSchema([
-      { name: "Home", url: "https://agribid.co.za/" },
+      { name: "Home", url: "https://agribid-iota.vercel.app/" },
     ]);
     expect(schema["@context"]).toBe("https://schema.org");
     expect(schema["@type"]).toBe("BreadcrumbList");
@@ -214,15 +225,15 @@ describe("buildBreadcrumbSchema", () => {
 
   it("maps crumbs to ListItem entries with correct positions", () => {
     const schema = buildBreadcrumbSchema([
-      { name: "Home", url: "https://agribid.co.za/" },
-      { name: "Auction", url: "https://agribid.co.za/auction/abc" },
+      { name: "Home", url: "https://agribid-iota.vercel.app/" },
+      { name: "Auction", url: "https://agribid-iota.vercel.app/auction/abc" },
     ]);
     expect(schema.itemListElement).toHaveLength(2);
     expect(schema.itemListElement[0]).toMatchObject({
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://agribid.co.za/",
+      item: "https://agribid-iota.vercel.app/",
     });
     expect(schema.itemListElement[1]).toMatchObject({
       "@type": "ListItem",
@@ -238,9 +249,9 @@ describe("buildBreadcrumbSchema", () => {
 
   it("positions are 1-based", () => {
     const schema = buildBreadcrumbSchema([
-      { name: "A", url: "https://agribid.co.za/a" },
-      { name: "B", url: "https://agribid.co.za/b" },
-      { name: "C", url: "https://agribid.co.za/c" },
+      { name: "A", url: "https://agribid-iota.vercel.app/a" },
+      { name: "B", url: "https://agribid-iota.vercel.app/b" },
+      { name: "C", url: "https://agribid-iota.vercel.app/c" },
     ]);
     const positions = schema.itemListElement.map((e) => e.position);
     expect(positions).toEqual([1, 2, 3]);

@@ -29,6 +29,6 @@
       "*": ["./*"]
     }
   },
-  "include": ["src", "convex"],
+  "include": ["src", "convex", "api"],
   "exclude": ["node_modules", "dist"]
 }

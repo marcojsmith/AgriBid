@@ -4,8 +4,48 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/auction/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(?:facebookexternalhit|Facebot|WhatsApp|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|SkypeUriPreview|Pinterestbot|redditbot|Embedly).*"
+        }
+      ],
+      "destination": "/api/share?kind=lot&id=:id&path=/auction/:id"
+    },
+    {
+      "source": "/auctions/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(?:facebookexternalhit|Facebot|WhatsApp|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|SkypeUriPreview|Pinterestbot|redditbot|Embedly).*"
+        }
+      ],
+      "destination": "/api/share?kind=sale&id=:id&path=/auctions/:id"
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(?:facebookexternalhit|Facebot|WhatsApp|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot|SkypeUriPreview|Pinterestbot|redditbot|Embedly).*"
+        }
+      ],
+      "destination": "/api/share?kind=home&path=/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/og.tsx": {
+      "memory": 1024,
+      "maxDuration": 15,
+      "includeFiles": "api/_fonts/**"
+    }
+  }
 }

@@ -41,12 +41,7 @@ const noSecretsIgnoreContent = [
 ];
 
 export default defineConfig([
-  globalIgnores([
-    "dist",
-    "convex/_generated",
-    "coverage",
-    ".claude/worktrees",
-  ]),
+  globalIgnores(["dist", "convex/_generated", "coverage", ".claude/worktrees"]),
 
   // -----------------------------------------------------------------------
   // Node/config files — vite.config.ts, vitest.config.ts, eslint.config.js
@@ -84,7 +79,7 @@ export default defineConfig([
   // App source — src/ and convex/
   // -----------------------------------------------------------------------
   {
-    files: ["src/**/*.{ts,tsx}", "convex/**/*.ts"],
+    files: ["src/**/*.{ts,tsx}", "convex/**/*.ts", "api/**/*.{ts,tsx}"],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -158,7 +153,7 @@ export default defineConfig([
       "@typescript-eslint/no-shadow": "warn",
 
       // --- Logging ---
-      "no-console": ["error", { "allow": ["warn", "error"] }],
+      "no-console": ["error", { allow: ["warn", "error"] }],
 
       // --- React ---
       "react-hooks/rules-of-hooks": "warn",
@@ -189,6 +184,15 @@ export default defineConfig([
         },
       ],
     },
+  },
+
+  // -----------------------------------------------------------------------
+  // Vercel functions render JSX with Satori, not React, so Fast Refresh
+  // rules do not apply to them.
+  // -----------------------------------------------------------------------
+  {
+    files: ["api/**/*.{ts,tsx}"],
+    rules: { "react-refresh/only-export-components": "off" },
   },
 
   // -----------------------------------------------------------------------

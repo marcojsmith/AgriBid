@@ -2,9 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="AgriBid" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#16a34a" />
+    <meta name="theme-color" content="#2D533B" />
 
     <!-- Inter UI font (weights 400–700) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -17,41 +23,39 @@
     <!-- Preconnect to Convex CDN to reduce TTFB for image/asset requests -->
     <link rel="preconnect" href="https://dynamic.convex.cloud" />
 
-    <!-- Default SEO — overridden per-page by react-helmet-async -->
-    <!-- IMPORTANT: Keep in sync with DEFAULT_TITLE / DEFAULT_DESCRIPTION / SITE_URL in src/lib/seo.ts -->
-    <title>AgriBid – South Africa's Agricultural Equipment Auction Platform</title>
+    <!-- Default SEO. Crawlers get per-page tags from api/share.ts; this is the
+         home text. IMPORTANT: keep in sync with src/lib/seo.ts and
+         api/_lib/shareMeta.ts. %SITE_URL% is filled in by vite.config.ts. -->
+    <title>AgriBid · Farm equipment auctions</title>
     <meta
       name="description"
-      content="Buy and sell farming equipment at auction. AgriBid is the national marketplace for heavy machinery — built for farmers, by farmers."
+      content="Online farm equipment auctions in South Africa"
     />
-    <link rel="canonical" href="https://agribid.co.za/" />
+    <link rel="canonical" href="%SITE_URL%/" />
 
     <!-- Open Graph -->
     <meta property="og:site_name" content="AgriBid" />
-    <meta
-      property="og:title"
-      content="AgriBid – South Africa's Agricultural Equipment Auction Platform"
-    />
+    <meta property="og:title" content="AgriBid · Farm equipment auctions" />
     <meta
       property="og:description"
-      content="Buy and sell farming equipment at auction. AgriBid is the national marketplace for heavy machinery — built for farmers, by farmers."
+      content="Online farm equipment auctions in South Africa"
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://agribid.co.za/" />
-    <meta property="og:image" content="https://agribid.co.za/og-image.png" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/api/og?kind=home" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="en_ZA" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta
-      name="twitter:title"
-      content="AgriBid – South Africa's Agricultural Equipment Auction Platform"
-    />
+    <meta name="twitter:title" content="AgriBid · Farm equipment auctions" />
     <meta
       name="twitter:description"
-      content="Buy and sell farming equipment at auction. AgriBid is the national marketplace for heavy machinery — built for farmers, by farmers."
+      content="Online farm equipment auctions in South Africa"
     />
-    <meta name="twitter:image" content="https://agribid.co.za/og-image.png" />
+    <meta name="twitter:image" content="%SITE_URL%/api/og?kind=home" />
 
     <!-- Robots -->
     <meta name="robots" content="index, follow" />
