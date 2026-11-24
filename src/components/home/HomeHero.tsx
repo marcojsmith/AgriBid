@@ -64,7 +64,7 @@ interface HomeHeroProps {
   onFeesClick: () => void;
   /** Where "View all N lots" goes. */
   lotsHref: string;
-  /** Lots across the open sales, for "View all N lots". */
+  /** The sale's exact lot count, for "View all N lots". */
   totalLots: number;
   /** True when the count is a lower bound (a sale was capped). */
   totalCapped?: boolean;
@@ -96,7 +96,7 @@ interface HomeHeroProps {
  * @param props.ctaRef - Ref for the primary call to action
  * @param props.onFeesClick - Opens the Fees & rules sheet
  * @param props.lotsHref - Where "View all N lots" goes
- * @param props.totalLots - Lots across the open sales
+ * @param props.totalLots - The sale's exact lot count
  * @param props.totalCapped - Whether the count is a lower bound
  * @param props.className - Extra classes merged onto the root element
  * @returns The hero
