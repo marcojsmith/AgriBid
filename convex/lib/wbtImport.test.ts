@@ -423,8 +423,11 @@ describe("re-timing", () => {
     const live = saleWindow("live", 0, now);
     expect(live.status).toBe("published");
     expect(live.startTime).toBeLessThan(now);
-    expect(live.endTime - now).toBe(6 * MS_PER_DAY);
+    // Must outlast the weekly reset (7 days) or the settle cron would
+    // settle and detach the lots before the reset re-times them.
+    expect(live.endTime - now).toBeGreaterThan(7 * MS_PER_DAY);
     const upcoming = saleWindow("upcoming", 0, now);
+    expect(upcoming.endTime - now).toBeGreaterThan(7 * MS_PER_DAY);
     expect(upcoming.startTime).toBeGreaterThan(now);
     expect(upcoming.endTime).toBeGreaterThan(upcoming.startTime);
   });

@@ -4,11 +4,11 @@ The demo shows real data from webuytractors.shop (owned by the AgriBid owner): t
 
 ## What it creates
 
-| Source                       | Becomes               | Timeline (relative to now)                            |
-| ---------------------------- | --------------------- | ----------------------------------------------------- |
-| The open auction (85 lots)   | a published sale      | opened 2 days ago, closes in 6 days (live)            |
-| The 22 fixed-price listings  | "Showroom stock" sale | opens in 1 day (upcoming); opening bid = asking price |
-| The 5 newest closed auctions | closed sales          | newest ended 3 days ago, then every 28 days           |
+| Source                       | Becomes               | Timeline (relative to now)                                         |
+| ---------------------------- | --------------------- | ------------------------------------------------------------------ |
+| The open auction (85 lots)   | a published sale      | opened 2 days ago, closes in 8 days (live)                         |
+| The 22 fixed-price listings  | "Showroom stock" sale | opens in 1 day, closes in 9 (upcoming); opening bid = asking price |
+| The 5 newest closed auctions | closed sales          | newest ended 3 days ago, then every 28 days                        |
 
 - Lots with a terms/viewing/notice title, no real title or no usable photo are skipped. The source's "missing image" placeholder is ignored.
 - Photos are downloaded, resized to at most 1600 px JPEG with `sharp` and uploaded to Convex file storage through `wbtImport:generateUploadUrl`. Lots hold the storage ids, lead photo first (at most 10).
@@ -21,10 +21,10 @@ The demo shows real data from webuytractors.shop (owned by the AgriBid owner): t
 
 ## Environment
 
-| Variable                            | Meaning                                                     |
-| ----------------------------------- | ----------------------------------------------------------- |
-| `CONVEX_URL` (or `VITE_CONVEX_URL`) | Deployment URL, e.g. `https://agribid-convex.duckdns.org`   |
-| `CONVEX_ADMIN_KEY`                  | That deployment's admin key. Never print, log or commit it. |
+| Variable                | Meaning                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| `CONVEX_URL` (required) | Deployment URL, e.g. `https://agribid-convex.duckdns.org`   |
+| `CONVEX_ADMIN_KEY`      | That deployment's admin key. Never print, log or commit it. |
 
 The script calls only `internal` functions (`convex/wbtImport.ts`), which accept the admin key and nothing else. The scrape (`wbt-data.json`, 14 MB) stays outside the repo.
 

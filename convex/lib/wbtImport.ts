@@ -644,11 +644,19 @@ export interface SaleWindow {
 /** How far apart the re-timed closed sales are (days). */
 const CLOSED_SPACING_DAYS = 28;
 
+/** Days until the live sale closes: after the 7-day weekly reset. */
+const LIVE_CLOSES_IN_DAYS = 8;
+
+/** Days until the upcoming sale closes: after the 7-day weekly reset. */
+const UPCOMING_CLOSES_IN_DAYS = 9;
+
 /**
  * Where each sale sits on the demo timeline, relative to `now`:
- * live opened 2 days ago and closes in 6; upcoming opens in 1 day and closes
- * in 5; closed sale N (1 = newest) ended 3 + 28 x (N - 1) days ago after a
- * 4-day run.
+ * live opened 2 days ago and closes in 8; upcoming opens in 1 day and closes
+ * in 9; closed sale N (1 = newest) ended 3 + 28 x (N - 1) days ago after a
+ * 4-day run. Open sales end AFTER the next weekly reset (7 days), so the
+ * settle cron never settles (and detaches) their lots before the reset
+ * re-times them.
  *
  * @param role - The sale's timeline role
  * @param closedOrder - 1 = newest closed sale (ignored for other roles)
@@ -663,14 +671,14 @@ export function saleWindow(
   if (role === "live") {
     return {
       startTime: now - 2 * MS_PER_DAY,
-      endTime: now + 6 * MS_PER_DAY,
+      endTime: now + LIVE_CLOSES_IN_DAYS * MS_PER_DAY,
       status: "published",
     };
   }
   if (role === "upcoming") {
     return {
       startTime: now + MS_PER_DAY,
-      endTime: now + 5 * MS_PER_DAY,
+      endTime: now + UPCOMING_CLOSES_IN_DAYS * MS_PER_DAY,
       status: "published",
     };
   }

@@ -158,9 +158,13 @@ async function shiftClosedLot(
 
 /**
  * One batch of a sale re-time. Walks the sale's lots in lot-number order
- * (`afterLotNumber` is the cursor), then on the last batch moves the sale
- * itself, so a failed chain leaves the sale's own times (and so the delta)
- * unchanged and a re-run recomputes the same shift.
+ * (`afterLotNumber` is the cursor).
+ *
+ * The first batch (no `delta` yet) computes how far the sale moves and moves
+ * the sale itself straight away, then hands `delta` to every later batch. That
+ * way a second overlapping chain sees an already-moved sale (a near-zero
+ * delta) instead of shifting lots twice, and the settle cron never sees a
+ * past-due sale with freshly reset lots.
  */
 export const retimeBatch = internalMutation({
   args: {
@@ -170,12 +174,21 @@ export const retimeBatch = internalMutation({
     endTime: v.number(),
     status: statusValidator,
     afterLotNumber: v.number(),
+    delta: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const auction = await ctx.db.get("auctions", args.auctionId);
     if (!auction?.seedId?.startsWith(WBT_SEED_PREFIX)) return null;
-    const delta = args.endTime - auction.endTime;
+    const delta = args.delta ?? args.endTime - auction.endTime;
+    if (args.delta === undefined) {
+      await ctx.db.patch("auctions", auction._id, {
+        startTime: args.startTime,
+        endTime: args.endTime,
+        status: args.status,
+        updatedAt: Date.now(),
+      });
+    }
 
     const lots = await ctx.db
       .query("lots")
@@ -183,6 +196,20 @@ export const retimeBatch = internalMutation({
         q.eq("auctionId", args.auctionId).gt("lotNumber", args.afterLotNumber)
       )
       .take(LOTS_PER_BATCH);
+    const lastNumber = lots[lots.length - 1]?.lotNumber;
+    if (lots.length === LOTS_PER_BATCH && lastNumber !== undefined) {
+      // Lots sharing the boundary number must not be skipped by the cursor.
+      const seen = new Set(lots.map((lot) => lot._id));
+      const sameNumber = await ctx.db
+        .query("lots")
+        .withIndex("by_auctionId_lotNumber", (q) =>
+          q.eq("auctionId", args.auctionId).eq("lotNumber", lastNumber)
+        )
+        .take(20);
+      for (const lot of sameNumber) {
+        if (!seen.has(lot._id)) lots.push(lot);
+      }
+    }
 
     for (const lot of lots) {
       if (args.role === "closed") {
@@ -192,21 +219,16 @@ export const retimeBatch = internalMutation({
       }
     }
 
-    if (lots.length === LOTS_PER_BATCH) {
-      const last = lots[lots.length - 1].lotNumber ?? args.afterLotNumber;
+    if (lots.length >= LOTS_PER_BATCH) {
+      const last = lastNumber ?? args.afterLotNumber;
       await ctx.scheduler.runAfter(0, internal.wbtDemo.retimeBatch, {
         ...args,
+        delta,
         afterLotNumber: last,
       });
       return null;
     }
 
-    await ctx.db.patch("auctions", auction._id, {
-      startTime: args.startTime,
-      endTime: args.endTime,
-      status: args.status,
-      updatedAt: Date.now(),
-    });
     if (args.role === "live") {
       await ctx.scheduler.runAfter(0, internal.wbtDemo.seedLiveDemo, {
         auctionId: auction._id,

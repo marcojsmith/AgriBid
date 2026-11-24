@@ -208,6 +208,70 @@ describe("wbtImport", () => {
     );
   });
 
+  it("re-import keeps the price, status and bids of a lot a real person bid on", async () => {
+    const t = createTestContext();
+    const sale = await makeSale(t, "live", "wbt:auction:1");
+    const photo = await storePhoto(t);
+    const lots = [
+      buildLotInput(raw(), { role: "live", seedId: "wbt:auction:1" }, 0, 1, 1, [
+        photo,
+      ]),
+    ];
+    await t.mutation(internal.wbtImport.upsertLots, { auctionId: sale, lots });
+    const [lot] = await t.run((ctx) => ctx.db.query("lots").collect());
+    await t.run(async (ctx) => {
+      await ctx.db.insert("bids", {
+        lotId: lot._id,
+        bidderId: "user_real",
+        amount: 77000,
+        timestamp: Date.now(),
+        status: "valid",
+      });
+      await ctx.db.insert("bids", {
+        lotId: lot._id,
+        bidderId: "mock-buyer-1",
+        amount: 1000,
+        timestamp: Date.now(),
+        status: "valid",
+      });
+      await ctx.db.patch("lots", lot._id, { currentPrice: 77000 });
+    });
+    await t.mutation(internal.wbtImport.upsertLots, {
+      auctionId: sale,
+      lots: lots.map((l) => ({ ...l, title: "Renamed", photos: [] })),
+    });
+    const after = await t.run((ctx) => ctx.db.get("lots", lot._id));
+    expect(after).toMatchObject({ title: "Renamed", currentPrice: 77000 });
+    const bids = await t.run((ctx) => ctx.db.query("bids").collect());
+    expect(bids).toHaveLength(2);
+  });
+
+  it("re-import replaces demo bids with the one winning bid on a sold lot", async () => {
+    const t = createTestContext();
+    const sale = await makeSale(t, "closed", "wbt:auction:2", 1);
+    const closed = { role: "closed" as const, seedId: "wbt:auction:2" };
+    const lots = [
+      buildLotInput(
+        raw({
+          lotStatus: "sold",
+          price: 50000,
+          openingBid: 40000,
+          bidCount: 3,
+        }),
+        closed,
+        0,
+        1,
+        1,
+        []
+      ),
+    ];
+    await t.mutation(internal.wbtImport.upsertLots, { auctionId: sale, lots });
+    await t.mutation(internal.wbtImport.upsertLots, { auctionId: sale, lots });
+    const bids = await t.run((ctx) => ctx.db.query("bids").collect());
+    expect(bids).toHaveLength(1);
+    expect(bids[0].amount).toBe(50000);
+  });
+
   it("records closed outcomes from real prices with one winning bid", async () => {
     const t = createTestContext();
     const sale = await makeSale(t, "closed", "wbt:auction:2", 1);
@@ -530,6 +594,21 @@ describe("retireOldDemo", () => {
     expect(await t.run((ctx) => ctx.db.get("lots", ids.old))).not.toBeNull();
   });
 
+  it("leaves an old-titled sale alone while it still holds another lot", async () => {
+    const t = createTestContext();
+    const ids = await seedOld(t);
+    await t.run((ctx) =>
+      ctx.db.patch("lots", ids.user, { auctionId: ids.oldSale })
+    );
+    const report = await t.mutation(internal.wbtImport.retireOldDemo, {
+      apply: true,
+    });
+    expect(report.rows.map((r) => r.id)).toEqual([ids.old]);
+    expect(
+      await t.run((ctx) => ctx.db.get("auctions", ids.oldSale))
+    ).not.toBeNull();
+  });
+
   it("deletes only old demo rows when applied", async () => {
     const t = createTestContext();
     const ids = await seedOld(t);
@@ -759,10 +838,10 @@ describe("wbtDemo", () => {
       status: "published",
       afterLotNumber: 0,
     });
-    // The first batch leaves the sale itself alone until the last batch runs.
+    // The first batch moves the sale itself straight away, so the settle
+    // cron never sees a past-due sale with freshly reset lots.
     const auction = await t.run((ctx) => ctx.db.get("auctions", sale));
-    expect(auction?.endTime).toBeLessThan(Date.now() + 7 * MS_PER_DAY);
-    expect(auction?.status).toBe("published");
+    expect(auction?.startTime).toBeGreaterThan(Date.now());
     await t.mutation(internal.wbtDemo.retimeBatch, {
       auctionId: sale,
       role: "upcoming",
@@ -770,6 +849,7 @@ describe("wbtDemo", () => {
       endTime: Date.now() + 5 * MS_PER_DAY,
       status: "published",
       afterLotNumber: 100,
+      delta: 0,
     });
     const done = await t.run((ctx) => ctx.db.get("auctions", sale));
     expect(done?.startTime).toBeGreaterThan(Date.now());

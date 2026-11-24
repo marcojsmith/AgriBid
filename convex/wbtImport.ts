@@ -20,6 +20,7 @@ import { provinceValidator } from "./lib/provinces";
 import { deleteAuctionImages } from "./lib/storage";
 import {
   DEMO_BIDDER_IDS,
+  isDemoBidder,
   WBT_BUYER_PREMIUM_PCT,
   WBT_CATEGORIES,
   WBT_SEED_PREFIX,
@@ -337,28 +338,49 @@ export const upsertLots = internalMutation({
 
       let lotId: Id<"lots">;
       if (existing) {
-        await ctx.db.patch("lots", existing._id, fields);
         lotId = existing._id;
         updated++;
+        const existingBids = await ctx.db
+          .query("bids")
+          .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+          .take(500);
+        const hasRealBid = existingBids.some(
+          (bid) => !isDemoBidder(bid.bidderId) && bid.status !== "voided"
+        );
+        if (hasRealBid) {
+          // A real person has bid: refresh the descriptive fields only, never
+          // the price, status, winner or bid history.
+          await ctx.db.patch("lots", existing._id, {
+            ...fields,
+            currentPrice: existing.currentPrice,
+            status: existing.status,
+            winnerId: existing.winnerId,
+            settledAt: existing.settledAt,
+          });
+          continue;
+        }
+        await ctx.db.patch("lots", existing._id, fields);
+        // Only demo bids are left: clear them so the bid history matches the
+        // refreshed outcome (a sold lot gets its one winning bid below).
+        for (const bid of existingBids) {
+          await ctx.db.delete("bids", bid._id);
+        }
       } else {
         lotId = await ctx.db.insert("lots", { ...fields, createdAt: now });
         created++;
       }
 
       if (input.status === "sold" && winnerId && settledAt !== undefined) {
-        const bid = await ctx.db
-          .query("bids")
-          .withIndex("by_lot", (q) => q.eq("lotId", lotId))
-          .first();
-        if (!bid) {
-          await ctx.db.insert("bids", {
-            lotId,
-            bidderId: winnerId,
-            amount: input.currentPrice,
-            timestamp: settledAt - 60_000,
-            status: "valid",
-          });
-        }
+        await ctx.db.insert("bids", {
+          lotId,
+          bidderId: winnerId,
+          amount: input.currentPrice,
+          timestamp: settledAt - 60_000,
+          status: "valid",
+        });
+      }
+      if (existing && !closed) {
+        await updateCounter(ctx, bidCounterName(lotId), "total", 0, true);
       }
       if (closed) {
         await updateCounter(
@@ -433,9 +455,22 @@ export const retireOldDemo = internalMutation({
       .take(500);
     const lots = [...below, ...above];
 
-    const auctions = (await ctx.db.query("auctions").take(500)).filter(
+    const lotIds = new Set<Id<"lots">>(lots.map((lot) => lot._id));
+    const titled = (await ctx.db.query("auctions").take(500)).filter(
       (a) => a.seedId === undefined && OLD_DEMO_AUCTION_TITLES.includes(a.title)
     );
+    // A sale that still holds a lot this step is not deleting (for example a
+    // real user's lot an admin assigned to it) is left alone.
+    const auctions: Doc<"auctions">[] = [];
+    for (const auction of titled) {
+      const held = await ctx.db
+        .query("lots")
+        .withIndex("by_auctionId_lotNumber", (q) =>
+          q.eq("auctionId", auction._id)
+        )
+        .take(500);
+      if (held.every((lot) => lotIds.has(lot._id))) auctions.push(auction);
+    }
 
     const rows: {
       kind: "lot" | "auction";

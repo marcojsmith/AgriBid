@@ -7,7 +7,7 @@
  *   bun scripts/import-wbt.ts <path> --retire-old-demo --apply  (deletes)
  *
  * Environment (never printed):
- *   CONVEX_URL        deployment URL (falls back to VITE_CONVEX_URL)
+ *   CONVEX_URL        deployment URL (required; VITE_CONVEX_URL is ignored)
  *   CONVEX_ADMIN_KEY  that deployment's admin key
  *
  * It calls only `internal` functions in `convex/wbtImport.ts`, which are
@@ -90,11 +90,13 @@ class ConvexAdmin {
       },
       body: JSON.stringify({ path, args, format: "json" }),
     });
-    const body = (await response.json()) as {
-      status: string;
-      value?: T;
-      errorMessage?: string;
-    };
+    const text = await response.text();
+    let body: { status: string; value?: T; errorMessage?: string };
+    try {
+      body = JSON.parse(text) as typeof body;
+    } catch {
+      throw new Error(`${path} failed: HTTP ${response.status.toString()}`);
+    }
     if (body.status !== "success") {
       throw new Error(
         `${path} failed: ${body.errorMessage ?? response.statusText}`
@@ -272,7 +274,9 @@ async function main(): Promise<void> {
   const path = args.find((arg) => !arg.startsWith("--"));
   const retire = args.includes("--retire-old-demo");
   const apply = args.includes("--apply");
-  const url = requireEnv("CONVEX_URL", "VITE_CONVEX_URL");
+  // Required explicitly: bun auto-loads .env.local, whose VITE_CONVEX_URL is a
+  // dev deployment and must never silently pair with a production admin key.
+  const url = requireEnv("CONVEX_URL");
   const admin = new ConvexAdmin(url, requireEnv("CONVEX_ADMIN_KEY"));
 
   if (retire) {

@@ -572,10 +572,14 @@ async function seedDemoFinanceContact(
  * True only for the explicit demo seed (`runSeed`); `weeklyReset` passes false
  * because it also runs on the production showcase, where nothing may be
  * invented about the company or its contacts.
+ * @param options.recalculate - Recompute the dashboard counters from the whole
+ * tables (default true). `weeklyReset` passes false: it deletes nothing, so
+ * the counters stay correct, and the tables only grow, so a full read in one
+ * mutation would eventually exceed Convex's read limits.
  */
 async function performSeed(
   ctx: MutationCtx,
-  options: { demoFinanceContact: boolean }
+  options: { demoFinanceContact: boolean; recalculate?: boolean }
 ): Promise<void> {
   const now = Date.now();
 
@@ -1117,7 +1121,9 @@ async function performSeed(
   }
 
   // 5. Update Metrics (Counters)
-  await recalculateCounters(ctx);
+  if (options.recalculate !== false) {
+    await recalculateCounters(ctx);
+  }
 
   console.log("Seeding and metric calculation completed successfully.");
 }
@@ -1331,7 +1337,7 @@ export const weeklyReset = internalMutation({
     await ensureMockSellerProfile(ctx);
 
     // Production-safe: no demo finance contact (see performSeed).
-    await performSeed(ctx, { demoFinanceContact: false });
+    await performSeed(ctx, { demoFinanceContact: false, recalculate: false });
 
     const scheduled = await scheduleRetime(ctx, Date.now());
     console.log(
