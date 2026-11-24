@@ -22,6 +22,7 @@ vi.mock("../admin/platformSettings", () => ({
 
 vi.mock("../lib/lotCounters", () => ({
   removeLotWatchData: vi.fn().mockResolvedValue(undefined),
+  syncAuctionLotCount: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../_generated/server", () => ({

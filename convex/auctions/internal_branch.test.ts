@@ -6,6 +6,7 @@ import { settleExpiredLotsHandler, cleanupDraftsHandler } from "./internal";
 
 vi.mock("../lib/lotCounters", () => ({
   removeLotWatchData: vi.fn().mockResolvedValue(undefined),
+  syncAuctionLotCount: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../admin_utils", () => ({

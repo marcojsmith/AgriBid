@@ -8,6 +8,7 @@ import { deleteAuctionImages, safeDelete } from "../lib/storage";
 import {
   deleteAuctionEngagementScores,
   removeLotWatchData,
+  syncAuctionLotCount,
 } from "../lib/lotCounters";
 import {
   isBuyerPercentageFee,
@@ -397,6 +398,11 @@ export async function settleLot(
       : {}),
   });
 
+  await syncAuctionLotCount(ctx, lot, {
+    status: finalStatus,
+    auctionId: finalStatus === "unsold" ? undefined : lot.auctionId,
+    hiddenByFlags: lot.hiddenByFlags,
+  });
   await updateCounter(ctx, "lots", "active", -1);
 
   if (finalStatus === "sold" && winningBid) {

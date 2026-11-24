@@ -11,7 +11,11 @@ import {
   tally,
 } from "./homeLots";
 import { resolveUrlCached } from "../../image_cache";
-import { getBidCount, getWatcherCount } from "../../lib/lotCounters";
+import {
+  getAuctionLotCount,
+  getBidCount,
+  getWatcherCount,
+} from "../../lib/lotCounters";
 import {
   EVENT_LOTS_DEFAULT_LIMIT,
   EVENT_LOTS_MAX_LIMIT,
@@ -125,6 +129,9 @@ export const getEventFacetsHandler = async (
   args: { auctionId: Id<"auctions"> }
 ) => {
   const { lots, capped } = await loadEventLots(ctx, args.auctionId);
+  // The chips tally the lots read (capped); the sale's total is exact, from its
+  // counter, whenever the backfill has created it.
+  const exactTotal = await getAuctionLotCount(ctx, args.auctionId);
 
   const categoryNames = new Map<Id<"equipmentCategories">, string>();
   const categoryIds = [
@@ -139,8 +146,8 @@ export const getEventFacetsHandler = async (
   const prices = lots.map((lot) => lot.currentPrice);
   const sold = lots.filter((lot) => lot.status === "sold");
   return {
-    total: lots.length,
-    capped,
+    total: exactTotal ?? lots.length,
+    capped: exactTotal === null && capped,
     categories: tally(
       lots.flatMap((lot) =>
         lot.categoryId && categoryNames.has(lot.categoryId)
