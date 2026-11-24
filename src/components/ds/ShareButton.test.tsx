@@ -39,4 +39,12 @@ describe("ShareButton", () => {
       expect(share).toHaveBeenCalled();
     });
   });
+
+  it("overlay variant matches the watch button: 48px tap area, 34px circle", () => {
+    render(<ShareButton {...PAYLOAD} variant="overlay" />);
+    const btn = screen.getByRole("button", { name: "Share" });
+    expect(btn).toHaveClass("size-12");
+    expect(btn).not.toHaveClass("border");
+    expect(btn.firstElementChild).toHaveClass("size-[34px]", "rounded-full");
+  });
 });

@@ -363,7 +363,7 @@ function LotPage({ id }: { id: string | undefined }) {
         text={keyFacts}
         url={canonical}
         onResult={handleShare}
-        className="mt-0.5 mr-[7px] size-[34px] rounded-full border-0 shadow-[0_1px_3px_rgb(0_0_0/.3)]"
+        variant="overlay"
       />
     </>
   );
