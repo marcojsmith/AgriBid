@@ -22,12 +22,14 @@ const decisionResult = v.object({
  * @param ctx - The mutation context.
  * @param lotId - The lot to decide.
  * @param outcome - `accepted` or `declined`.
+ * @param expectedAmount - The top bid the caller saw; accept is refused if it changed.
  * @returns The resulting lot status.
  */
 async function decide(
   ctx: MutationCtx,
   lotId: Id<"lots">,
-  outcome: "accepted" | "declined"
+  outcome: "accepted" | "declined",
+  expectedAmount?: number
 ): Promise<{ status: "sold" | "unsold" }> {
   const auth = await getAuthWithProfile(ctx);
   if (!auth) throw new ConvexError("Not authenticated");
@@ -59,7 +61,14 @@ async function decide(
     userId: auth.userId,
     role: isAdmin ? "admin" : "seller",
   };
-  const status = await resolveConsideration(ctx, lot._id, outcome, actor, now);
+  const status = await resolveConsideration(
+    ctx,
+    lot._id,
+    outcome,
+    actor,
+    now,
+    expectedAmount
+  );
   if (status === null) {
     throw new ConvexError("This lot is no longer awaiting a decision");
   }
@@ -71,9 +80,10 @@ async function decide(
  * lot becomes `sold` to the top bidder at that bid and fees are settled once.
  */
 export const acceptTopBid = mutation({
-  args: { lotId: v.id("lots") },
+  args: { lotId: v.id("lots"), expectedAmount: v.number() },
   returns: decisionResult,
-  handler: async (ctx, args) => await decide(ctx, args.lotId, "accepted"),
+  handler: async (ctx, args) =>
+    await decide(ctx, args.lotId, "accepted", args.expectedAmount),
 });
 
 /**

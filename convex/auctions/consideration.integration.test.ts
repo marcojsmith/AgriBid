@@ -234,7 +234,9 @@ async function backdateDeadline(t: TestContext, lotId: Id<"lots">) {
 }
 
 const accept = (t: TestContext, subject: string, lotId: Id<"lots">) =>
-  t.withIdentity({ subject }).mutation(api.auctions.acceptTopBid, { lotId });
+  t
+    .withIdentity({ subject })
+    .mutation(api.auctions.acceptTopBid, { lotId, expectedAmount: TOP_BID });
 const decline = (t: TestContext, subject: string, lotId: Id<"lots">) =>
   t.withIdentity({ subject }).mutation(api.auctions.declineTopBid, { lotId });
 
@@ -420,20 +422,34 @@ describe("acceptTopBid", () => {
     expect(await readFees(t, lotId)).toHaveLength(0);
   });
 
-  it("sells to the highest remaining bid if the top bid was voided", async () => {
+  it("refuses a stale amount when the top bid was voided, then sells at the new top", async () => {
     const t = createTestContext();
     const { lotId } = await seedConsideration(t);
-    await t.run(async (ctx) => {
+    const topBidId = await t.run(async (ctx) => {
       const top = await ctx.db
         .query("bids")
         .withIndex("by_lot_amount", (q) => q.eq("lotId", lotId))
         .order("desc")
         .first();
-      if (top) await ctx.db.patch("bids", top._id, { status: "voided" });
+      if (!top) throw new Error("no bids");
+      await ctx.db.patch("bids", top._id, { status: "voided" });
+      return top._id;
     });
+    expect(topBidId).toBeDefined();
 
-    await accept(t, SELLER, lotId);
+    // The seller still sees the old R amount: nothing is sold at it.
+    await expect(accept(t, SELLER, lotId)).rejects.toThrow(
+      /top bid has changed/
+    );
+    expect((await readLot(t, lotId)).status).toBe("under_consideration");
+    expect(await readFees(t, lotId)).toHaveLength(0);
 
+    await t
+      .withIdentity({ subject: SELLER })
+      .mutation(api.auctions.acceptTopBid, {
+        lotId,
+        expectedAmount: START_PRICE,
+      });
     const lot = await readLot(t, lotId);
     expect(lot.status).toBe("sold");
     expect(lot.winnerId).toBe(BIDDER_B);
@@ -488,13 +504,105 @@ describe("declineTopBid", () => {
   });
 });
 
+describe("guards around a lot under consideration", () => {
+  it("refuses bids once the lot is closed early, even inside the sale window", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const lotId = await createLot(t, world);
+    await placeBid(t, BIDDER_A, lotId, START_PRICE);
+    await t
+      .withIdentity({ subject: ADMIN })
+      .mutation(api.auctions.closeLotEarly, { lotId });
+
+    await expect(
+      placeBid(t, BIDDER_B, lotId, START_PRICE + 5 * MIN_INCREMENT)
+    ).rejects.toThrow(/no longer open for bidding/);
+    expect((await readLot(t, lotId)).winnerId).toBe(BIDDER_A);
+  });
+
+  it("will not let an admin status edit bypass accept/decline", async () => {
+    const t = createTestContext();
+    const { lotId } = await seedConsideration(t);
+    const asAdmin = t.withIdentity({ subject: ADMIN });
+
+    await expect(
+      asAdmin.mutation(api.auctions.adminUpdateLot, {
+        lotId,
+        updates: { status: "sold" },
+      })
+    ).rejects.toThrow(/under consideration/);
+
+    const bulk = await asAdmin.mutation(api.auctions.bulkUpdateLots, {
+      lotIds: [lotId],
+      updates: { status: "unsold" },
+    });
+    expect(bulk.updated).toEqual([]);
+    expect(bulk.skipped).toEqual([lotId]);
+    expect((await readLot(t, lotId)).status).toBe("under_consideration");
+    expect(await readFees(t, lotId)).toHaveLength(0);
+  });
+
+  it("re-points the lot at the highest remaining bid when an admin voids the top bid", async () => {
+    const t = createTestContext();
+    const { lotId } = await seedConsideration(t);
+    const topBid = await t.run(async (ctx) =>
+      ctx.db
+        .query("bids")
+        .withIndex("by_lot_amount", (q) => q.eq("lotId", lotId))
+        .order("desc")
+        .first()
+    );
+    if (!topBid) throw new Error("no bids");
+
+    await t
+      .withIdentity({ subject: ADMIN })
+      .mutation(api.admin.mutations.voidBid, {
+        bidId: topBid._id,
+        reason: "shill bid",
+      });
+
+    const lot = await readLot(t, lotId);
+    expect(lot.status).toBe("under_consideration");
+    expect(lot.winnerId).toBe(BIDDER_B);
+    expect(lot.currentPrice).toBe(START_PRICE);
+  });
+
+  it("closes it as not sold when an admin voids the last valid bid", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const lotId = await createLot(t, world);
+    await placeBid(t, BIDDER_A, lotId, START_PRICE);
+    await closeAndSettle(t, world.auctionId);
+    const bid = await t.run(async (ctx) =>
+      ctx.db
+        .query("bids")
+        .withIndex("by_lot", (q) => q.eq("lotId", lotId))
+        .first()
+    );
+    if (!bid) throw new Error("no bids");
+
+    await t
+      .withIdentity({ subject: ADMIN })
+      .mutation(api.admin.mutations.voidBid, {
+        bidId: bid._id,
+        reason: "invalid",
+      });
+
+    const lot = await readLot(t, lotId);
+    expect(lot.status).toBe("unsold");
+    expect(lot.winnerId).toBeUndefined();
+    expect(await readFees(t, lotId)).toHaveLength(0);
+    expect(await auditActions(t)).toContain("CONSIDERATION_DECLINED");
+  });
+});
+
 describe("authorisation", () => {
   it("rejects signed-out callers", async () => {
     const t = createTestContext();
     const { lotId } = await seedConsideration(t);
 
     await expect(
-      t.mutation(api.auctions.acceptTopBid, { lotId })
+      t.mutation(api.auctions.acceptTopBid, { lotId, expectedAmount: TOP_BID })
     ).rejects.toThrow(/Not authenticated/);
     await expect(
       t.mutation(api.auctions.declineTopBid, { lotId })

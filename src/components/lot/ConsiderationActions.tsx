@@ -67,7 +67,7 @@ export function ConsiderationActions({
     setBusy(true);
     try {
       if (pending === "accept") {
-        await acceptTopBid({ lotId });
+        await acceptTopBid({ lotId, expectedAmount: amount });
         toast.success(`Sold for ${formatRand(amount)}`);
       } else {
         await declineTopBid({ lotId });

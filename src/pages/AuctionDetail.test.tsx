@@ -648,7 +648,10 @@ describe("AuctionDetail (lot page)", () => {
         await screen.findByRole("button", { name: "Yes, accept" })
       );
       await waitFor(() => {
-        expect(h.mutations.acceptTopBid).toHaveBeenCalledWith({ lotId: "l1" });
+        expect(h.mutations.acceptTopBid).toHaveBeenCalledWith({
+          lotId: "l1",
+          expectedAmount: 395_000,
+        });
       });
     });
   });

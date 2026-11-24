@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -475,6 +475,10 @@ export type ConsiderationOutcome = "accepted" | "declined" | "expired";
  * @param outcome - How it ended.
  * @param actor - Who resolved it.
  * @param now - The resolution timestamp.
+ * @param expectedAmount - For `accepted`: the top bid the seller saw. If the
+ *   current top valid bid differs (e.g. an admin voided it meanwhile) nothing
+ *   is changed and an error is thrown, so the seller never sells at a price
+ *   they did not agree to.
  * @returns The resulting status, or null when the lot was no longer awaiting a decision.
  */
 export async function resolveConsideration(
@@ -482,7 +486,8 @@ export async function resolveConsideration(
   lotId: Id<"lots">,
   outcome: ConsiderationOutcome,
   actor: ConsiderationActor,
-  now: number
+  now: number,
+  expectedAmount?: number
 ): Promise<"sold" | "unsold" | null> {
   const lot = await ctx.db.get("lots", lotId);
   if (lot?.status !== "under_consideration") return null;
@@ -490,6 +495,16 @@ export async function resolveConsideration(
   const topBid =
     outcome === "accepted" ? await findWinningBid(ctx, lot._id) : undefined;
   const bidderId = lot.winnerId ?? undefined;
+  if (
+    outcome === "accepted" &&
+    topBid &&
+    expectedAmount !== undefined &&
+    topBid.amount !== expectedAmount
+  ) {
+    throw new ConvexError(
+      "The top bid has changed. Reload the lot and check the amount before accepting."
+    );
+  }
 
   let finalStatus: "sold" | "unsold";
   if (outcome === "accepted" && topBid) {
@@ -543,7 +558,7 @@ export async function resolveConsideration(
     const reason =
       outcome === "expired"
         ? "the seller's 48 hours to decide passed"
-        : "the seller did not accept the top bid";
+        : "the top bid was not accepted";
     if (bidderId) {
       await notifyUser(ctx, {
         recipientId: bidderId,

@@ -94,6 +94,7 @@ describe("Bidding Coverage", () => {
   describe("placeBidHandler", () => {
     const lotFixture = {
       _id: "l1",
+      status: "assigned",
       auctionId: "a1" as Id<"auctions">,
       sellerId: "u1",
       currentPrice: 100,
@@ -135,6 +136,25 @@ describe("Bidding Coverage", () => {
       ).rejects.toThrow("Lot not found");
     });
 
+    it("should refuse bids on a lot that is not open (e.g. under consideration)", async () => {
+      const userId = "u2";
+      vi.mocked(auth.requireVerified).mockResolvedValue({
+        profile: createMockProfile(userId, "buyer"),
+        userId,
+      });
+      mockLotAndAuction(
+        { ...lotFixture, status: "under_consideration" },
+        publishedAuctionFixture
+      );
+
+      await expect(
+        placeBidHandler(mockCtx as unknown as MutationCtx, {
+          lotId: "l1" as Id<"lots">,
+          amount: 200,
+        })
+      ).rejects.toThrow("no longer open for bidding");
+    });
+
     it("should throw if lot is not assigned to an auction", async () => {
       const userId = "u1";
       vi.mocked(auth.requireVerified).mockResolvedValue({
@@ -142,7 +162,13 @@ describe("Bidding Coverage", () => {
         userId,
       });
       mockLotAndAuction(
-        { _id: "l1", sellerId: "u1", currentPrice: 100, minIncrement: 10 },
+        {
+          _id: "l1",
+          status: "assigned",
+          sellerId: "u1",
+          currentPrice: 100,
+          minIncrement: 10,
+        },
         null
       );
 
@@ -715,6 +741,7 @@ describe("Bidding Coverage", () => {
 
     const activeLot = {
       _id: "l1",
+      status: "assigned",
       auctionId: "a1" as Id<"auctions">,
       sellerId: "u_seller",
       currentPrice: 100,

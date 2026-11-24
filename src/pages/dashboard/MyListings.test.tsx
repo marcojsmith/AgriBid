@@ -320,7 +320,10 @@ describe("MyListings Page", () => {
       expect(mockAccept).not.toHaveBeenCalled();
       fireEvent.click(screen.getByRole("button", { name: "Yes, accept" }));
       await waitFor(() => {
-        expect(mockAccept).toHaveBeenCalledWith({ lotId: "listing4" });
+        expect(mockAccept).toHaveBeenCalledWith({
+          lotId: "listing4",
+          expectedAmount: 250000,
+        });
       });
       await waitFor(() => {
         expect(toast.success).toHaveBeenCalledWith(

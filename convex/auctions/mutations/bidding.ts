@@ -65,6 +65,12 @@ export const placeBidHandler = async (
   const lot = await ctx.db.get("lots", args.lotId);
   if (!lot) throw new ConvexError("Lot not found");
 
+  // Only an open (`assigned`) lot takes bids: after an early close the sale
+  // window can still be running while the lot is settled or under consideration.
+  if (lot.status !== "assigned") {
+    throw new ConvexError("This lot is no longer open for bidding");
+  }
+
   // A lot can only be bid on while assigned to a published auction.
   if (lot.auctionId === undefined) {
     throw new ConvexError("Lot is not assigned to an auction");
