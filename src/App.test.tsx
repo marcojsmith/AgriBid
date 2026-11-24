@@ -58,7 +58,14 @@ vi.mock("./pages/admin/AdminErrorReportingSettings", () =>
 vi.mock("./pages/Profile", () => mockPage("profile"));
 vi.mock("./pages/dashboard/MyBids", () => mockPage("my-bids"));
 vi.mock("./pages/dashboard/MyListings", () => mockPage("my-listings"));
-vi.mock("./pages/KYC", () => mockPage("kyc"));
+vi.mock("./pages/register/RegisterIndex", () => mockPage("register-index"));
+vi.mock("./pages/register/DetailsStep", () => mockPage("register-details"));
+vi.mock("./pages/register/IdStep", () => mockPage("register-id"));
+vi.mock("./pages/register/AddressStep", () => mockPage("register-address"));
+vi.mock("./pages/register/DepositStep", () => mockPage("register-deposit"));
+vi.mock("./pages/register/RegistrationStatus", () =>
+  mockPage("register-status")
+);
 vi.mock("./pages/Support", () => mockPage("support"));
 vi.mock("./pages/Notifications", () => mockPage("notifications"));
 vi.mock("./pages/admin/AdminMarketplace", () => mockPage("admin-marketplace"));
@@ -175,9 +182,24 @@ describe("App Routing", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders KYC page for /kyc", async () => {
-    renderApp("/kyc");
-    expect(await screen.findByTestId("kyc-page")).toBeInTheDocument();
+  it("redirects /kyc to /register, keeping the query string", async () => {
+    renderApp("/kyc?callbackUrl=%2Fauction%2Fabc");
+    expect(
+      await screen.findByTestId("register-index-page")
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["/register", "register-index"],
+    ["/register/details", "register-details"],
+    ["/register/id", "register-id"],
+    ["/register/address", "register-address"],
+    ["/register/deposit", "register-deposit"],
+    ["/register/status", "register-status"],
+  ])("renders %s behind the sign-in guard", async (path, testId) => {
+    renderApp(path);
+    expect(await screen.findByTestId(`${testId}-page`)).toBeInTheDocument();
+    expect(screen.getByTestId("protected")).toBeInTheDocument();
   });
 
   it("renders Support page for /support", async () => {

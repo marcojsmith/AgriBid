@@ -1,6 +1,12 @@
 // app/src/App.tsx
 import { lazy, Suspense, type ReactElement } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { RoleProtectedRoute } from "./components/RoleProtectedRoute";
@@ -53,7 +59,14 @@ const Profile = lazy(() => import("./pages/Profile"));
 const SellerListings = lazy(() => import("./pages/SellerListings"));
 const MyBids = lazy(() => import("./pages/dashboard/MyBids"));
 const MyListings = lazy(() => import("./pages/dashboard/MyListings"));
-const KYC = lazy(() => import("./pages/KYC"));
+const RegisterIndex = lazy(() => import("./pages/register/RegisterIndex"));
+const DetailsStep = lazy(() => import("./pages/register/DetailsStep"));
+const IdStep = lazy(() => import("./pages/register/IdStep"));
+const AddressStep = lazy(() => import("./pages/register/AddressStep"));
+const DepositStep = lazy(() => import("./pages/register/DepositStep"));
+const RegistrationStatus = lazy(
+  () => import("./pages/register/RegistrationStatus")
+);
 const Support = lazy(() => import("./pages/Support"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Messages = lazy(() => import("./pages/Messages"));
@@ -87,6 +100,29 @@ function withBoundary(element: ReactElement): ReactElement {
 }
 
 /**
+ * Sends the retired `/kyc` page to `/register`, keeping the query string
+ * (for example `?callbackUrl=`).
+ *
+ * @returns A redirect
+ */
+function KycRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/register${search}`} replace />;
+}
+
+/**
+ * Wraps a registration page in the sign-in guard and an error boundary.
+ *
+ * @param page - The registration page
+ * @returns The guarded page
+ */
+function registerRoute(page: ReactElement): ReactElement {
+  return withBoundary(
+    <RoleProtectedRoute allowedRole="any">{page}</RoleProtectedRoute>
+  );
+}
+
+/**
  * Mounts the client-side router and declares application routes within the main layout.
  *
  * Declared routes:
@@ -110,7 +146,10 @@ function withBoundary(element: ReactElement): ReactElement {
  *   - /admin/finance, /admin/announcements, /admin/support
  *   - /admin/audit, /admin/settings, /admin/seo, /admin/faq, /admin/fees
  *   - /admin/performance, /admin/legal
- * - "/kyc" → KYC (protected, allowedRole="any")
+ * - "/register" → RegisterIndex (protected, allowedRole="any"; redirects to the first unfinished step)
+ * - "/register/details", "/register/id", "/register/address", "/register/deposit",
+ *   "/register/status" → registration steps (protected, allowedRole="any")
+ * - "/kyc" → redirects to "/register", keeping the query string
  * - "/support" → Support (protected, allowedRole="any")
  * - "/notifications" → Notifications (protected, allowedRole="any")
  * - "/messages" → Messages inbox (protected, allowedRole="any")
@@ -221,13 +260,27 @@ function App() {
               <Route path="/admin/fees" element={<AdminFees />} />
               <Route path="/admin/performance" element={<AdminPerformance />} />
             </Route>
+            <Route path="/kyc" element={<KycRedirect />} />
             <Route
-              path="/kyc"
-              element={
-                <RoleProtectedRoute allowedRole="any">
-                  <KYC />
-                </RoleProtectedRoute>
-              }
+              path="/register"
+              element={registerRoute(<RegisterIndex />)}
+            />
+            <Route
+              path="/register/details"
+              element={registerRoute(<DetailsStep />)}
+            />
+            <Route path="/register/id" element={registerRoute(<IdStep />)} />
+            <Route
+              path="/register/address"
+              element={registerRoute(<AddressStep />)}
+            />
+            <Route
+              path="/register/deposit"
+              element={registerRoute(<DepositStep />)}
+            />
+            <Route
+              path="/register/status"
+              element={registerRoute(<RegistrationStatus />)}
             />
             <Route
               path="/support"

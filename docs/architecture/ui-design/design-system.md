@@ -97,7 +97,7 @@ Nothing below 13px except uppercase eyebrows and badge text.
 - **Tap targets**: 44px minimum below `md`. Buttons are 48px high (default) with 6px radius and 15px/600 text; `sm` is 40px and only appears in the desktop header. Chips, quick-bid chips, icon buttons, the WhatsApp icon button, back links and list links are 44px. Heart on a photo: 48px tap area around a 34px circle.
 - **Sticky bar (phone)**: 68px high, `card` background, 1px top border, 16px sides. Left block (flex 1): title 14.5px/700 and sub 13px. Then a 44 by 44 WhatsApp icon button (1px border, 6px radius, 6px gap), then the CTA (48px high, 12px side padding). One layout, always in this order.
 - **Bottom sheet**: `card` background, 8px top radius, padding 8px 16px 20px, grab bar 36 by 4px (2px radius, `border` colour), title row with 20px Lora title and a 44px close button, rows as 1px-divided definition list (term 14px muted, 118px wide).
-- **Toast**: 16px from both sides, 24px from the bottom, `rgb(24 28 24 / .96)` background, white 15px text, 6px radius, padding 12px 14px, check icon.
+- **Toast**: 16px from both sides, 24px from the bottom, `rgb(24 28 24 / .96)` background, white 15px text, 6px radius, padding 12px 14px, check icon. `tone="error"` (`showToast(message, "error")`) swaps the icon for an alert and uses the destructive background; use it for failures.
 
 ## 4. Breakpoints
 
@@ -245,3 +245,13 @@ Notes:
 ## Page specs (2026-11-23)
 
 Real-page mockups built from the kit: `conductor/tracks/improve-screen-mockups/rounds/` (`home-r5`, `event-r4`, `lot-r4`, `share-r3`; handoff in `build-spec.md`). Added states: signed-in hero (My bids, no deposit lines), closed "Under consideration" cards, urgent sticky bar (countdown leads in red under 10 minutes), watching card with toast.
+
+### Register pages (R3, 2026-11-24)
+
+Built from `rounds/register-r2.html` (LOCKED). Routes `/register` (redirects to the first unfinished step, or to the status page once submitted), `/register/details`, `/register/id`, `/register/address`, `/register/deposit` and `/register/status`, all behind the sign-in guard and all keeping `?callbackUrl=`. `/kyc` redirects to `/register`.
+
+- **Shell (`RegisterLayout`)**: back link ("Lot 3 · New Holland T6070" for a lot callback, "Auctions" without one, "Back" for another path), `RegProgress` (4 steps with the deposit on, 3 with it off; step 2 is "ID" or "Passport"), heading and intro. One column up to 480px; from `lg` a second column holds the "Registering to bid on" card (lot photo, title, "Lot 3 · Wed 25 Nov, 11:00", and `DepositLines` only when the deposit is on). No FICA or inspection lines in that card.
+- **Details**: `IdTypeToggle`, then full name, mobile ("+27" prefix for an SA ID; the full number with country code for a passport), ID number or passport number and country of issue, street, town and a 110px postal code. Errors show on submit only.
+- **ID / Address**: `UploadSlot` per document and a checklist. "Next" stays disabled until every slot is filled. A rejected document shows its `WhyBox` above an empty slot; `?replace=1` hides "Next" and returns to the status page after the upload. The address step's button is "Next: deposit", or "Send documents" when the deposit is off.
+- **Deposit**: `CopyRow` for bank, account name, account number, branch code and the highlighted reference; a warn `Banner` replaces the bank rows when any bank field is unset; WhatsApp proof link, "I've paid" and an underlined "I'll pay later".
+- **Status ("Your registration")**: `RegStatusList` rows (details, ID or passport, proof of address, deposit when on), one banner (info while checking, warn when a document needs replacing, ok "Deposit received" or "You can bid"), a `WhyBox` per rejected document, and "Back to Lot 3" / "Bid on Lot 3" (or "See auctions" without a callback).

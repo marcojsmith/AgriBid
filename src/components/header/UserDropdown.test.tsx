@@ -144,7 +144,7 @@ describe("UserDropdown", () => {
       isVerified: false,
       kycStatus: "unverified",
     });
-    expect(screen.getByText("Identity Required")).toBeInTheDocument();
+    expect(screen.getByText("Finish registration")).toBeInTheDocument();
   });
 
   it("calls onSignOut when Sign Out is clicked", () => {

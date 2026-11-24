@@ -171,7 +171,7 @@ describe("BidPanel", () => {
     renderPanel({ eligibility: "needs-verification" });
     expect(screen.getByRole("link", { name: "Verify to bid" })).toHaveAttribute(
       "href",
-      "/kyc"
+      "/register"
     );
     expect(screen.queryByLabelText("Your bid")).toBeNull();
   });

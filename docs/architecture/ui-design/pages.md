@@ -254,30 +254,18 @@ Multi-step listing wizard for creating new auction listings.
 
 ---
 
-## KYC Pages
+## Registration Pages
 
-### KYC Verification (`/kyc`)
+### Registration (`/register`, replaces `/kyc`)
 
-Know Your Customer verification flow.
-
-**Layout:**
-
-- Verification status section
-- Document upload section
-- Personal information section
-
-**Sections:**
-
-- `VerificationStatusSection` - Current status display
-- `DocumentUploadSection` - ID document upload
-- `PersonalInfoSection` - Personal details form
+Buyer and seller registration, one step per page: `/register/details` (personal and address details, SA ID or passport), `/register/id` (ID or passport photo), `/register/address` (proof of address), `/register/deposit` (EFT deposit, only when the deposit setting is on) and `/register/status` ("Your registration"). `/register` redirects to the first unfinished step, or to the status page once submitted; `/kyc` redirects to `/register`. Every page keeps `?callbackUrl=` so the buyer returns to the lot. Full spec: `design-system.md`, "Register pages".
 
 **Features:**
 
-- Upload government ID
-- Submit personal information
-- Track verification status
-- View rejection reason if rejected
+- Save details, upload documents, send them for review
+- Pay the deposit by EFT with a unique reference
+- See what is approved, under review or needs replacing, with the reviewer's reason
+- Replace only the rejected document
 
 ---
 
