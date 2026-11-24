@@ -2,6 +2,7 @@ import { v, ConvexError } from "convex/values";
 
 import { mutation, type MutationCtx } from "./_generated/server";
 import { getAuthUser, resolveUserId } from "./lib/auth";
+import { SALE_VISIBLE_STATUSES } from "./lib/lotCounters";
 import { normalizeSaPhone } from "./lib/phone";
 import {
   PROVINCE_LABELS,
@@ -20,6 +21,7 @@ import {
 } from "./constants";
 import type { Id } from "./_generated/dataModel";
 
+const NOT_AVAILABLE = "This lot isn't available.";
 const TOO_MANY = "Too many requests. Try again later.";
 
 /**
@@ -94,7 +96,16 @@ export const requestQuoteHandler = async (
   let lotLabel: string | undefined;
   if (args.lotId) {
     const lot = await ctx.db.get("lots", args.lotId);
-    if (!lot) throw new ConvexError("Lot not found.");
+    const auction = lot?.auctionId
+      ? await ctx.db.get("auctions", lot.auctionId)
+      : null;
+    const isPublic =
+      lot !== null &&
+      (SALE_VISIBLE_STATUSES as readonly string[]).includes(lot.status) &&
+      lot.hiddenByFlags !== true &&
+      auction !== null &&
+      auction.status !== "draft";
+    if (!lot || !isPublic) throw new ConvexError(NOT_AVAILABLE);
     pickup = lot.province
       ? `${lot.location}, ${PROVINCE_LABELS[lot.province]}`
       : lot.location;
@@ -131,12 +142,16 @@ export const requestQuoteHandler = async (
       throw new ConvexError(TOO_MANY);
     }
   }
-  const recent = await ctx.db
-    .query("transportQuoteRequests")
-    .withIndex("by_createdAt", (q) => q.gte("createdAt", windowStart))
-    .take(MAX_TRANSPORT_QUOTES_GLOBAL + 1);
-  if (recent.length >= MAX_TRANSPORT_QUOTES_GLOBAL) {
-    throw new ConvexError(TOO_MANY);
+  // The global cap only limits guests, so a guest flood cannot block
+  // signed-in buyers (who keep their per-user limit).
+  if (!userId) {
+    const recent = await ctx.db
+      .query("transportQuoteRequests")
+      .withIndex("by_createdAt", (q) => q.gte("createdAt", windowStart))
+      .take(MAX_TRANSPORT_QUOTES_GLOBAL + 1);
+    if (recent.length >= MAX_TRANSPORT_QUOTES_GLOBAL) {
+      throw new ConvexError(TOO_MANY);
+    }
   }
 
   await ctx.db.insert("transportQuoteRequests", {

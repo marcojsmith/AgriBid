@@ -32,14 +32,37 @@ type Ctx = ReturnType<typeof makeContext>;
  * @param extra - Field overrides
  * @param extra.lotNumber - Lot number within the sale
  * @param extra.province - Province the lot stands in
+ * @param extra.status - Lot status (default assigned)
+ * @param extra.hiddenByFlags - Whether flags hide the lot
+ * @param extra.auctionStatus - Parent sale status, or none for no sale
  * @returns The lot id
  */
 async function makeLot(
   t: Ctx,
-  extra: { lotNumber?: number; province?: "western_cape" } = {}
+  extra: {
+    lotNumber?: number;
+    province?: "western_cape";
+    status?: "assigned" | "draft";
+    hiddenByFlags?: boolean;
+    auctionStatus?: "published" | "draft" | "none";
+  } = {}
 ): Promise<Id<"lots">> {
-  return await t.run((ctx) =>
-    ctx.db.insert("lots", {
+  const { status, auctionStatus, ...rest } = extra;
+  return await t.run(async (ctx) => {
+    const now = Date.now();
+    const auctionId =
+      auctionStatus === "none"
+        ? undefined
+        : await ctx.db.insert("auctions", {
+            title: "Sale",
+            startTime: now - MS_PER_HOUR,
+            endTime: now + MS_PER_HOUR,
+            status: auctionStatus ?? "published",
+            createdBy: "admin",
+            createdAt: now,
+            updatedAt: now,
+          });
+    return await ctx.db.insert("lots", {
       title: "John Deere 5075E",
       make: "John Deere",
       model: "5075E",
@@ -51,11 +74,12 @@ async function makeLot(
       currentPrice: 500,
       minIncrement: 50,
       sellerId: "seller",
-      status: "approved",
+      status: status ?? "assigned",
+      auctionId,
       images: [],
-      ...extra,
-    })
-  );
+      ...rest,
+    });
+  });
 }
 
 /**
@@ -122,7 +146,21 @@ describe("transport.requestQuote", () => {
     await t.run((ctx) => ctx.db.delete("lots", lotId));
     await expect(
       t.mutation(api.transport.requestQuote, { ...base, lotId })
-    ).rejects.toThrow("Lot not found.");
+    ).rejects.toThrow("This lot isn't available.");
+  });
+
+  it.each([
+    ["a draft lot", { status: "draft" as const }],
+    ["a lot hidden by flags", { hiddenByFlags: true }],
+    ["a lot in a draft sale", { auctionStatus: "draft" as const }],
+    ["a lot with no sale", { auctionStatus: "none" as const }],
+  ])("refuses %s", async (_name, extra) => {
+    const t = makeContext();
+    const lotId = await makeLot(t, extra);
+    await expect(
+      t.mutation(api.transport.requestQuote, { ...base, lotId })
+    ).rejects.toThrow("This lot isn't available.");
+    expect(await rows(t)).toHaveLength(0);
   });
 
   it("refuses no lot and no pickup", async () => {
@@ -185,7 +223,7 @@ describe("transport.requestQuote", () => {
     ).rejects.toThrow("Too many requests. Try again later.");
   });
 
-  it("enforces the global cap", async () => {
+  it("enforces the global cap for guests", async () => {
     const t = makeContext();
     await t.run(async (ctx) => {
       for (let i = 0; i < MAX_TRANSPORT_QUOTES_GLOBAL; i++) {
@@ -203,6 +241,27 @@ describe("transport.requestQuote", () => {
     await expect(t.mutation(api.transport.requestQuote, base)).rejects.toThrow(
       "Too many requests. Try again later."
     );
+  });
+
+  it("does not apply the global cap to signed-in users", async () => {
+    const t = makeContext();
+    await t.run(async (ctx) => {
+      for (let i = 0; i < MAX_TRANSPORT_QUOTES_GLOBAL; i++) {
+        await ctx.db.insert("transportQuoteRequests", {
+          pickup: "x",
+          deliveryTown: "x",
+          deliveryProvince: "gauteng",
+          name: "x",
+          phone: `+2782${String(1000000 + i)}`,
+          status: "new",
+          createdAt: Date.now(),
+        });
+      }
+    });
+    await t
+      .withIdentity({ subject: "user_1" })
+      .mutation(api.transport.requestQuote, base);
+    expect(await rows(t)).toHaveLength(MAX_TRANSPORT_QUOTES_GLOBAL + 1);
   });
 
   it("ignores requests older than the window", async () => {
