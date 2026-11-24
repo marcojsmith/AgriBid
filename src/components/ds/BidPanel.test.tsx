@@ -7,6 +7,8 @@ import { BidPanel } from "./BidPanel";
 type Props = Parameters<typeof BidPanel>[0];
 
 const NOW = Date.now();
+const REGISTRATION = "/register?callbackUrl=%2Fauction%2Fl1";
+const STATUS = "/register/status?callbackUrl=%2Fauction%2Fl1";
 
 const base: Props = {
   viewer: "registered",
@@ -30,7 +32,9 @@ const base: Props = {
   onAmountChange: vi.fn(),
   onBid: vi.fn(),
   registerHref: "/login?callbackUrl=%2Fauction%2Fl1",
-  eligibility: "ok",
+  registrationHref: REGISTRATION,
+  registrationStatusHref: STATUS,
+  eligibility: { kind: "ok" },
 };
 
 const SPACES = /[\u202f\u00a0]/g;
@@ -167,20 +171,73 @@ describe("BidPanel", () => {
     expect(text(screen.getByRole("region"))).toMatch(/Closes in 1m \d+s/);
   });
 
-  it("a signed-in viewer who is not verified is sent to verify", () => {
-    renderPanel({ eligibility: "needs-verification" });
-    expect(screen.getByRole("link", { name: "Verify to bid" })).toHaveAttribute(
-      "href",
-      "/register"
+  it("incomplete: warns with the step and continues registration", () => {
+    renderPanel({
+      eligibility: { kind: "incomplete", step: 2, totalSteps: 4 },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Finish registration to bid. Step 2 of 4."
     );
+    expect(
+      screen.getByRole("link", { name: "Continue registration" })
+    ).toHaveAttribute("href", REGISTRATION);
     expect(screen.queryByLabelText("Your bid")).toBeNull();
   });
 
-  it("a pending verification explains the wait and offers no bid", () => {
-    renderPanel({ eligibility: "verification-pending" });
-    expect(screen.getByRole("status")).toHaveTextContent(/being reviewed/);
-    expect(screen.queryByRole("link", { name: "Verify to bid" })).toBeNull();
+  it("under review: an info banner and an outline link to the status page", () => {
+    renderPanel({
+      eligibility: { kind: "under_review", depositReceived: true },
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Documents under review. You can bid once approved."
+    );
+    const link = screen.getByRole("link", { name: "See my registration" });
+    expect(link).toHaveAttribute("href", STATUS);
+    expect(link).toHaveClass("border");
     expect(screen.queryByLabelText("Your bid")).toBeNull();
+  });
+
+  it("needs replacing: warns and links to Replace document", () => {
+    renderPanel({ eligibility: { kind: "needs_replacing", count: 1 } });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "One document needs replacing."
+    );
+    expect(
+      screen.getByRole("link", { name: "Replace document" })
+    ).toHaveAttribute("href", STATUS);
+  });
+
+  it("deposit due: names the amount and links to Pay deposit", () => {
+    renderPanel({ eligibility: { kind: "deposit_due", amount: 5000 } });
+    expect(text(screen.getByRole("alert"))).toBe(
+      "Pay your R 5 000 deposit to bid."
+    );
+    expect(screen.getByRole("link", { name: "Pay deposit" })).toHaveAttribute(
+      "href",
+      STATUS
+    );
+  });
+
+  it("ok shows the bid controls and no registration prompt", () => {
+    renderPanel({ eligibility: { kind: "ok" } });
+    expect(screen.getByLabelText("Your bid")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /registration/i })).toBeNull();
+  });
+
+  it("loading: a skeleton, no bid controls and no prompt", () => {
+    renderPanel({ eligibility: { kind: "loading" } });
+    expect(screen.queryByLabelText("Your bid")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("a guest still gets Register to bid whatever the eligibility", () => {
+    renderPanel({
+      viewer: "guest",
+      eligibility: { kind: "incomplete", step: 1, totalSteps: 3 },
+    });
+    expect(screen.getByRole("link", { name: "Register to bid" })).toBeVisible();
+    expect(screen.queryByText(/Finish registration to bid/)).toBeNull();
   });
 
   it("opens Fees & rules from the cost box", () => {

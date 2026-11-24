@@ -56,6 +56,7 @@ const LegalPage = lazy(() => import("./pages/LegalPage"));
 const AdminLegal = lazy(() => import("./pages/admin/AdminLegal"));
 const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
+const SignUp = lazy(() => import("./pages/SignUp"));
 const Profile = lazy(() => import("./pages/Profile"));
 const SellerListings = lazy(() => import("./pages/SellerListings"));
 const MyBids = lazy(() => import("./pages/dashboard/MyBids"));
@@ -129,6 +130,7 @@ function registerRoute(page: ReactElement): ReactElement {
  * Declared routes:
  * - "/" → Home
  * - "/login" → Login
+ * - "/sign-up" → SignUp
  * - "/auction/:id" → AuctionDetail
  * - "/profile/:userId" → Profile
  * - "/sellers/:userId/listings" → SellerListings (active auctions)
@@ -169,6 +171,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/sign-up" element={<SignUp />} />
             <Route
               path="/auction/:id"
               element={withBoundary(<AuctionDetail />)}

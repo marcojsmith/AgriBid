@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Clerk's styles sit in their own layer between base and utilities, so the
+   Tailwind classes in `clerkAppearance.ts` win over Clerk's defaults. */
+@layer theme, base, clerk, components, utilities;
+
 @plugin "tailwindcss-animate";
 
 @custom-variant dark (&:is(.dark *));

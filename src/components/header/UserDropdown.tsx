@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { initialsOf } from "@/lib/initials";
 import type { UserDataWithProfile } from "@/types/auth";
 
 const navLinks = [
@@ -71,6 +72,9 @@ export function UserDropdown({
 }: UserDropdownProps) {
   const location = useLocation();
   const unreadMessageCount = useQuery(api.messages.getUnreadConversationCount);
+  const name = userData?.name?.trim() ?? "";
+  const displayName = name.length > 0 ? name : "User";
+  const initials = initialsOf(name, userData?.email ?? undefined);
 
   return (
     <DropdownMenu>
@@ -101,19 +105,20 @@ export function UserDropdown({
               )}
             </div>
             <span className="text-sm font-bold text-primary leading-none mt-1">
-              {isLoadingProfile
-                ? "Loading..."
-                : // Intentionally `||` not `??`: an empty string name must also fall through to "User"
-                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- see comment above
-                  userData?.name || "User"}
+              {isLoadingProfile ? "Loading..." : displayName}
             </span>
           </div>
           <span className="sr-only sm:hidden">Account menu</span>
-          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all border border-primary/20">
+          <div
+            data-slot="avatar"
+            className="size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold"
+          >
             {isLoadingProfile ? (
               <LoadingIndicator size="sm" />
+            ) : initials ? (
+              <span aria-hidden="true">{initials}</span>
             ) : (
-              <User className="h-4 w-4 transition-colors" />
+              <User aria-hidden="true" className="h-4 w-4" />
             )}
           </div>
           <ChevronDown
@@ -149,7 +154,7 @@ export function UserDropdown({
         })}
         <DropdownMenuSeparator />
 
-        {!isVerified && kycStatus !== "pending" && (
+        {!isVerified && (
           <DropdownMenuItem
             asChild
             className="bg-warning/10 text-warning focus:bg-warning/20 focus:text-warning rounded-md mb-1 border border-warning/20 p-3"

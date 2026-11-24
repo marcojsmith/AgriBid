@@ -35,6 +35,7 @@ vi.mock("./pages/Home", () => mockPage("home"));
 vi.mock("./pages/AuctionDetail", () => mockPage("detail"));
 vi.mock("./pages/Sell", () => mockPage("sell"));
 vi.mock("./pages/Login", () => mockPage("login"));
+vi.mock("./pages/SignUp", () => mockPage("sign-up"));
 vi.mock("./pages/Watchlist", () => mockPage("watchlist"));
 vi.mock("./pages/admin/AdminDashboard", () => mockPage("admin-dashboard"));
 vi.mock("./pages/admin/AdminModeration", () => mockPage("admin-moderation"));
@@ -133,6 +134,11 @@ describe("App Routing", () => {
   it("renders Login page for /login", async () => {
     renderApp("/login");
     expect(await screen.findByTestId("login-page")).toBeInTheDocument();
+  });
+
+  it("renders SignUp page for /sign-up", async () => {
+    renderApp("/sign-up");
+    expect(await screen.findByTestId("sign-up-page")).toBeInTheDocument();
   });
 
   it("renders AuctionDetail page for /auction/:id", async () => {

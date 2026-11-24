@@ -147,6 +147,51 @@ describe("UserDropdown", () => {
     expect(screen.getByText("Finish registration")).toBeInTheDocument();
   });
 
+  it("keeps Finish registration while review is pending, linking to /register", () => {
+    renderWithRouter({
+      ...defaultProps,
+      isVerified: false,
+      kycStatus: "pending",
+    });
+    expect(
+      screen.getByRole("link", { name: /Finish registration/ })
+    ).toHaveAttribute("href", "/register");
+    expect(screen.queryByText(/Complete KYC/i)).toBeNull();
+  });
+
+  it("hides Finish registration once verified", () => {
+    renderWithRouter();
+    expect(screen.queryByText("Finish registration")).toBeNull();
+  });
+
+  it("shows the user's initials on the avatar", () => {
+    renderWithRouter({
+      ...defaultProps,
+      userData: { ...defaultProps.userData, name: "Thandi Naidoo" },
+    });
+    const avatar = document.querySelector('[data-slot="avatar"]');
+    expect(avatar).toHaveTextContent("TN");
+    expect(avatar).toHaveClass("bg-primary", "text-primary-foreground");
+  });
+
+  it("falls back to the email's first letter, then to the icon", () => {
+    const { unmount } = renderWithRouter({
+      ...defaultProps,
+      userData: { ...defaultProps.userData, name: "" },
+    });
+    expect(document.querySelector('[data-slot="avatar"]')).toHaveTextContent(
+      "J"
+    );
+    unmount();
+    renderWithRouter({
+      ...defaultProps,
+      userData: { id: "1", name: "", email: "" },
+    });
+    const avatar = document.querySelector('[data-slot="avatar"]');
+    expect(avatar).toHaveTextContent("");
+    expect(avatar?.querySelector("svg")).not.toBeNull();
+  });
+
   it("calls onSignOut when Sign Out is clicked", () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     renderWithRouter({ ...defaultProps, onSignOut });

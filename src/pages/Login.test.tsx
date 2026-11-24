@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { useAuth, SignIn } from "@clerk/clerk-react";
 
-import { useBranding } from "@/hooks/useBranding";
+import { useCallbackLot } from "@/hooks/useCallbackLot";
 
 import Login from "./Login";
 
@@ -12,19 +12,25 @@ vi.mock("@clerk/clerk-react", () => ({
   SignIn: vi.fn(() => <div data-testid="clerk-sign-in" />),
 }));
 
-vi.mock("@/hooks/useBranding", () => ({
-  useBranding: vi.fn(),
+vi.mock("@/hooks/useCallbackLot", () => ({
+  useCallbackLot: vi.fn(),
 }));
+
+const LOT_CALLBACK = {
+  href: "/auction/l1",
+  label: "Lot 3 · New Holland T6070",
+  lot: { lotNumber: 3, title: "New Holland T6070" },
+};
 
 describe("Login Page", () => {
   const mockUseAuth = useAuth as Mock;
-  const mockUseBranding = useBranding as Mock;
   const mockSignIn = SignIn as unknown as Mock;
+  const mockUseCallbackLot = useCallbackLot as Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({ isSignedIn: false, isLoaded: true });
-    mockUseBranding.mockReturnValue({ appName: "AgriBid" });
+    mockUseCallbackLot.mockReturnValue(null);
   });
 
   const renderComponent = (initialEntries = ["/login"]) =>
@@ -38,13 +44,33 @@ describe("Login Page", () => {
       </MemoryRouter>
     );
 
-  it("renders the heading and Clerk SignIn component when signed out", () => {
+  it("renders the Clerk SignIn component and none of the old tagline", () => {
     renderComponent();
-    expect(screen.getByText("AgriBid Access")).toBeInTheDocument();
-    expect(
-      screen.getByText("Real-Time Bidding for Serious Farmers")
-    ).toBeInTheDocument();
     expect(screen.getByTestId("clerk-sign-in")).toBeInTheDocument();
+    expect(screen.queryByText(/Access/)).toBeNull();
+    expect(screen.queryByText(/Serious Farmers/)).toBeNull();
+  });
+
+  it("shows 'Continuing to' the lot when the callback is a lot", () => {
+    mockUseCallbackLot.mockReturnValue(LOT_CALLBACK);
+    renderComponent(["/login?callbackUrl=%2Fauction%2Fl1"]);
+    expect(mockUseCallbackLot).toHaveBeenCalledWith("/auction/l1");
+    expect(screen.getByText(/Continuing to/)).toHaveTextContent(
+      "Continuing to Lot 3 · New Holland T6070"
+    );
+    expect(screen.getByText("Lot 3 · New Holland T6070").tagName).toBe("B");
+  });
+
+  it("hides the line when the callback is invalid", () => {
+    renderComponent(["/login?callbackUrl=http://evil.com"]);
+    expect(mockUseCallbackLot).toHaveBeenCalledWith(null);
+    expect(screen.queryByText(/Continuing to/)).toBeNull();
+  });
+
+  it("hides the line before the lot has loaded", () => {
+    mockUseCallbackLot.mockReturnValue({ href: "/auction/l1", label: "Back" });
+    renderComponent(["/login?callbackUrl=%2Fauction%2Fl1"]);
+    expect(screen.queryByText(/Continuing to/)).toBeNull();
   });
 
   it("shows loading state while auth is loading", () => {
@@ -72,24 +98,25 @@ describe("Login Page", () => {
     expect(screen.getByText("Home Page")).toBeInTheDocument();
   });
 
-  it("passes hash routing and callback URLs to the Clerk SignIn component", () => {
+  it("passes hash routing, the callback and the sign-up links to Clerk", () => {
     renderComponent(["/login?callbackUrl=/dashboard"]);
 
-    const signInProps = mockSignIn.mock.calls[0][0] as {
-      routing: string;
-      fallbackRedirectUrl: string;
-      signUpFallbackRedirectUrl: string;
-    };
+    const signInProps = mockSignIn.mock.calls[0][0] as Record<string, unknown>;
     expect(signInProps).toMatchObject({
       routing: "hash",
       fallbackRedirectUrl: "/dashboard",
-      signUpFallbackRedirectUrl: "/dashboard",
+      signUpUrl: "/sign-up?callbackUrl=%2Fdashboard",
+      signUpForceRedirectUrl: "/register?callbackUrl=%2Fdashboard",
     });
   });
 
-  it("falls back to the AgriBid app name when branding is absent", () => {
-    mockUseBranding.mockReturnValue(undefined);
+  it("sends a new account to /register when there is no callback", () => {
     renderComponent();
-    expect(screen.getByText("AgriBid Access")).toBeInTheDocument();
+    const signInProps = mockSignIn.mock.calls[0][0] as Record<string, unknown>;
+    expect(signInProps).toMatchObject({
+      fallbackRedirectUrl: "/",
+      signUpUrl: "/sign-up",
+      signUpForceRedirectUrl: "/register",
+    });
   });
 });

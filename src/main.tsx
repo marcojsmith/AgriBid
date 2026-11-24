@@ -8,6 +8,7 @@ import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/react";
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { appearance, localization } from "./lib/clerkAppearance";
 import "./index.css";
 import App from "./App";
 
@@ -23,6 +24,8 @@ createRoot(rootElement).render(
     <HelmetProvider>
       <ClerkProvider
         publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+        appearance={appearance}
+        localization={localization}
       >
         <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
           <ErrorBoundary>

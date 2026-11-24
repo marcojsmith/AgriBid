@@ -1,11 +1,21 @@
 import { StickyBar } from "@/components/ds/StickyBar";
 import { useNow } from "@/hooks/useNow";
 import { formatRand } from "@/lib/currency";
-import { stickyModel, type ViewerBidState } from "@/lib/lotPage";
+import {
+  stickyModel,
+  type RegistrationBlock,
+  type ViewerBidState,
+} from "@/lib/lotPage";
 
 /** What the bar's call to action does. */
 export type LotStickyAction =
-  | { kind: "link"; href: string; label: string }
+  | {
+      kind: "link";
+      href: string;
+      label: string;
+      /** Defaults to primary. */
+      ctaVariant?: "primary" | "outline";
+    }
   | { kind: "bid"; amount: number; onBid: () => void }
   | { kind: "raise"; onRaise: () => void };
 
@@ -17,6 +27,8 @@ interface LotStickyBarProps {
   closesAt: number;
   viewer: ViewerBidState;
   action: LotStickyAction;
+  /** What stops the buyer from bidding; the bar then shows it instead of the price. */
+  registration?: RegistrationBlock;
   whatsappHref?: string;
   /** Hide the bar (the panel's own button is on screen, or the lot is sold). */
   hidden?: boolean;
@@ -34,6 +46,7 @@ interface LotStickyBarProps {
  * @param props.closesAt - Closing time (ms)
  * @param props.viewer - The viewer's state
  * @param props.action - What the button does
+ * @param props.registration - The registration state that blocks bidding
  * @param props.whatsappHref - WhatsApp link
  * @param props.hidden - Hide the bar
  * @returns The bar
@@ -44,6 +57,7 @@ export function LotStickyBar({
   closesAt,
   viewer,
   action,
+  registration,
   whatsappHref,
   hidden,
 }: LotStickyBarProps) {
@@ -53,6 +67,7 @@ export function LotStickyBar({
     remainingMs: closesAt - now,
     hasBids,
     viewer,
+    registration,
   });
   return (
     <StickyBar
@@ -78,7 +93,13 @@ export function LotStickyBar({
             ? action.onRaise
             : undefined
       }
-      ctaVariant={action.kind === "raise" ? "outline" : "primary"}
+      ctaVariant={
+        action.kind === "raise"
+          ? "outline"
+          : action.kind === "link"
+            ? (action.ctaVariant ?? "primary")
+            : "primary"
+      }
     />
   );
 }

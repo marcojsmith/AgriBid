@@ -1,3 +1,5 @@
+import type { BidEligibility } from "convex/lib/bidEligibility";
+
 import { formatRand } from "@/lib/currency";
 import { formatRemaining } from "@/lib/countdown";
 import { formatSastDate } from "@/lib/dates";
@@ -317,6 +319,63 @@ export interface StickyModel {
   sub: string;
   subTone: "default" | "ok" | "warn";
   urgent: boolean;
+  /** Set for a registration state: the call to action's label. */
+  cta?: string;
+  /** Set for a registration state: how the call to action looks. */
+  ctaVariant?: "primary" | "outline";
+}
+
+/** A registration state that stops a signed-in buyer from bidding. */
+export type RegistrationBlock = Exclude<BidEligibility, { kind: "ok" }>;
+
+/**
+ * The sticky bar's text and button for a registration state, in place of the
+ * price and time left.
+ *
+ * @param registration - What stops the buyer from bidding
+ * @returns The bar's lines, tone and call to action
+ */
+export function registrationSticky(
+  registration: RegistrationBlock
+): StickyModel {
+  switch (registration.kind) {
+    case "incomplete":
+      return {
+        title: "Finish registration",
+        sub: `Step ${String(registration.step)} of ${String(registration.totalSteps)}`,
+        subTone: "default",
+        urgent: false,
+        cta: "Continue",
+        ctaVariant: "primary",
+      };
+    case "under_review":
+      return {
+        title: "Under review",
+        sub: "Bidding opens when approved",
+        subTone: "default",
+        urgent: false,
+        cta: "Details",
+        ctaVariant: "outline",
+      };
+    case "needs_replacing":
+      return {
+        title: "Document needs replacing",
+        sub: "",
+        subTone: "warn",
+        urgent: false,
+        cta: "Replace",
+        ctaVariant: "primary",
+      };
+    case "deposit_due":
+      return {
+        title: "Pay deposit",
+        sub: formatRand(registration.amount),
+        subTone: "default",
+        urgent: false,
+        cta: "Pay",
+        ctaVariant: "primary",
+      };
+  }
 }
 
 /**
@@ -330,6 +389,8 @@ export interface StickyModel {
  * @param input.remainingMs - Milliseconds until close
  * @param input.hasBids - Whether any bid exists
  * @param input.viewer - The viewer's state
+ * @param input.registration - What stops a signed-in buyer from bidding; when
+ *   set, the bar shows that instead of the price
  * @returns The bar's lines and tone
  */
 export function stickyModel(input: {
@@ -337,7 +398,9 @@ export function stickyModel(input: {
   remainingMs: number;
   hasBids: boolean;
   viewer: ViewerBidState;
+  registration?: RegistrationBlock;
 }): StickyModel {
+  if (input.registration) return registrationSticky(input.registration);
   const state =
     input.viewer === "leading"
       ? "You're leading"

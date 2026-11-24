@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 import { FeeBreakdown } from "@/components/auction/FeeBreakdown";
 import { BidHistory, type BidHistoryRow } from "@/components/ds/BidHistory";
-import { BidPanel } from "@/components/ds/BidPanel";
+import { BidPanel, type PanelEligibility } from "@/components/ds/BidPanel";
 import { Banner } from "@/components/ds/Banner";
 import { ConfirmBidSheet } from "@/components/ds/ConfirmBidSheet";
 import { CostBox } from "@/components/ds/CostBox";
@@ -50,7 +50,6 @@ import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
 import { useTransportQuote } from "@/hooks/useTransportQuote";
 import { useVatRate } from "@/hooks/useVatRate";
-import { useUserProfile } from "@/hooks/useUserProfile";
 import { useWatchAlerts } from "@/hooks/useWatchAlerts";
 import { PermissionPrompt } from "@/components/ds/PermissionPrompt";
 import { formatSastDate } from "@/lib/dates";
@@ -65,7 +64,9 @@ import {
   nextMinimumBid,
   premiumPct,
   quickBidAmounts,
+  registrationSticky,
   viewerState,
+  type RegistrationBlock,
 } from "@/lib/lotPage";
 import { PROVINCE_LABELS } from "@/lib/provinces";
 import {
@@ -124,7 +125,6 @@ function LotPage({ id }: { id: string | undefined }) {
   const { isAuthenticated } = useConvexAuth();
   const watchAlerts = useWatchAlerts();
   const branding = useBranding();
-  const profile = useUserProfile();
   const now = useNow(5000);
 
   const lot = useQuery(
@@ -161,6 +161,11 @@ function LotPage({ id }: { id: string | undefined }) {
   const myBidState = useQuery(
     api.auctions.getMyLotBidState,
     lot && lotId && isAuthenticated ? { lotId } : "skip"
+  );
+  // Null while the profile is still being created: treated as loading.
+  const bidEligibility = useQuery(
+    api.registration.getMyBidEligibility,
+    isAuthenticated ? {} : "skip"
   );
   const watchedIds = useQuery(
     api.watchlist.getWatchedLotIds,
@@ -227,6 +232,8 @@ function LotPage({ id }: { id: string | undefined }) {
     ? encodeURIComponent(`${location.pathname}${location.search}`)
     : "%2F";
   const registerHref = `/login?callbackUrl=${callbackUrl}`;
+  const registrationHref = `/register?callbackUrl=${callbackUrl}`;
+  const registrationStatusHref = `/register/status?callbackUrl=${callbackUrl}`;
 
   const title = lotTitle(lot);
   const provinceLabel = lot.province
@@ -278,15 +285,23 @@ function LotPage({ id }: { id: string | undefined }) {
   const viewer = viewerState(isAuthenticated, myBidState?.state);
   const extended = isLive && isInExtension(lot, now);
   const premium = premiumPct(lot.buyerPremiumFraction);
-  const profileLoading = profile === undefined;
-  const verified = profile?.profile?.isVerified ?? false;
-  const eligibility = profileLoading
-    ? "ok"
-    : verified
-      ? "ok"
-      : profile?.profile?.kycStatus === "pending"
-        ? "verification-pending"
-        : "needs-verification";
+  // `undefined` while loading; `null` means the account has no profile yet, so
+  // registration has not started (never leave the buyer on a skeleton).
+  const eligibility: PanelEligibility =
+    bidEligibility === undefined
+      ? { kind: "loading" }
+      : (bidEligibility ?? {
+          kind: "incomplete",
+          step: 1,
+          totalSteps: settings.deposit.enabled ? 4 : 3,
+        });
+  const registration: RegistrationBlock | undefined =
+    eligibility.kind === "ok" || eligibility.kind === "loading"
+      ? undefined
+      : eligibility;
+  const registrationCta = registration
+    ? registrationSticky(registration)
+    : undefined;
   const reserve = reserveOf(lot.reserveState);
   const deposit = settings.deposit.enabled
     ? {
@@ -334,14 +349,18 @@ function LotPage({ id }: { id: string | undefined }) {
     ? null
     : viewer === "guest"
       ? { kind: "link", href: registerHref, label: "Register to bid" }
-      : eligibility === "needs-verification"
-        ? {
-            kind: "link",
-            href: `/register?callbackUrl=${callbackUrl}`,
-            label: "Verify to bid",
-          }
-        : eligibility === "verification-pending"
-          ? null
+      : eligibility.kind === "loading"
+        ? null
+        : registration
+          ? {
+              kind: "link",
+              href:
+                registration.kind === "incomplete"
+                  ? registrationHref
+                  : registrationStatusHref,
+              label: registrationCta?.cta ?? "Continue",
+              ctaVariant: registrationCta?.ctaVariant,
+            }
           : viewer === "leading"
             ? { kind: "raise", onRaise: scrollToPanel }
             : {
@@ -453,6 +472,8 @@ function LotPage({ id }: { id: string | undefined }) {
             bid.startBid();
           }}
           registerHref={registerHref}
+          registrationHref={registrationHref}
+          registrationStatusHref={registrationStatusHref}
           eligibility={eligibility}
           ctaRef={ctaRef}
         />
@@ -757,6 +778,7 @@ function LotPage({ id }: { id: string | undefined }) {
           closesAt={closesAt}
           viewer={viewer}
           action={stickyAction}
+          registration={registration}
           whatsappHref={waHref}
           hidden={!ctaGone}
         />
