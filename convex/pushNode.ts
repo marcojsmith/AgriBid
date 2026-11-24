@@ -1,7 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
-import webpush from "web-push";
+import { sendNotification, setVapidDetails } from "web-push";
 
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
@@ -37,7 +37,7 @@ export const sendPushBatch = internalAction({
       console.warn("Web push skipped: VAPID environment variables are not set");
       return { delivered: 0, removed: 0, skipped: 0 };
     }
-    webpush.setVapidDetails(subject, publicKey, privateKey);
+    setVapidDetails(subject, publicKey, privateKey);
     // Defence in depth: never call an endpoint outside the push services.
     const allowed = args.messages.filter((message) =>
       isAllowedPushEndpoint(message.endpoint)
@@ -51,7 +51,7 @@ export const sendPushBatch = internalAction({
     const { delivered, expired } = await deliverAll(
       allowed,
       (target, payload) =>
-        webpush.sendNotification(target, payload, {
+        sendNotification(target, payload, {
           TTL: 3600,
           urgency: "high",
           timeout: 10_000,

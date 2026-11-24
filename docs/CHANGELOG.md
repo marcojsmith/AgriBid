@@ -7,6 +7,7 @@ build checklist. Dates are merge dates.
 
 ## 2026-11
 
+- Push: import `web-push` by its named exports (v4 has no default export), which broke the production Convex bundle for D9a (v0.35.1)
 - Remind me web push (D9a of improve-screen-mockups phase 2, v0.35.0): tapping Remind me on an upcoming sale now sends a push notification (and an in-app notification) when the sale opens. Push only, no SMS or email; Admin switches it with the existing "Push reminders" setting (off by default). iPhone Safari shows the Add to Home Screen sheet first; Android and desktop go straight to the permission prompt; guests sign in first. New tables `pushSubscriptions` and `saleReminders`, `convex/push.ts`, the first `"use node"` file (`convex/pushNode.ts`, uses `web-push`), the gated `send_sale_reminders` cron (every minute), `public/sw.js` and `usePushReminders`. Home and the event page now show the honest watch toast ("Find this lot in your watchlist"). Ops: set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` on the backend, then enable Push reminders in Admin settings.
 
 - Polish (v0.34.2): the link-preview lot card shrinks long titles to 44px (58px up to 18 characters) so "Massey Ferguson 8670" is no longer cut off; the bottom sheet starts focus on the sheet instead of the close button (no focus ring on open) and the close button shows a design-system ring for keyboard focus only; the transport quote province select shows "Choose a province".
