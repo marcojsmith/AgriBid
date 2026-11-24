@@ -4,7 +4,7 @@ import { mutation } from "../../_generated/server";
 import { getBuyerPremiumPct } from "../../admin/platformSettings";
 import { requireAdmin } from "../../lib/auth";
 import { percentToFraction } from "../../lib/buyerPremium";
-import { issueNextLotNumber } from "../../lib/lotCounters";
+import { issueNextLotNumber, syncAuctionLotCount } from "../../lib/lotCounters";
 import { adjustLotStatusCounters } from "../../lots/mutations/helpers";
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
@@ -87,6 +87,11 @@ export const assignLotToAuctionHandler = async (
     sellerType: sellerProfile?.sellerType,
   });
   await adjustLotStatusCounters(ctx, "approved", "assigned");
+  await syncAuctionLotCount(ctx, lot, {
+    status: "assigned",
+    auctionId: args.auctionId,
+    hiddenByFlags: lot.hiddenByFlags,
+  });
 
   return { success: true };
 };
@@ -131,6 +136,11 @@ export const unassignLotHandler = async (
     status: "approved",
   });
   await adjustLotStatusCounters(ctx, "assigned", "approved");
+  await syncAuctionLotCount(ctx, lot, {
+    status: "approved",
+    auctionId: undefined,
+    hiddenByFlags: lot.hiddenByFlags,
+  });
 
   return { success: true };
 };

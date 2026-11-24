@@ -18,7 +18,11 @@ import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCounter, updateCounter } from "./admin_utils";
 import { findWinningBid } from "./auctions/internal";
-import { bidCounterName, watcherCounterName } from "./lib/lotCounters";
+import {
+  bidCounterName,
+  syncAuctionLotCount,
+  watcherCounterName,
+} from "./lib/lotCounters";
 import {
   DEMO_BIDDER_IDS,
   WBT_SEED_PREFIX,
@@ -137,9 +141,15 @@ async function resetOpenLot(ctx: MutationCtx, lot: Doc<"lots">): Promise<void> {
       // consideration; reopening it takes the slot back.
       await updateCounter(ctx, "lots", "active", 1);
     }
+    await syncAuctionLotCount(ctx, lot, {
+      status: "assigned",
+      auctionId: lot.auctionId,
+      hiddenByFlags: lot.hiddenByFlags,
+    });
   } else if (lot.status === "under_consideration") {
     // Only real bids remain: the seller is now deciding on the best of those,
-    // not on a demo bid that was just deleted.
+    // not on a demo bid that was just deleted. Still under consideration, so
+    // the sale's visible-lot count is unchanged.
     const top = await findWinningBid(ctx, lot._id);
     if (top) {
       await ctx.db.patch("lots", lot._id, {

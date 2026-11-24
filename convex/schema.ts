@@ -522,7 +522,7 @@ export default defineSchema({
 
   counters: defineTable({
     // e.g., "auctions", "profiles", "support", "announcements",
-    // "lotNumber:<auctionId>" (last lot number issued), "watchers:<lotId>" (`total`),
+    // "lotNumber:<auctionId>" (last lot number issued), "lots:<auctionId>" (`total` = buyer-visible lots in the sale),"watchers:<lotId>" (`total`),
     // "views:<lotId>" (`total`), "bids:<lotId>" (`total` = valid bids) or
     // "anonviews:<lotId>" (`active` = hour bucket, `total` = anonymous views
     // counted in it).

@@ -13,6 +13,7 @@ import type { Id, Doc } from "../_generated/dataModel";
 vi.mock("../lib/lotCounters", () => ({
   removeLotWatchData: vi.fn().mockResolvedValue(undefined),
   deleteAuctionEngagementScores: vi.fn().mockResolvedValue(0),
+  syncAuctionLotCount: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../admin_utils", () => ({

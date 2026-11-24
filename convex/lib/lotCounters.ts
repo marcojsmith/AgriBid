@@ -1,7 +1,7 @@
 import { internal } from "../_generated/api";
 import { getCounter, updateCounter } from "../admin_utils";
 import { LOT_DATA_DELETE_BATCH } from "../constants";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 /**
@@ -11,6 +11,141 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
  */
 export const lotNumberCounterName = (auctionId: Id<"auctions">) =>
   `lotNumber:${auctionId}`;
+
+/**
+ * Counter row name holding a sale's buyer-visible lot count (in `total`): lots
+ * in the sale with status `assigned`, `under_consideration`, `sold` or `unsold`
+ * that are not hidden by flags. Maintained by {@link syncAuctionLotCount}.
+ * @param auctionId - The auction container id.
+ * @returns The counter name.
+ */
+export const auctionLotCounterName = (auctionId: Id<"auctions">) =>
+  `lots:${auctionId}`;
+
+/** The slice of a lot that decides whether it counts toward its sale's total. */
+export type LotCountState = Pick<
+  Doc<"lots">,
+  "status" | "auctionId" | "hiddenByFlags"
+>;
+
+/**
+ * Lot statuses buyers can see inside a sale. The single source of truth for the
+ * per-sale counter and the public sale queries, so they cannot drift apart.
+ */
+export const SALE_VISIBLE_STATUSES = [
+  "assigned",
+  "under_consideration",
+  "sold",
+  "unsold",
+] as const satisfies readonly Doc<"lots">["status"][];
+
+const SALE_VISIBLE_STATUS_SET: ReadonlySet<Doc<"lots">["status"]> = new Set(
+  SALE_VISIBLE_STATUSES
+);
+
+/**
+ * The sale a lot counts toward, or null when it counts nowhere (not in a sale,
+ * not yet or no longer buyer-visible, or hidden by flags).
+ *
+ * @param lot - The lot's status, sale and hidden flag.
+ * @returns The sale id, or null.
+ */
+export function countedAuctionId(
+  lot: LotCountState | null
+): Id<"auctions"> | null {
+  if (lot?.auctionId === undefined) return null;
+  if (!SALE_VISIBLE_STATUS_SET.has(lot.status)) return null;
+  if (lot.hiddenByFlags === true) return null;
+  return lot.auctionId;
+}
+
+/**
+ * Counts a sale's buyer-visible lots straight from the `lots` table and writes
+ * the result to its counter (absolute, so safe to repeat). Reads every lot of
+ * the sale through `by_status_auctionId`, so use it only for one sale at a time.
+ *
+ * @param ctx - Mutation context.
+ * @param auctionId - The sale to recount.
+ * @returns The exact count now stored.
+ */
+export async function recountAuctionLots(
+  ctx: MutationCtx,
+  auctionId: Id<"auctions">
+): Promise<number> {
+  let count = 0;
+  for (const status of SALE_VISIBLE_STATUSES) {
+    for await (const lot of ctx.db
+      .query("lots")
+      .withIndex("by_status_auctionId", (q) =>
+        q.eq("status", status).eq("auctionId", auctionId)
+      )) {
+      if (lot.hiddenByFlags !== true) count++;
+    }
+  }
+  await updateCounter(
+    ctx,
+    auctionLotCounterName(auctionId),
+    "total",
+    count,
+    true
+  );
+  return count;
+}
+
+/**
+ * Keeps the per-sale visible-lot counters in step with one lot change. Call it
+ * AFTER the write, with the lot's state before and after every write that can
+ * alter its status, sale or hidden flag, or that inserts (`before` null) or
+ * deletes (`after` null) a lot. Changes inside the same sale that keep the lot
+ * counted (for example `assigned` to `sold`) write nothing. A sale with no
+ * counter yet (before the backfill) is recounted from the table instead of
+ * adjusted, so a counter never starts from a wrong value.
+ *
+ * @param ctx - Mutation context.
+ * @param before - The lot's state before the write, or null for an insert.
+ * @param after - The lot's state after the write, or null for a delete.
+ */
+export async function syncAuctionLotCount(
+  ctx: MutationCtx,
+  before: LotCountState | null,
+  after: LotCountState | null
+): Promise<void> {
+  const from = countedAuctionId(before);
+  const to = countedAuctionId(after);
+  if (from === to) return;
+  for (const [auctionId, delta] of [
+    [from, -1],
+    [to, 1],
+  ] as const) {
+    if (!auctionId) continue;
+    if (await getCounter(ctx, auctionLotCounterName(auctionId))) {
+      await updateCounter(
+        ctx,
+        auctionLotCounterName(auctionId),
+        "total",
+        delta
+      );
+    } else {
+      await recountAuctionLots(ctx, auctionId);
+    }
+  }
+}
+
+/**
+ * Reads a sale's exact buyer-visible lot count from its counter row.
+ *
+ * @param ctx - Query or mutation context.
+ * @param auctionId - The sale.
+ * @returns The count, or null when no counter exists yet (the backfill has not
+ *   run for this sale), so callers can fall back to a bounded read.
+ */
+export async function getAuctionLotCount(
+  ctx: QueryCtx,
+  auctionId: Id<"auctions">
+): Promise<number | null> {
+  const counter = await getCounter(ctx, auctionLotCounterName(auctionId));
+  return counter ? counter.total : null;
+}
 
 /**
  * Counter row name holding a lot's watcher count (in `total`).

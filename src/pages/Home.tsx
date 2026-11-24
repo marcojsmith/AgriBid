@@ -238,8 +238,10 @@ export default function Home() {
 
   const lotsHref =
     mode === "single" && hero ? `/auctions/${hero._id}` : "/auctions";
-  const totalLots = facets?.total ?? hero?.lotCount ?? 0;
-  const totalCapped = facets?.capped ?? false;
+  // The sale's own lot count is exact (a per-sale counter); the facets only
+  // describe the open lots that were read.
+  const totalLots = hero?.lotCount ?? facets?.total ?? 0;
+  const totalCapped = hero ? hero.lotCountCapped : (facets?.capped ?? false);
 
   const categories = (facets?.categories ?? []).map((c) => ({
     key: c.categoryId,
@@ -376,8 +378,8 @@ export default function Home() {
               className="container mx-auto max-w-[1200px] px-4 py-5 md:py-8"
             >
               <HomeFilters
-                total={facets.total}
-                totalCapped={facets.capped}
+                total={totalLots}
+                totalCapped={totalCapped}
                 categories={categories}
                 makes={makes}
                 priceRange={facets.priceRange}
@@ -419,7 +421,7 @@ export default function Home() {
                 className="mt-6 w-full md:w-auto"
               >
                 <Link to={lotsHref}>
-                  View all {formatLotCount(facets.total, facets.capped)}
+                  View all {formatLotCount(totalLots, totalCapped)}
                   <ArrowRight aria-hidden="true" />
                 </Link>
               </Button>

@@ -64,7 +64,7 @@ interface HomeHeroProps {
   onFeesClick: () => void;
   /** Where "View all N lots" goes. */
   lotsHref: string;
-  /** Lots across the open sales, for "View all N lots". */
+  /** The sale's exact lot count, for "View all N lots". */
   totalLots: number;
   /** True when the count is a lower bound (a sale was capped). */
   totalCapped?: boolean;
@@ -96,7 +96,7 @@ interface HomeHeroProps {
  * @param props.ctaRef - Ref for the primary call to action
  * @param props.onFeesClick - Opens the Fees & rules sheet
  * @param props.lotsHref - Where "View all N lots" goes
- * @param props.totalLots - Lots across the open sales
+ * @param props.totalLots - The sale's exact lot count
  * @param props.totalCapped - Whether the count is a lower bound
  * @param props.className - Extra classes merged onto the root element
  * @returns The hero
@@ -156,11 +156,20 @@ export function HomeHero({
             eager
             className="rounded-none"
           />
+          {/* Desktop caption scrim. A separate layer BELOW the left-edge fade so
+              the fade covers the photo's full height; a scrim on the caption
+              itself would sit above the fade and leave a hard edge. */}
           <span
             aria-hidden="true"
+            data-slot="hero-scrim"
+            className="absolute inset-x-0 bottom-0 hidden h-32 bg-linear-to-t from-black/75 to-transparent lg:block"
+          />
+          <span
+            aria-hidden="true"
+            data-slot="hero-fade"
             className="absolute inset-y-0 left-0 hidden w-[27%] bg-linear-to-r from-hero to-transparent lg:block"
           />
-          <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-linear-to-t from-hero via-hero/70 to-transparent px-4 pt-16 pb-3.5 text-white lg:bg-linear-to-t lg:from-black/75 lg:via-transparent lg:to-transparent lg:px-8 lg:pb-5">
+          <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-linear-to-t from-hero via-hero/70 to-transparent px-4 pt-16 pb-3.5 text-white lg:bg-none lg:px-8 lg:pb-5">
             <span className="min-w-0">
               <span className="block font-display text-lg leading-tight font-semibold lg:text-xl">
                 {featured.title}

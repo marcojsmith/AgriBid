@@ -12,9 +12,11 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { updateCounter, getCounter } from "./admin_utils";
 import { recalculateCounters } from "./lib/seedCounters";
 import {
+  auctionLotCounterName,
   bidCounterName,
   lotNumberCounterName,
   removeLotWatchData,
+  syncAuctionLotCount,
 } from "./lib/lotCounters";
 import { provinceValidator } from "./lib/provinces";
 import { deleteAuctionImages } from "./lib/storage";
@@ -344,9 +346,19 @@ export const upsertLots = internalMutation({
             winnerId: existing.winnerId,
             settledAt: existing.settledAt,
           });
+          await syncAuctionLotCount(ctx, existing, {
+            status: existing.status,
+            auctionId: fields.auctionId,
+            hiddenByFlags: existing.hiddenByFlags,
+          });
           continue;
         }
         await ctx.db.patch("lots", existing._id, fields);
+        await syncAuctionLotCount(ctx, existing, {
+          status: fields.status,
+          auctionId: fields.auctionId,
+          hiddenByFlags: existing.hiddenByFlags,
+        });
         // Only demo bids are left: clear them so the bid history matches the
         // refreshed outcome (a sold lot gets its one winning bid below).
         for (const bid of existingBids) {
@@ -354,6 +366,11 @@ export const upsertLots = internalMutation({
         }
       } else {
         lotId = await ctx.db.insert("lots", { ...fields, createdAt: now });
+        await syncAuctionLotCount(ctx, null, {
+          status: fields.status,
+          auctionId: fields.auctionId,
+          hiddenByFlags: undefined,
+        });
         created++;
       }
 
@@ -485,6 +502,11 @@ export const retireOldDemo = internalMutation({
     for (const auction of auctions) {
       const counter = await getCounter(ctx, lotNumberCounterName(auction._id));
       if (counter) await ctx.db.delete("counters", counter._id);
+      const lotCounter = await getCounter(
+        ctx,
+        auctionLotCounterName(auction._id)
+      );
+      if (lotCounter) await ctx.db.delete("counters", lotCounter._id);
       await ctx.db.delete("auctions", auction._id);
     }
     await recalculateCounters(ctx);
@@ -525,4 +547,5 @@ async function deleteLotAndRelated(
   await removeLotWatchData(ctx, lot._id);
   await deleteAuctionImages(ctx, lot.images);
   await ctx.db.delete("lots", lot._id);
+  await syncAuctionLotCount(ctx, lot, null);
 }

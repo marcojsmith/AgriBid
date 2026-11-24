@@ -8,6 +8,7 @@ import { deleteAuctionImages, safeDelete } from "../lib/storage";
 import {
   deleteAuctionEngagementScores,
   removeLotWatchData,
+  syncAuctionLotCount,
 } from "../lib/lotCounters";
 import {
   isBuyerPercentageFee,
@@ -430,6 +431,13 @@ export async function enterConsideration(
     settledAt: now,
     considerationDeadline: deadline,
   });
+  // Still visible in its sale, so the sale's lot count does not move; the call
+  // keeps the counter honest should the visible set ever change.
+  await syncAuctionLotCount(ctx, lot, {
+    status: "under_consideration",
+    auctionId: lot.auctionId,
+    hiddenByFlags: lot.hiddenByFlags,
+  });
   await updateCounter(ctx, "lots", "active", -1);
 
   const amount = formatNotificationRand(winningBid.amount);
@@ -526,6 +534,11 @@ export async function resolveConsideration(
       settledAt: now,
       considerationDeadline: undefined,
     });
+    await syncAuctionLotCount(ctx, lot, {
+      status: "sold",
+      auctionId: lot.auctionId,
+      hiddenByFlags: lot.hiddenByFlags,
+    });
     await updateCounter(ctx, "lots", "soldCount", 1);
     await updateCounter(ctx, "lots", "salesVolume", topBid.amount);
     await calculateAndRecordFees(ctx, lot, topBid.amount);
@@ -545,6 +558,12 @@ export async function resolveConsideration(
       // Unsold lots return to the pool for admin reassignment.
       auctionId: undefined,
       lotNumber: undefined,
+    });
+    // `auctionId` is cleared, so the lot leaves its sale's visible count.
+    await syncAuctionLotCount(ctx, lot, {
+      status: "unsold",
+      auctionId: undefined,
+      hiddenByFlags: lot.hiddenByFlags,
     });
     await logAuctionSettlementActivity(ctx, lot, "unsold");
   }
@@ -708,6 +727,11 @@ export async function settleLot(
       : {}),
   });
 
+  await syncAuctionLotCount(ctx, lot, {
+    status: finalStatus,
+    auctionId: finalStatus === "unsold" ? undefined : lot.auctionId,
+    hiddenByFlags: lot.hiddenByFlags,
+  });
   await updateCounter(ctx, "lots", "active", -1);
 
   if (finalStatus === "sold" && winningBid) {
