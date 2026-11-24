@@ -10,6 +10,9 @@ import {
   buildLocation,
   cleanSaleTitle,
   cleanTown,
+  pickShowcaseLots,
+  realMakeOrBlank,
+  stripSaleDates,
   isEquipmentLot,
   lotSeedId,
   mapCategory,
@@ -290,12 +293,68 @@ describe("selectSales", () => {
 });
 
 describe("cleanSaleTitle", () => {
-  it("shortens the source suffix", () => {
-    expect(
-      cleanSaleTitle(
-        "20-25 November Year End 2026 Low Reserve Commercial and Agricultural Online Auction"
-      )
-    ).toBe("20-25 November Year End 2026 Auction");
+  const suffix = "Low Reserve Commercial and Agricultural Online Auction";
+
+  it("shortens the source suffix and drops day ranges", () => {
+    expect(cleanSaleTitle(`20-25 November Year End 2026 ${suffix}`)).toBe(
+      "Year End 2026 Auction"
+    );
+  });
+
+  it("keeps a month that is followed by its year", () => {
+    expect(cleanSaleTitle(`25-29 September 2026 ${suffix}`)).toBe(
+      "September 2026 Auction"
+    );
+    expect(cleanSaleTitle(`5-9 December 2025 Year-End ${suffix}`)).toBe(
+      "December 2025 Year-End Auction"
+    );
+  });
+
+  it("strips ordinal dates and cross-month ranges", () => {
+    expect(stripSaleDates("5th December Summer Sale")).toBe("Summer Sale");
+    expect(stripSaleDates("30 January - 3 February 2026 Sale")).toBe(
+      "February 2026 Sale"
+    );
+    expect(stripSaleDates("1st to 4th March 2026 Sale")).toBe(
+      "March 2026 Sale"
+    );
+    expect(stripSaleDates("Showroom stock")).toBe("Showroom stock");
+  });
+});
+
+describe("pickShowcaseLots", () => {
+  const good = (title: string, startingPrice: number, photoCount = 5) => ({
+    title,
+    startingPrice,
+    photoCount,
+  });
+
+  it("takes the dearest lots with enough photos, skipping non-runners", () => {
+    const picks = pickShowcaseLots(
+      [
+        good("Cheap implement", 5_000),
+        good("Tractor Loader - NON RUNNER", 900_000),
+        good("Combine harvester", 800_000),
+        good("Tractor", 300_000, 3),
+        good("Tractor 2", 400_000),
+        { ...good("Plough", 600_000), description: "Selling as scrap" },
+      ],
+      2
+    );
+    expect(picks).toEqual([2, 4]);
+  });
+
+  it("returns fewer when too few qualify", () => {
+    expect(pickShowcaseLots([good("Spares tractor", 1)], 5)).toEqual([]);
+  });
+});
+
+describe("realMakeOrBlank", () => {
+  it("blanks placeholder makes and keeps real ones", () => {
+    expect(realMakeOrBlank("Other")).toBe("");
+    expect(realMakeOrBlank(" unknown ")).toBe("");
+    expect(realMakeOrBlank(null)).toBe("");
+    expect(realMakeOrBlank(" John Deere ")).toBe("John Deere");
   });
 });
 

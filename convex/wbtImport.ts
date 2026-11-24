@@ -20,6 +20,7 @@ import { provinceValidator } from "./lib/provinces";
 import { deleteAuctionImages } from "./lib/storage";
 import {
   DEMO_BIDDER_IDS,
+  countLotImages,
   isDemoBidder,
   WBT_BUYER_PREMIUM_PCT,
   WBT_CATEGORIES,
@@ -172,24 +173,10 @@ export const listImportedLots = internalQuery({
       .take(2000);
     return lots.map((lot) => ({
       seedId: lot.seedId ?? "",
-      photoCount: countImages(lot.images),
+      photoCount: countLotImages(lot.images),
     }));
   },
 });
-
-/**
- * Counts the photos on a lot.
- *
- * @param images - The lot's stored images
- * @returns The number of non-empty image ids
- */
-function countImages(images: Doc<"lots">["images"]): number {
-  if (Array.isArray(images)) return images.length;
-  return (
-    [images.front, images.engine, images.cabin, images.rear].filter(Boolean)
-      .length + (images.additional?.length ?? 0)
-  );
-}
 
 /** One imported lot, as sent by the script. */
 const lotInput = v.object({

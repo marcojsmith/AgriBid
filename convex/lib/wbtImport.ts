@@ -4,6 +4,7 @@
  * database, the network or the clock, so every rule is unit-tested.
  */
 import { MS_PER_DAY, MS_PER_HOUR } from "../constants";
+import type { Doc } from "../_generated/dataModel";
 import { PROVINCE_LABELS, type Province } from "./provinces";
 
 /** Prefix on every `seedId` created by the import; resets only touch rows with it. */
@@ -514,13 +515,58 @@ export function selectSales(data: RawData, closedCount = 5): SelectedSale[] {
  * @returns The display title
  */
 export function cleanSaleTitle(name: string): string {
-  return name
+  const shortened = name
     .replace(/\s+/g, " ")
     .replace(
       /\s*Low Reserve Commercial and Agricultural Online Auction\s*$/i,
       " Auction"
     )
     .trim();
+  return stripSaleDates(shortened);
+}
+
+/** Month names, as they appear in the source sale names. */
+const MONTH_PATTERN =
+  "(?:January|February|March|April|May|June|July|August|September|October|November|December)";
+
+/**
+ * Removes day ranges and ordinal dates from a sale name, because the demo
+ * re-times sales and a name carrying "20-25 November" would contradict the
+ * dates shown. A month followed by a year is kept ("September 2026 Auction");
+ * a month followed by anything else is dropped ("20-25 November Year End 2026
+ * Auction" becomes "Year End 2026 Auction").
+ *
+ * @param name - A sale name
+ * @returns The name without day ranges or ordinal dates
+ */
+export function stripSaleDates(name: string): string {
+  const day = String.raw`\d{1,2}(?:st|nd|rd|th)?`;
+  const month = `(${MONTH_PATTERN})`;
+  // "20-25 November" and "30 January - 3 February" keep only the last month;
+  // a single "5 December" keeps just its month.
+  const range = new RegExp(
+    String.raw`\b${day}(?:\s+${MONTH_PATTERN})?\s*(?:-|–|to)\s*${day}\s+${month}\b`,
+    "gi"
+  );
+  const single = new RegExp(String.raw`\b${day}\s+${month}\b`, "gi");
+  const withoutDays = name.replace(range, "$1").replace(single, "$1");
+  const withoutBareMonth = withoutDays.replace(
+    new RegExp(String.raw`^${MONTH_PATTERN}\s+(?!\d{4}\b)`, "i"),
+    ""
+  );
+  return withoutBareMonth.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * A make worth storing: blank and placeholder values ("Other", "Unknown")
+ * become "" so Home never offers a make chip for them.
+ *
+ * @param make - The source make
+ * @returns The trimmed make, or ""
+ */
+export function realMakeOrBlank(make: string | null | undefined): string {
+  const trimmed = make?.trim() ?? "";
+  return /^(other|unknown|n\/a|none|various|-)$/i.test(trimmed) ? "" : trimmed;
 }
 
 /**
@@ -530,7 +576,8 @@ export function cleanSaleTitle(name: string): string {
  * @returns A one-sentence description
  */
 function saleDescription(auction: RawAuction): string {
-  return `Online auction of commercial and agricultural equipment from We Buy Tractors. ${auction.lots.length.toString()} lots in the source sale.`;
+  const original = auction.name.replace(/\s+/g, " ").trim();
+  return `Online auction of commercial and agricultural equipment from We Buy Tractors. ${auction.lots.length.toString()} lots in the source sale. Original name: ${original}.`;
 }
 
 /**
@@ -813,6 +860,67 @@ export function pickDemoPositions(
   return [...positions].sort((a, b) => a - b);
 }
 
+/**
+ * Counts the photos on a lot.
+ *
+ * @param images - The lot's stored images
+ * @returns The number of non-empty image ids
+ */
+export function countLotImages(images: Doc<"lots">["images"]): number {
+  if (Array.isArray(images)) return images.length;
+  return (
+    [images.front, images.engine, images.cabin, images.rear].filter(Boolean)
+      .length + (images.additional?.length ?? 0)
+  );
+}
+
+/** The fewest photos a showcase lot needs. */
+const SHOWCASE_MIN_PHOTOS = 4;
+
+/** Words that make a lot a poor showcase (broken, parts or scrap). */
+const POOR_SHOWCASE_WORDS =
+  /non[\s-]*runner|not\s+running|spares?\b|for\s+parts|scrap|breaking|wreck|stripped/i;
+
+/** The fields {@link pickShowcaseLots} looks at. */
+export interface ShowcaseCandidate {
+  title: string;
+  description?: string;
+  startingPrice: number;
+  photoCount: number;
+  /** A tractor (the best showcase): ranked ahead of other machines. */
+  preferred?: boolean;
+}
+
+/**
+ * Picks the lots that get demo bids and watchers (and so can become the
+ * "most engaged" featured lot): tractors first, then the dearest machines, with at least four
+ * photos whose title and description do not mention a non-runner, spares or
+ * scrap. When fewer than `count` qualify, it returns only those.
+ *
+ * @param lots - Candidate lots, in sale order
+ * @param count - How many to pick
+ * @returns Indexes into `lots`, dearest first
+ */
+export function pickShowcaseLots(
+  lots: readonly ShowcaseCandidate[],
+  count: number
+): number[] {
+  return lots
+    .map((lot, index) => ({ lot, index }))
+    .filter(
+      ({ lot }) =>
+        lot.photoCount >= SHOWCASE_MIN_PHOTOS &&
+        !POOR_SHOWCASE_WORDS.test(`${lot.title} ${lot.description ?? ""}`)
+    )
+    .sort(
+      (a, b) =>
+        Number(b.lot.preferred === true) - Number(a.lot.preferred === true) ||
+        b.lot.startingPrice - a.lot.startingPrice
+    )
+    .slice(0, count)
+    .map(({ index }) => index);
+}
+
 /** The most photos kept per lot. */
 export const MAX_PHOTOS_PER_LOT = 10;
 
@@ -868,7 +976,7 @@ export function buildLotInput(
   return {
     seedId: lotSeedId(raw, sale.seedId),
     title,
-    make: raw.make?.trim() ?? "",
+    make: realMakeOrBlank(raw.make),
     model: raw.model?.trim() ?? "",
     year: raw.year ?? 0,
     operatingHours: raw.hours ?? 0,

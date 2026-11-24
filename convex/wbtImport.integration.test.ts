@@ -657,7 +657,7 @@ describe("wbtDemo", () => {
         i,
         count,
         i + 1,
-        [photo]
+        [photo, photo, photo, photo]
       )
     );
     for (let i = 0; i < lots.length; i += 20) {
@@ -668,6 +668,41 @@ describe("wbtDemo", () => {
     }
     return sale;
   }
+
+  it("only decorates good machines: 4+ photos and no non-runner or spares", async () => {
+    const t = createTestContext();
+    const sale = await makeSale(t, "live", "wbt:auction:1");
+    const photo = await storePhoto(t);
+    const four = [photo, photo, photo, photo];
+    const specs: [string, string[]][] = [
+      ["John Deere 6130", four],
+      ["Tractor Loader - NON RUNNER", four],
+      ["Case 580 for spares", four],
+      ["Ford 5000 (two photos)", [photo, photo]],
+    ];
+    const lots = specs.map(([title, photos], i) =>
+      buildLotInput(
+        raw({ bidwranglerItemId: 300 + i, lotNumber: i + 1, title }),
+        { role: "live", seedId: "wbt:auction:1" },
+        i,
+        specs.length,
+        i + 1,
+        photos
+      )
+    );
+    await t.mutation(internal.wbtImport.upsertLots, { auctionId: sale, lots });
+    const decorated = await t.mutation(internal.wbtDemo.seedLiveDemo, {
+      auctionId: sale,
+    });
+    expect(decorated).toBe(1);
+    const bids = await t.run((ctx) => ctx.db.query("bids").collect());
+    const biddedTitles = await Promise.all(
+      [...new Set(bids.map((b) => b.lotId))].map(
+        async (id) => (await t.run((ctx) => ctx.db.get("lots", id)))?.title
+      )
+    );
+    expect(biddedTitles).toEqual(["John Deere 6130"]);
+  });
 
   it("decorates a few live lots with demo bids and watchers, then resets them", async () => {
     const t = createTestContext();

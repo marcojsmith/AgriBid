@@ -110,8 +110,10 @@ export function LotCard({
     lot.year ? String(lot.year) : null,
     lot.hours ? `${groupDigits(lot.hours)} hrs` : null,
   ].filter((part): part is string => part !== null);
+  // "0 watching" is noise: show nothing until someone watches. Bid counts
+  // (closed states) keep their zero.
   const countText =
-    count === undefined
+    count === undefined || (state === "open" && count === 0)
       ? null
       : state === "open"
         ? `${String(count)} watching`

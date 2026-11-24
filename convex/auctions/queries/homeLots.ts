@@ -119,6 +119,17 @@ export function passes(
 export { reserveStateOf };
 
 /**
+ * Whether a stored make is a real make worth a filter chip. Blank and
+ * placeholder values ("Other", "Unknown") are not: "Other" is a category.
+ *
+ * @param make - The stored make.
+ * @returns True for a real make.
+ */
+export function isRealMake(make: string): boolean {
+  return !/^(|other|unknown|n\/a|none|various|-)$/i.test(make.trim());
+}
+
+/**
  * Counts values and returns them largest first (ties alphabetical). Blank
  * values are skipped (imported lots with an unknown make have none).
  *
@@ -235,7 +246,7 @@ export const getHomeFacetsHandler = async (
     total: candidates.length,
     capped,
     categories,
-    makes: tally(candidates.map(({ lot }) => lot.make)).map(
+    makes: tally(candidates.map(({ lot }) => lot.make).filter(isRealMake)).map(
       ([make, count]) => ({ make, count })
     ),
     priceRange: prices.length

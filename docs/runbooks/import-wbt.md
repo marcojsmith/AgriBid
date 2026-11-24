@@ -10,10 +10,11 @@ The demo shows real data from webuytractors.shop (owned by the AgriBid owner): t
 | The 22 fixed-price listings  | "Showroom stock" sale | opens in 1 day, closes in 9 (upcoming); opening bid = asking price |
 | The 5 newest closed auctions | closed sales          | newest ended 3 days ago, then every 28 days                        |
 
+- Sale names lose their day ranges and ordinal dates ("20-25 November Year End 2026 ..." becomes "Year End 2026 Auction", "25-29 September 2026 ..." becomes "September 2026 Auction") because the demo re-times sales; the original name is kept in the description. Placeholder makes ("Other", "Unknown") are stored blank and never become make chips.
 - Lots with a terms/viewing/notice title, no real title or no usable photo are skipped. The source's "missing image" placeholder is ignored.
 - Photos are downloaded, resized to at most 1600 px JPEG with `sharp` and uploaded to Convex file storage through `wbtImport:generateUploadUrl`. Lots hold the storage ids, lead photo first (at most 10).
 - Sold lots keep the real winning price (excluding VAT and premium) and get ONE valid bid row from a synthetic demo bidder, so the bid history, winner and fee ledger are consistent. The bid counter is set to the source's real bid count. Unsold lots keep the best unmet bid as their price and have no bid rows. No other bids are invented for closed sales.
-- Live lots open at the source opening bid. `weeklyReset` adds short bid histories and watchers (`mock-*` users) to about 12 live lots so the featured lot, bid counts and watching counts are populated.
+- Live lots open at the source opening bid. `weeklyReset` adds short bid histories and watchers (`mock-*` users) to about 12 live lots so the featured lot, bid counts and watching counts are populated. Only good machines are decorated: tractors first, then the dearest lots, with at least 4 photos and no "non runner", "spares" or "scrap" in the title or description, so the most-engaged (featured) lot is a good showcase.
 - Unknown year and hours are stored as `0` (hidden in the UI, ignored by year and hours filters); an unknown make is stored as an empty string (the lot title is shown). Province is set only when it is unambiguous from the town.
 - Every lot snapshots the 12% auction premium with `premiumSource: "auction"` and the 5% seller commission. The seeded fee rows stay inactive.
 - The seller is a synthetic profile "We Buy Tractors" (`wbt-seller`, farming business, VAT registered). No phone, e-mail or address is stored; company details are never seeded.

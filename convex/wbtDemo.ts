@@ -21,8 +21,9 @@ import { bidCounterName, watcherCounterName } from "./lib/lotCounters";
 import {
   DEMO_BIDDER_IDS,
   WBT_SEED_PREFIX,
+  countLotImages,
   isDemoBidder,
-  pickDemoPositions,
+  pickShowcaseLots,
   planDemoBids,
   saleWindow,
   shiftTimestamp,
@@ -33,6 +34,9 @@ const LOTS_PER_BATCH = 100;
 
 /** How many live lots get demo bids and watchers. */
 const DEMO_LOT_COUNT = 12;
+
+/** How many lots of a live sale are scanned for showcase machines. */
+const SHOWCASE_SCAN_LIMIT = 300;
 
 const statusValidator = v.union(v.literal("published"), v.literal("closed"));
 const roleValidator = v.union(
@@ -256,20 +260,49 @@ export const seedLiveDemo = internalMutation({
       .withIndex("by_auctionId_lotNumber", (q) =>
         q.eq("auctionId", args.auctionId)
       )
-      .take(60);
+      .take(SHOWCASE_SCAN_LIMIT);
     const open = lots.filter((lot) => lot.status === "assigned");
-    const positions = pickDemoPositions(open.length, DEMO_LOT_COUNT);
+    // Decorate the best machines, so the most-engaged (featured) lot is a
+    // good showcase and not a non-runner.
+    const categoryNames = new Map<Id<"equipmentCategories">, string>();
+    for (const lot of open) {
+      if (lot.categoryId && !categoryNames.has(lot.categoryId)) {
+        const category = await ctx.db.get(
+          "equipmentCategories",
+          lot.categoryId
+        );
+        categoryNames.set(lot.categoryId, category?.name ?? "");
+      }
+    }
+    const picks = pickShowcaseLots(
+      open.map((lot) => ({
+        title: lot.title,
+        description: lot.description,
+        startingPrice: lot.startingPrice,
+        photoCount: countLotImages(lot.images),
+        preferred:
+          lot.categoryId !== undefined &&
+          categoryNames.get(lot.categoryId) === "Tractor",
+      })),
+      DEMO_LOT_COUNT
+    );
 
     let decorated = 0;
-    for (const position of positions) {
-      const lot = open[position];
+    for (const [position, openIndex] of picks.entries()) {
+      const lot = open[openIndex];
       const existing = await ctx.db
         .query("bids")
         .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
         .first();
       if (existing) continue;
 
-      const plan = planDemoBids(lot.startingPrice, lot.minIncrement, position);
+      // The best machine (position 0) gets the longest history (4 bids) and
+      // the most watchers, so it is the most engaged lot.
+      const plan = planDemoBids(
+        lot.startingPrice,
+        lot.minIncrement,
+        position === 0 ? 2 : position
+      );
       for (const bid of plan) {
         await ctx.db.insert("bids", {
           lotId: lot._id,
@@ -289,7 +322,7 @@ export const seedLiveDemo = internalMutation({
         plan.length,
         true
       );
-      await addDemoWatchers(ctx, lot._id, 1 + (position % 4));
+      await addDemoWatchers(ctx, lot._id, Math.max(1, 6 - position));
       decorated++;
     }
     await ctx.scheduler.runAfter(

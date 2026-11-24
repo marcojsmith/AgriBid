@@ -71,6 +71,11 @@ describe("LotCard", () => {
     expect(screen.queryByText(/reserve/i)).toBeNull();
   });
 
+  it("shows no watching line when nobody watches", () => {
+    render(<LotCard lot={LOT} state="open" price={100_000} count={0} />);
+    expect(screen.queryByText(/watching/)).toBeNull();
+  });
+
   it("accepts an explicit reserve state and singular bid count", () => {
     render(
       <LotCard
