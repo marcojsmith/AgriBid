@@ -285,14 +285,30 @@ describe("outbid push", () => {
     await watch(t, ALICE, lotId);
     await bid(t, ALICE, lotId, 1000);
     // Carol's standing proxy (max R5 000) answers Bob's bid and wins.
-    await t.run((ctx) =>
-      ctx.db.insert("proxy_bids", {
+    await t.run(async (ctx) => {
+      const now = Date.now();
+      await ctx.db.insert("profiles", {
+        userId: "user_carol",
+        role: "buyer",
+        isVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("registrationDeposits", {
+        userId: "user_carol",
+        reference: "AB-CAROL",
+        status: "received",
+        amount: 5000,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("proxy_bids", {
         lotId,
         bidderId: "user_carol",
         maxBid: 5000,
-        updatedAt: Date.now(),
-      })
-    );
+        updatedAt: now,
+      });
+    });
     await bid(t, BOB, lotId, 1100);
     const lot = await t.run((ctx) => ctx.db.get("lots", lotId));
     expect(lot?.winnerId).toBe("user_carol");

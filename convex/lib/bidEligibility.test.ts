@@ -44,7 +44,7 @@ describe("computeBidEligibility", () => {
       computeBidEligibility({
         profile: { ...saDetails, isVerified: true },
         documents: [],
-        deposit: { status: "received" },
+        deposit: { status: "received", amount: 5000 },
         depositSetting: DEPOSIT_ON,
       })
     ).toEqual({ kind: "ok" });
@@ -79,7 +79,7 @@ describe("computeBidEligibility", () => {
         computeBidEligibility({
           profile: { isVerified: true },
           documents: [],
-          deposit: { status },
+          deposit: { status, amount: 5000 },
           depositSetting: DEPOSIT_ON,
         })
       ).toEqual({ kind: "deposit_due", amount: 5000 });
@@ -112,7 +112,10 @@ describe("computeBidEligibility", () => {
       depositReceived: false,
     });
     expect(
-      computeBidEligibility({ ...base, deposit: { status: "received" } })
+      computeBidEligibility({
+        ...base,
+        deposit: { status: "received", amount: 5000 },
+      })
     ).toEqual({ kind: "under_review", depositReceived: true });
   });
 

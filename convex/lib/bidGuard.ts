@@ -7,7 +7,7 @@ import { ConvexError } from "convex/values";
 
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { getDepositSetting } from "../admin/platformSettings";
+import { getDepositSetting, isDepositEnabled } from "../admin/platformSettings";
 import { requireProfile } from "./auth";
 import { computeBidEligibility, type BidEligibility } from "./bidEligibility";
 
@@ -16,7 +16,8 @@ const DOCUMENT_READ_CAP = 10;
 
 /**
  * Loads a user's registration documents and deposit and computes their bid
- * eligibility.
+ * eligibility. Verified users (the common case when bidding) take a short
+ * path: one setting read, plus the deposit row only when a deposit is on.
  *
  * @param ctx - Query or mutation context
  * @param profile - The user's profile
@@ -26,6 +27,17 @@ export async function getBidEligibility(
   ctx: QueryCtx,
   profile: Doc<"profiles">
 ): Promise<BidEligibility> {
+  if (profile.isVerified) {
+    if (!(await isDepositEnabled(ctx))) return { kind: "ok" };
+    const deposit = await ctx.db
+      .query("registrationDeposits")
+      .withIndex("by_userId", (q) => q.eq("userId", profile.userId))
+      .unique();
+    if (deposit?.status === "received") return { kind: "ok" };
+    const amount = deposit?.amount ?? (await getDepositSetting(ctx)).amount;
+    return { kind: "deposit_due", amount };
+  }
+
   const [documents, deposit, depositSetting] = await Promise.all([
     ctx.db
       .query("registrationDocuments")
@@ -38,6 +50,26 @@ export async function getBidEligibility(
     getDepositSetting(ctx),
   ]);
   return computeBidEligibility({ profile, documents, deposit, depositSetting });
+}
+
+/**
+ * Whether a user may bid right now, for checking other people (a standing
+ * proxy bid) rather than the caller.
+ *
+ * @param ctx - Query or mutation context
+ * @param userId - The user to check
+ * @returns True when the user has a profile and is eligible to bid
+ */
+export async function canUserBid(
+  ctx: QueryCtx,
+  userId: string
+): Promise<boolean> {
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  if (!profile) return false;
+  return (await getBidEligibility(ctx, profile)).kind === "ok";
 }
 
 /**

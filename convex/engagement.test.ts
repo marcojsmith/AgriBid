@@ -1124,6 +1124,23 @@ describe("valid-bid counter", () => {
    */
   async function placeBids(t: TestContext, lotId: Id<"lots">): Promise<void> {
     await t.run(async (ctx) => {
+      // A standing proxy only counts while its owner may bid.
+      const now = Date.now();
+      await ctx.db.insert("profiles", {
+        userId: "bidder_a",
+        role: "buyer",
+        isVerified: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("registrationDeposits", {
+        userId: "bidder_a",
+        reference: "AB-22222",
+        status: "received",
+        amount: 5000,
+        createdAt: now,
+        updatedAt: now,
+      });
       await handleNewBid(ctx, lotId, "bidder_a", 500, 1000);
       await handleNewBid(ctx, lotId, "bidder_b", 600);
     });

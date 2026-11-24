@@ -13,7 +13,10 @@ import * as guard from "../../lib/bidGuard";
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 
-vi.mock("../../lib/bidGuard", () => ({ requireCanBid: vi.fn() }));
+vi.mock("../../lib/bidGuard", () => ({
+  requireCanBid: vi.fn(),
+  canUserBid: vi.fn().mockResolvedValue(true),
+}));
 
 vi.mock("../../lib/auth", () => {
   class UnauthorizedError extends Error {
@@ -83,6 +86,7 @@ describe("Bidding Coverage", () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(guard.canUserBid).mockResolvedValue(true);
     mockCtx = {
       db: {
         get: vi.fn(),

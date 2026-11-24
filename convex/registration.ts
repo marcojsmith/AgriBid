@@ -386,6 +386,15 @@ export const saveMyDetails = mutation({
         "Your details are locked once your documents are approved. Contact support to change them."
       );
     }
+    // While the review is open (submitted, nothing rejected) the reviewer is
+    // looking at these details, so they cannot move underneath them.
+    const reviewRows = await loadDocuments(ctx, userId);
+    if (
+      profile.registrationSubmittedAt !== undefined &&
+      !reviewRows.some((doc) => doc.status === "rejected")
+    ) {
+      throw new ConvexError("Your details are under review.");
+    }
 
     const [encName, encPhone, encId, encPassport, encStreet, encTown, encPost] =
       await Promise.all([
@@ -453,7 +462,6 @@ export const attachMyDocument = mutation({
     kind: docKindValidator,
     storageId: v.id("_storage"),
     fileName: v.string(),
-    fileSize: v.number(),
   },
   returns: v.object({ documentId: v.id("registrationDocuments") }),
   handler: async (ctx, args) => {
@@ -485,15 +493,16 @@ export const attachMyDocument = mutation({
     );
 
     const now = Date.now();
-    const mine = await loadDocuments(ctx, userId);
-    if (
-      mine.some(
-        (doc) => doc.storageId === args.storageId && doc.kind !== args.kind
-      )
-    ) {
-      throw new ConvexError(
-        "That file is already attached to another document."
-      );
+    // A file can back one document only, across all users: a caller can never
+    // attach, read or (by replacing) delete a file someone else already holds.
+    // Lot images and profile documents have no storage-id index, so they rely
+    // on the freshness check above instead.
+    const claimed = await ctx.db
+      .query("registrationDocuments")
+      .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
+      .first();
+    if (claimed) {
+      throw new ConvexError("That file is already attached to a document.");
     }
     const existing = await ctx.db
       .query("registrationDocuments")

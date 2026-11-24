@@ -116,7 +116,6 @@ async function attach(
     kind,
     storageId,
     fileName: `${kind}.jpg`,
-    fileSize: 10,
   });
   return { storageId, ...result };
 }
@@ -304,8 +303,20 @@ describe("saveMyDetails", () => {
     const front = await attach(t, "id_front");
     const back = await attach(t, "id_back");
     const proof = await attach(t, "proof_of_address");
-    await asBuyer(t).mutation(api.registration.submitMyDocuments, {});
-    expect((await profile(t))?.kycStatus).toBe("pending");
+    // A legacy pending KYC (no registration submission), so edits stay open.
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", BUYER))
+        .unique();
+      if (row)
+        await ctx.db.patch("profiles", row._id, { kycStatus: "pending" });
+      const counter = await ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "profiles"))
+        .unique();
+      if (counter) await ctx.db.patch("counters", counter._id, { pending: 1 });
+    });
 
     await asBuyer(t).mutation(api.registration.saveMyDetails, passportDetails);
 
@@ -378,7 +389,6 @@ describe("attachMyDocument", () => {
         kind: "id_front",
         storageId,
         fileName: "a.pdf",
-        fileSize: 10,
       })
     ).rejects.toThrow("Save your details");
   });
@@ -403,7 +413,6 @@ describe("attachMyDocument", () => {
         kind: "id_front",
         storageId,
         fileName: "a.txt",
-        fileSize: 10,
       })
     ).rejects.toThrow("JPG, PNG");
   });
@@ -418,7 +427,6 @@ describe("attachMyDocument", () => {
         kind: "id_front",
         storageId: svg,
         fileName: "a.svg",
-        fileSize: 10,
       })
     ).rejects.toThrow("JPG, PNG");
 
@@ -428,7 +436,6 @@ describe("attachMyDocument", () => {
         kind: "id_back",
         storageId: first.storageId,
         fileName: "again.jpg",
-        fileSize: 10,
       })
     ).rejects.toThrow("already attached");
 
@@ -441,7 +448,6 @@ describe("attachMyDocument", () => {
           kind: "id_back",
           storageId: stale,
           fileName: "old.png",
-          fileSize: 10,
         })
       ).rejects.toThrow("expired");
     } finally {
@@ -463,7 +469,6 @@ describe("attachMyDocument", () => {
         kind: "id_front",
         storageId,
         fileName: "big.pdf",
-        fileSize: MAX_REG_DOC_BYTES + 1,
       })
     ).rejects.toThrow("10 MB");
   });
@@ -478,7 +483,6 @@ describe("attachMyDocument", () => {
         kind: "passport_photo",
         storageId,
         fileName: "p.png",
-        fileSize: 10,
       })
     ).rejects.toThrow("isn't needed");
   });
@@ -699,5 +703,200 @@ describe("deposit", () => {
       ctx.db.query("registrationDeposits").first()
     );
     expect(row?.status).toBe("received");
+  });
+});
+
+/**
+ * Reads the profiles counter row.
+ *
+ * @param t - Test context
+ * @returns The counter row
+ */
+async function counters(t: Ctx) {
+  return await t.run((ctx) =>
+    ctx.db
+      .query("counters")
+      .withIndex("by_name", (q) => q.eq("name", "profiles"))
+      .unique()
+  );
+}
+
+/**
+ * Saves SA ID details and uploads and submits all three documents.
+ *
+ * @param t - Test context
+ * @returns The three stored documents
+ */
+async function submitAll(t: Ctx) {
+  await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
+  const front = await attach(t, "id_front");
+  const back = await attach(t, "id_back");
+  const proof = await attach(t, "proof_of_address");
+  await asBuyer(t).mutation(api.registration.submitMyDocuments, {});
+  return { front, back, proof };
+}
+
+describe("storage ownership", () => {
+  it("refuses another user's storage id and never deletes their file", async () => {
+    const t = makeContext();
+    await seed(t);
+    const other = t.withIdentity({ subject: OTHER });
+    await other.mutation(api.registration.saveMyDetails, saDetails);
+    const storageId = await storeFile(t, "image/png");
+    await other.mutation(api.registration.attachMyDocument, {
+      kind: "id_front",
+      storageId,
+      fileName: "theirs.png",
+    });
+
+    await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
+    await expect(
+      asBuyer(t).mutation(api.registration.attachMyDocument, {
+        kind: "id_front",
+        storageId,
+        fileName: "stolen.png",
+      })
+    ).rejects.toThrow("already attached");
+
+    // The buyer replacing their own document cannot touch it either.
+    await attach(t, "id_front");
+    await attach(t, "id_front");
+    expect(await fileExists(t, storageId)).toBe(true);
+    const reg = await other.query(api.registration.getMyRegistration, {});
+    expect(reg?.documents).toHaveLength(1);
+  });
+});
+
+describe("details while under review", () => {
+  it("locks details while pending and reopens them when a document is rejected", async () => {
+    const t = makeContext();
+    await seed(t);
+    const { front } = await submitAll(t);
+
+    await expect(
+      asBuyer(t).mutation(api.registration.saveMyDetails, {
+        ...saDetails,
+        town: "Paarl",
+      })
+    ).rejects.toThrow("Your details are under review.");
+
+    await t.run((ctx) =>
+      ctx.db.patch("registrationDocuments", front.documentId, {
+        status: "rejected",
+        rejectionReason: "Blurry",
+      })
+    );
+    await asBuyer(t).mutation(api.registration.saveMyDetails, {
+      ...saDetails,
+      town: "Paarl",
+    });
+    const reg = await asBuyer(t).query(api.registration.getMyRegistration, {});
+    expect(reg?.details.town).toBe("Paarl");
+  });
+});
+
+describe("registration counters", () => {
+  it("counts a replacement after a rejection as pending again", async () => {
+    const t = makeContext();
+    await seed(t);
+    const { front } = await submitAll(t);
+    expect((await counters(t))?.pending).toBe(1);
+
+    // An admin rejects the document (the review UI lands in R4).
+    await t.run(async (ctx) => {
+      await ctx.db.patch("registrationDocuments", front.documentId, {
+        status: "rejected",
+        rejectionReason: "Blurry",
+      });
+      const row = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", BUYER))
+        .unique();
+      if (row) {
+        await ctx.db.patch("profiles", row._id, { kycStatus: "rejected" });
+      }
+      const counter = await ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "profiles"))
+        .unique();
+      if (counter) await ctx.db.patch("counters", counter._id, { pending: 0 });
+    });
+
+    await attach(t, "id_front");
+    expect((await profile(t))?.kycStatus).toBe("pending");
+    expect((await counters(t))?.pending).toBe(1);
+  });
+
+  it("takes a verified buyer back to pending when they replace an approved document", async () => {
+    const t = makeContext();
+    await seed(t);
+    const { front, back, proof } = await submitAll(t);
+    await t.run(async (ctx) => {
+      for (const doc of [front, back, proof]) {
+        await ctx.db.patch("registrationDocuments", doc.documentId, {
+          status: "approved",
+        });
+      }
+      const row = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", BUYER))
+        .unique();
+      if (row) {
+        await ctx.db.patch("profiles", row._id, {
+          kycStatus: "verified",
+          isVerified: true,
+        });
+      }
+      const counter = await ctx.db
+        .query("counters")
+        .withIndex("by_name", (q) => q.eq("name", "profiles"))
+        .unique();
+      if (counter) {
+        await ctx.db.patch("counters", counter._id, {
+          pending: 0,
+          verified: 1,
+        });
+      }
+    });
+
+    await attach(t, "proof_of_address", "application/pdf");
+
+    const row = await profile(t);
+    expect(row?.isVerified).toBe(false);
+    expect(row?.kycStatus).toBe("pending");
+    const counter = await counters(t);
+    expect(counter?.verified).toBe(0);
+    expect(counter?.pending).toBe(1);
+  });
+});
+
+describe("every public function needs sign-in", () => {
+  it("throws Not authenticated when signed out", async () => {
+    const t = makeContext();
+    await seed(t);
+    const storageId = await storeFile(t);
+    const calls: Record<string, () => Promise<unknown>> = {
+      getMyRegistration: () => t.query(api.registration.getMyRegistration, {}),
+      getMyBidEligibility: () =>
+        t.query(api.registration.getMyBidEligibility, {}),
+      saveMyDetails: () =>
+        t.mutation(api.registration.saveMyDetails, saDetails),
+      generateDocumentUploadUrl: () =>
+        t.mutation(api.registration.generateDocumentUploadUrl, {}),
+      attachMyDocument: () =>
+        t.mutation(api.registration.attachMyDocument, {
+          kind: "id_front",
+          storageId,
+          fileName: "a.pdf",
+        }),
+      submitMyDocuments: () =>
+        t.mutation(api.registration.submitMyDocuments, {}),
+      startMyDeposit: () => t.mutation(api.registration.startMyDeposit, {}),
+      claimMyDepositPaid: () =>
+        t.mutation(api.registration.claimMyDepositPaid, {}),
+    };
+    for (const [name, call] of Object.entries(calls)) {
+      await expect(call(), name).rejects.toThrow("Not authenticated");
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { mutation, query } from "../_generated/server";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -180,6 +180,20 @@ export async function getBuyerPremiumPct(ctx: QueryCtx): Promise<number> {
     0,
     100,
     false
+  );
+}
+
+/**
+ * Whether the registration deposit is required (one setting read).
+ *
+ * @param ctx - Query or mutation context
+ * @returns True when a deposit is required (default on)
+ */
+export async function isDepositEnabled(ctx: QueryCtx): Promise<boolean> {
+  return await readBoolean(
+    ctx,
+    KEYS.depositEnabled,
+    constants.DEFAULT_DEPOSIT_ENABLED
   );
 }
 
@@ -629,10 +643,10 @@ export const updateDepositBankDetails = mutation({
     const accountNumber = args.accountNumber.trim();
     const branchCode = args.branchCode.trim();
     if (accountNumber !== "" && !ACCOUNT_NUMBER_PATTERN.test(accountNumber)) {
-      throw new Error("Account number must be 6 to 16 digits");
+      throw new ConvexError("Account number must be 6 to 16 digits");
     }
     if (branchCode !== "" && !BRANCH_CODE_PATTERN.test(branchCode)) {
-      throw new Error("Branch code must be 6 digits");
+      throw new ConvexError("Branch code must be 6 digits");
     }
     await saveSettings(
       ctx,

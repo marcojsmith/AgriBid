@@ -4,7 +4,7 @@ import { convexTest } from "convex-test";
 
 import schema from "../schema";
 import type { Doc } from "../_generated/dataModel";
-import { getBidEligibility, requireCanBid } from "./bidGuard";
+import { canUserBid, getBidEligibility, requireCanBid } from "./bidGuard";
 
 const globbedModules = import.meta.glob("../**/*.*s");
 const modules: Record<string, () => Promise<unknown>> = Object.fromEntries(
@@ -151,5 +151,39 @@ describe("getBidEligibility", () => {
       return await getBidEligibility(ctx, profile);
     });
     expect(result).toEqual({ kind: "deposit_due", amount: 5000 });
+  });
+});
+
+describe("verified fast path", () => {
+  it("is ok when the deposit setting is off", async () => {
+    const t = makeContext();
+    await seed(t, { profile: { isVerified: true }, depositEnabled: false });
+    expect(await guard(t)).toMatchObject({ userId: USER });
+  });
+
+  it("asks for the deposit row's own amount when one exists", async () => {
+    const t = makeContext();
+    await seed(t, { profile: { isVerified: true }, deposit: "awaiting" });
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query("registrationDeposits").first();
+      if (row) {
+        await ctx.db.patch("registrationDeposits", row._id, { amount: 7500 });
+      }
+    });
+    const result = await t.run(async (ctx) => {
+      const profile = await ctx.db.query("profiles").first();
+      if (!profile) throw new Error("missing");
+      return await getBidEligibility(ctx, profile);
+    });
+    expect(result).toEqual({ kind: "deposit_due", amount: 7500 });
+  });
+});
+
+describe("canUserBid", () => {
+  it("is false without a profile and true for an eligible user", async () => {
+    const t = makeContext();
+    expect(await t.run((ctx) => canUserBid(ctx, USER))).toBe(false);
+    await seed(t, { profile: { isVerified: true }, deposit: "received" });
+    expect(await t.run((ctx) => canUserBid(ctx, USER))).toBe(true);
   });
 });

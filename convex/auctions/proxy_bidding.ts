@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 
 import { query } from "../_generated/server";
 import { getAuthUser } from "../lib/auth";
+import { canUserBid } from "../lib/bidGuard";
 import { adjustBidCount } from "../lib/lotCounters";
 import {
   SOFT_CLOSE_THRESHOLD_MS,
@@ -326,6 +327,21 @@ async function resolveProxyBids(
     if (b.maxBid !== a.maxBid) return b.maxBid - a.maxBid;
     return a._creationTime - b._creationTime;
   });
+
+  // A standing proxy only counts while its owner may still bid (documents
+  // approved, deposit received when required). Others are switched off.
+  const eligibleProxies: typeof sortedProxies = [];
+  for (const proxy of sortedProxies) {
+    if (
+      proxy.bidderId === bidderId ||
+      (await canUserBid(ctx, proxy.bidderId))
+    ) {
+      eligibleProxies.push(proxy);
+    } else {
+      await ctx.db.delete("proxy_bids", proxy._id);
+    }
+  }
+  sortedProxies.splice(0, sortedProxies.length, ...eligibleProxies);
 
   if (sortedProxies.length === 0) return null;
   const highestProxy = sortedProxies[0];

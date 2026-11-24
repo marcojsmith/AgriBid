@@ -96,7 +96,7 @@ export function hasAllDetails(profile: EligibilityProfile): boolean {
 export function computeBidEligibility(input: {
   profile: EligibilityProfile;
   documents: readonly EligibilityDocument[];
-  deposit: Pick<Doc<"registrationDeposits">, "status"> | null;
+  deposit: Pick<Doc<"registrationDeposits">, "status" | "amount"> | null;
   depositSetting: { enabled: boolean; amount: number };
 }): BidEligibility {
   const { profile, documents, deposit, depositSetting } = input;
@@ -105,7 +105,10 @@ export function computeBidEligibility(input: {
   if (profile.isVerified) {
     return !depositSetting.enabled || depositReceived
       ? { kind: "ok" }
-      : { kind: "deposit_due", amount: depositSetting.amount };
+      : {
+          kind: "deposit_due",
+          amount: deposit?.amount ?? depositSetting.amount,
+        };
   }
 
   const rejected = documents.filter((doc) => doc.status === "rejected").length;

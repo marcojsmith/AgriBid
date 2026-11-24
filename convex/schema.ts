@@ -368,6 +368,7 @@ export default defineSchema({
     reviewedBy: v.optional(v.string()),
   })
     .index("by_userId_and_kind", ["userId", "kind"])
+    .index("by_storageId", ["storageId"])
     .index("by_status_and_uploadedAt", ["status", "uploadedAt"]),
 
   // Registration deposit (manual EFT). One row per user; the reference is permanent.

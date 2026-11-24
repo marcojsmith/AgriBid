@@ -10,12 +10,15 @@ import {
   getMyProxyBid,
 } from "./proxy_bidding";
 import { getAuthUser } from "../lib/auth";
+import { canUserBid } from "../lib/bidGuard";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
 vi.mock("../lib/auth", () => ({
   getAuthUser: vi.fn(),
 }));
+
+vi.mock("../lib/bidGuard", () => ({ canUserBid: vi.fn() }));
 
 interface MockCtxType {
   db: {
@@ -78,6 +81,7 @@ describe("Proxy Bidding Coverage", () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(canUserBid).mockResolvedValue(true);
     mockCtx = {
       db: {
         get: vi.fn(),
