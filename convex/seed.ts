@@ -282,6 +282,19 @@ async function deleteProfileWithKYCStorage(
   for (const documentId of profile.kycDocuments ?? []) {
     await safeDelete(ctx, documentId, "kyc document");
   }
+  const registrationDocs = await ctx.db
+    .query("registrationDocuments")
+    .withIndex("by_userId_and_kind", (q) => q.eq("userId", profile.userId))
+    .take(10);
+  for (const doc of registrationDocs) {
+    await safeDelete(ctx, doc.storageId, "registration document");
+    await ctx.db.delete("registrationDocuments", doc._id);
+  }
+  const deposit = await ctx.db
+    .query("registrationDeposits")
+    .withIndex("by_userId", (q) => q.eq("userId", profile.userId))
+    .unique();
+  if (deposit) await ctx.db.delete("registrationDeposits", deposit._id);
   await ctx.db.delete("profiles", profile._id);
 }
 

@@ -359,3 +359,87 @@ describe("getLotNeighbours", () => {
     ).toEqual({ prev: null, next: null });
   });
 });
+
+describe("getLotHeadline", () => {
+  /**
+   * Inserts a sale in the given status.
+   *
+   * @param t - Test context
+   * @param status - Sale status
+   * @returns The sale id
+   */
+  async function insertSale(
+    t: TestContext,
+    status: "draft" | "published"
+  ): Promise<Id<"auctions">> {
+    return await t.run((ctx) =>
+      ctx.db.insert("auctions", {
+        title: "Sale",
+        status,
+        startTime: 1,
+        endTime: 9_999_999_999_999,
+        createdBy: SELLER,
+        createdAt: 1,
+        updatedAt: 1,
+      })
+    );
+  }
+
+  it("returns the number, title and close time of a public lot", async () => {
+    const t = createTestContext();
+    const lotId = await insertLot(t);
+    const auctionId = await insertSale(t, "published");
+    await t.run((ctx) =>
+      ctx.db.patch("lots", lotId, { auctionId, lotNumber: 3 })
+    );
+    expect(await t.query(api.auctions.getLotHeadline, { lotId })).toEqual({
+      lotNumber: 3,
+      title: "Lot",
+      closesAt: 9_999_999_999_999,
+    });
+  });
+
+  it("prefers an anti-snipe extended end time", async () => {
+    const t = createTestContext();
+    const lotId = await insertLot(t);
+    const auctionId = await insertSale(t, "published");
+    await t.run((ctx) =>
+      ctx.db.patch("lots", lotId, { auctionId, extendedEndTime: 5_000 })
+    );
+    const result = await t.query(api.auctions.getLotHeadline, { lotId });
+    expect(result?.closesAt).toBe(5_000);
+  });
+
+  it("hides a lot in a draft sale", async () => {
+    const t = createTestContext();
+    const lotId = await insertLot(t);
+    const auctionId = await insertSale(t, "draft");
+    await t.run((ctx) => ctx.db.patch("lots", lotId, { auctionId }));
+    expect(await t.query(api.auctions.getLotHeadline, { lotId })).toBeNull();
+  });
+
+  it("hides a lot hidden by flags", async () => {
+    const t = createTestContext();
+    const lotId = await insertLot(t);
+    const auctionId = await insertSale(t, "published");
+    await t.run((ctx) =>
+      ctx.db.patch("lots", lotId, { auctionId, hiddenByFlags: true })
+    );
+    expect(await t.query(api.auctions.getLotHeadline, { lotId })).toBeNull();
+  });
+
+  it("hides draft lots and lots outside a sale", async () => {
+    const t = createTestContext();
+    const draft = await insertLot(t, { status: "draft" });
+    const auctionId = await insertSale(t, "published");
+    await t.run((ctx) => ctx.db.patch("lots", draft, { auctionId }));
+    expect(
+      await t.query(api.auctions.getLotHeadline, { lotId: draft })
+    ).toBeNull();
+
+    const loose = await insertLot(t);
+    expect(
+      await t.query(api.auctions.getLotHeadline, { lotId: loose })
+    ).toBeNull();
+  });
+});

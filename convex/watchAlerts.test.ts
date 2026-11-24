@@ -64,6 +64,15 @@ async function seed(t: Ctx, endsInMs = 30 * MINUTE) {
         createdAt: now,
         updatedAt: now,
       });
+      await ctx.db.insert("registrationDeposits", {
+        userId,
+        reference: `AB-${userId.slice(-5).toUpperCase()}`,
+        status: "received",
+        amount: 5000,
+        receivedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
     for (const userId of [ALICE, BOB]) {
       await ctx.db.insert("pushSubscriptions", {

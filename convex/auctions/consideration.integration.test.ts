@@ -64,6 +64,15 @@ async function seedWorld(t: TestContext) {
         createdAt: now,
         updatedAt: now,
       });
+      await ctx.db.insert("registrationDeposits", {
+        userId,
+        reference: `AB-${userId.slice(-5).toUpperCase()}`,
+        status: "received",
+        amount: 5000,
+        receivedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
     await ctx.db.insert("counters", {
       name: "lots",

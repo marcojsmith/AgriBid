@@ -14,7 +14,6 @@ import { convexTest } from "convex-test";
 
 import { api, internal } from "../_generated/api";
 import { SOFT_CLOSE_THRESHOLD_MS } from "../constants";
-import { VERIFIED_REQUIRED_MESSAGE } from "../lib/auth";
 import schema from "../schema";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -176,6 +175,16 @@ async function seedWorld(
         role: user.role,
         isVerified: user.isVerified,
         kycStatus: user.isVerified ? "verified" : "pending",
+        createdAt: seededAt,
+        updatedAt: seededAt,
+      });
+      // Deposit is on by default: verified users have paid, so they may bid.
+      await ctx.db.insert("registrationDeposits", {
+        userId: user.userId,
+        reference: `AB-${user.userId.slice(-5).toUpperCase()}`,
+        status: "received",
+        amount: 5000,
+        receivedAt: seededAt,
         createdAt: seededAt,
         updatedAt: seededAt,
       });
@@ -613,7 +622,9 @@ describe("bid placement (convex-test)", () => {
 
     await expect(
       placeBid(t, UNVERIFIED_BIDDER, lotId, LOT_PRICE)
-    ).rejects.toThrow(VERIFIED_REQUIRED_MESSAGE);
+    ).rejects.toThrow(
+      "Your documents are under review. You can bid once they're approved."
+    );
 
     expect(await readBids(t, lotId)).toHaveLength(0);
     const lot = await readLot(t, lotId);
@@ -1109,5 +1120,33 @@ describe("early closure by an admin (convex-test)", () => {
     const lot = await readLot(t, lotId);
     expect(lot.status).toBe("assigned");
     expect(await readLotFees(t, lotId)).toEqual([]);
+  });
+  it("blocks a verified bidder with no deposit when the deposit is on, and lets them bid when it is off", async () => {
+    const t = createTestContext();
+    const world = await seedWorld(t);
+    const lotId = await createLot(t, world);
+    // An existing verified buyer who never paid a deposit (no waiver).
+    await t.run(async (ctx) => {
+      const row = await ctx.db
+        .query("registrationDeposits")
+        .withIndex("by_userId", (q) => q.eq("userId", BIDDER_B))
+        .unique();
+      if (row) await ctx.db.delete("registrationDeposits", row._id);
+    });
+
+    await expect(placeBid(t, BIDDER_B, lotId, LOT_PRICE)).rejects.toThrow(
+      "Your deposit hasn't been received yet."
+    );
+    expect(await readBids(t, lotId)).toHaveLength(0);
+
+    await t.run((ctx) =>
+      ctx.db.insert("settings", {
+        key: "deposit_enabled",
+        value: false,
+        updatedAt: Date.now(),
+      })
+    );
+    await placeBid(t, BIDDER_B, lotId, LOT_PRICE);
+    expect(await readBids(t, lotId)).toHaveLength(1);
   });
 });
