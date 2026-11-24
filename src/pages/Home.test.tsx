@@ -398,7 +398,7 @@ describe("Home page", () => {
     fireEvent.click(screen.getByRole("button", { name: /Watch lot 3/ }));
     await waitFor(() => {
       expect(showToast).toHaveBeenCalledWith(
-        "Watching. We'll notify you 1 hour before close and if you're outbid."
+        "Watching. Find this lot in your watchlist."
       );
     });
     fireEvent.click(screen.getByRole("button", { name: /Watch lot 3/ }));

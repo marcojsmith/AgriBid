@@ -112,6 +112,29 @@ describe("EventHeader", () => {
     expect(onRemind).toHaveBeenCalled();
   });
 
+  it("shows Reminder set, pressed, once a reminder exists", () => {
+    const onRemind = vi.fn();
+    renderHeader({
+      sale: { ...live, bucket: "upcoming", startTime: NOW + 24 * HOUR },
+      onRemind,
+      reminded: true,
+    });
+    const button = screen.getByRole("button", { name: "Reminder set" });
+    expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "Remind me" })).toBeNull();
+    fireEvent.click(button);
+    expect(onRemind).toHaveBeenCalled();
+  });
+
+  it("disables Remind me while push is being set up", () => {
+    renderHeader({
+      sale: { ...live, bucket: "upcoming", startTime: NOW + 24 * HOUR },
+      onRemind: vi.fn(),
+      remindDisabled: true,
+    });
+    expect(screen.getByRole("button", { name: "Remind me" })).toBeDisabled();
+  });
+
   it("has no Remind me on an upcoming sale unless the feature is on", () => {
     renderHeader({
       sale: { ...live, bucket: "upcoming", startTime: NOW + 24 * HOUR },

@@ -17,6 +17,7 @@ export type CronJobKey =
   | "process_error_reports"
   | "purge_lot_viewers"
   | "refresh_engagement_scores"
+  | "send_sale_reminders"
   | "weekly_mock_data_reset";
 
 /** Static description of a toggleable background job. */
@@ -91,6 +92,14 @@ export const CRON_JOBS: readonly CronJobDefinition[] = [
     description:
       "Recomputes the most-engaged-lot ranking (bids, watchers, views) for live auctions.",
     schedule: "Every 5 minutes",
+    defaultEnabled: true,
+  },
+  {
+    key: "send_sale_reminders",
+    label: "Send sale reminders",
+    description:
+      "Sends the push notification to everyone who tapped Remind me when a sale opens. Also requires Push reminders to be switched on in Admin settings.",
+    schedule: "Every 1 minute",
     defaultEnabled: true,
   },
   {

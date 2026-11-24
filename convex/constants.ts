@@ -299,3 +299,8 @@ export const TRANSPORT_QUOTE_MAX_NAME_LENGTH = 80;
 export const TRANSPORT_QUOTE_MAX_TOWN_LENGTH = 80;
 export const TRANSPORT_QUOTE_MAX_PICKUP_LENGTH = 120;
 export const TRANSPORT_QUOTE_MAX_NOTES_LENGTH = 500;
+
+/** Sale-open reminders sent per cron run; a full batch reschedules the cron. */
+export const SALE_REMINDER_BATCH = 100;
+/** A sale that opened longer ago than this no longer sends its reminders. */
+export const SALE_REMINDER_STALE_MS = 6 * 3_600_000;

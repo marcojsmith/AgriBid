@@ -61,7 +61,7 @@ Decision record: ADR [0016](../decisions/0016-self-hosted-convex-prod.md).
   - HTTP actions: `https://agribid-convex.duckdns.org:8443`, proxied to `127.0.0.1:3231`.
   - Dashboard: `http://localhost:6792`, local only.
 - **Vercel production env:** `CONVEX_SELF_HOSTED_URL`, `CONVEX_SELF_HOSTED_ADMIN_KEY` (sensitive), `VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL`, `VITE_CLERK_PUBLISHABLE_KEY`. The build log masks the deploy target as `[REDACTED]`; confirm a deploy with `docker logs agribid-local-backend-1 | grep finish_push`.
-- **Backend env:** `CLERK_JWT_ISSUER_DOMAIN`, `PII_ENCRYPTION_KEY` (the same key Cloud prod used), `ALLOWED_ORIGINS` (production aliases), `SEED_SECRET`, `BETTER_AUTH_SECRET` (legacy).
+- **Backend env:** `CLERK_JWT_ISSUER_DOMAIN`, `PII_ENCRYPTION_KEY` (the same key Cloud prod used), `ALLOWED_ORIGINS` (production aliases), `SEED_SECRET`, `BETTER_AUTH_SECRET` (legacy), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (sensitive) and `VAPID_SUBJECT` (`https://agribid-iota.vercel.app`) for Remind me web push (`bunx web-push generate-vapid-keys --json`; unset means no pushes are sent).
 - **Ops:**
   - Run one-off functions from a checkout without `.env.local`, with `CONVEX_SELF_HOSTED_URL=http://127.0.0.1:3230` and `CONVEX_SELF_HOSTED_ADMIN_KEY` set.
   - After changing nginx config, restart it with `Restart-Service nginx` from an elevated shell. `nginx -s reload` is denied because nginx runs as a LocalSystem service.

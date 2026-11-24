@@ -20,6 +20,7 @@ vi.mock("./_generated/api", () => ({
       sweepOrphanedUploads: "sweepOrphanedUploads",
       purgeLotViewers: "purgeLotViewers",
       refreshEngagementScores: "refreshEngagementScores",
+      sendSaleReminders: "sendSaleReminders",
     },
   },
 }));
@@ -76,6 +77,13 @@ describe("Crons Coverage", () => {
       "refresh engagement scores",
       { minutes: 5 },
       "refreshEngagementScores"
+    );
+
+    expect(crons.interval).toHaveBeenCalledWith(
+      "send sale reminders",
+      { minutes: 1 },
+      "sendSaleReminders",
+      {}
     );
   });
 });

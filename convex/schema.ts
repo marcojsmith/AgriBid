@@ -686,4 +686,29 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_github_issue", ["githubIssueNumber"])
     .index("by_createdAt", ["createdAt"]),
+
+  // Web push endpoints of a user's browsers/devices (one row per endpoint).
+  pushSubscriptions: defineTable({
+    userId: v.string(),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_endpoint", ["endpoint"]),
+
+  // "Remind me" requests for upcoming sales; sent once when the sale opens.
+  saleReminders: defineTable({
+    userId: v.string(),
+    auctionId: v.id("auctions"),
+    status: v.union(v.literal("pending"), v.literal("sent")),
+    // Copy of the sale's startTime so the cron can find due reminders by index.
+    startTime: v.number(),
+    createdAt: v.number(),
+    sentAt: v.optional(v.number()),
+  })
+    .index("by_userId_and_auctionId", ["userId", "auctionId"])
+    .index("by_status_and_startTime", ["status", "startTime"])
+    .index("by_auctionId_and_status", ["auctionId", "status"]),
 });

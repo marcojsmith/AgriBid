@@ -3,9 +3,8 @@ export type ReminderPermission = "granted" | "denied" | "unsupported";
 
 /**
  * Asks the browser for notification permission after the visitor said Allow in
- * our own prompt. This is the seam D9 (web push) extends: it will also create
- * the push subscription and store it for the sale. Until then permission is
- * all that is recorded.
+ * our own prompt. It only handles permission; `usePushReminders` then creates
+ * the push subscription (`src/lib/push.ts`) and stores it with the reminder.
  *
  * @returns `granted`, `denied`, or `unsupported` when the browser has no Notification API
  */

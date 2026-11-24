@@ -30,7 +30,7 @@ import { useNow } from "@/hooks/useNow";
 import { useScrolledPast } from "@/hooks/useScrolledPast";
 import { useTransportQuote } from "@/hooks/useTransportQuote";
 import { lotTitle, lotTitleWithYear } from "@/lib/lotTitle";
-import { WATCHING_MESSAGE } from "@/lib/auctionRules";
+import { WATCHING_SAVED_MESSAGE } from "@/lib/auctionRules";
 import { formatClosesIn } from "@/lib/countdown";
 import { URGENT_MS } from "@/lib/auction-badges";
 import { formatSastDate } from "@/lib/dates";
@@ -195,7 +195,7 @@ export default function Home() {
       const watching = await toggleWatchlist({
         lotId: lotId as Id<"lots">,
       });
-      if (watching) showToast(WATCHING_MESSAGE);
+      if (watching) showToast(WATCHING_SAVED_MESSAGE);
       else toast.success("Removed from watchlist");
     } catch {
       toast.error("Failed to update watchlist");
