@@ -10,6 +10,35 @@ import { browserNeedsHomeScreenInstall } from "@/lib/homeScreen";
 import { pushSupported } from "@/lib/push";
 import { requestReminderPermission } from "@/lib/reminders";
 
+/** localStorage key remembering when the visitor last said "Not now". */
+const DISMISSED_KEY = "agribid.watchAlertsPromptDismissedAt";
+/** How long a "Not now" keeps the prompt away. */
+const DISMISS_MS = 30 * 24 * 3_600_000;
+
+/**
+ * Whether the visitor dismissed the prompt within the last 30 days. Storage can
+ * be blocked or empty, in which case the prompt is simply allowed.
+ *
+ * @returns True while a recent "Not now" is remembered
+ */
+function recentlyDismissed(): boolean {
+  try {
+    const at = Number(localStorage.getItem(DISMISSED_KEY));
+    return Number.isFinite(at) && at > 0 && Date.now() - at < DISMISS_MS;
+  } catch {
+    return false;
+  }
+}
+
+/** Remembers a "Not now" (best effort). */
+function rememberDismissal(): void {
+  try {
+    localStorage.setItem(DISMISSED_KEY, String(Date.now()));
+  } catch {
+    // Storage blocked: the prompt may return next time, which is harmless.
+  }
+}
+
 /** Props for the `PermissionPrompt` the page renders. */
 export interface WatchAlertsPromptProps {
   open: boolean;
@@ -46,9 +75,22 @@ export function useWatchAlerts(): WatchAlerts {
   const hasSubscription =
     useQuery(api.push.hasMySubscription, isAuthenticated ? {} : "skip") ??
     false;
+  const prefs = useQuery(
+    api.userPreferences.getMyPreferences,
+    isAuthenticated ? {} : "skip"
+  );
   const saveSubscription = useMutation(api.push.saveSubscription);
   const [promptOpen, setPromptOpen] = useState(false);
   const enabled = settings?.watchAlertsEnabled === true;
+  // The user's own Settings -> Notifications: outbid alerts are on unless
+  // switched off, the 1-hour alert only when the ending setting is unset or 1h.
+  // No saved row means the defaults (both on). Promise alerts if either is on.
+  const ending = prefs?.notificationsWatchlistEnding;
+  const wantsAlerts =
+    prefs?.notificationsBidOutbid !== false ||
+    ending === undefined ||
+    ending === "1h";
+  const promise = wantsAlerts ? WATCHING_MESSAGE : WATCHING_SAVED_MESSAGE;
 
   /** Subscribes and saves; false when the browser or server refused. */
   const subscribe = useCallback(async (): Promise<boolean> => {
@@ -63,7 +105,7 @@ export function useWatchAlerts(): WatchAlerts {
 
   const afterWatch = useCallback(async (): Promise<string> => {
     if (!enabled) return WATCHING_SAVED_MESSAGE;
-    if (hasSubscription) return WATCHING_MESSAGE;
+    if (hasSubscription) return promise;
     if (
       !pushSupported() ||
       browserNeedsHomeScreenInstall() ||
@@ -72,27 +114,32 @@ export function useWatchAlerts(): WatchAlerts {
       return WATCHING_SAVED_MESSAGE;
     }
     if (Notification.permission === "granted") {
-      return (await subscribe()) ? WATCHING_MESSAGE : WATCHING_SAVED_MESSAGE;
+      return (await subscribe()) ? promise : WATCHING_SAVED_MESSAGE;
     }
-    if (Notification.permission === "default") setPromptOpen(true);
+    if (Notification.permission === "default" && !recentlyDismissed()) {
+      setPromptOpen(true);
+    }
     return WATCHING_SAVED_MESSAGE;
-  }, [enabled, hasSubscription, vapidKey, subscribe]);
+  }, [enabled, hasSubscription, vapidKey, subscribe, promise]);
 
   const onAllow = useCallback(() => {
     setPromptOpen(false);
     void (async () => {
       const permission = await requestReminderPermission();
       if (permission !== "granted") return;
-      if (await subscribe()) showToast(WATCHING_MESSAGE);
+      if (await subscribe()) showToast(promise);
       else toast.error("Couldn't turn on alerts. Try again.");
     })();
-  }, [subscribe]);
+  }, [subscribe, promise]);
 
   return {
     afterWatch,
     promptProps: {
       open: promptOpen,
-      onOpenChange: setPromptOpen,
+      onOpenChange: (open) => {
+        setPromptOpen(open);
+        if (!open) rememberDismissal();
+      },
       onAllow,
       description: "Get an alert 1 hour before close and if you're outbid?",
       allowLabel: "Allow alerts",

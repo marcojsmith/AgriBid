@@ -8,6 +8,7 @@ interface HookMocks {
   settings: { watchAlertsEnabled: boolean } | undefined;
   vapid: string | null | undefined;
   hasSubscription: boolean;
+  prefs: Record<string, unknown> | null;
   supported: boolean;
   needsInstall: boolean;
   permission: string;
@@ -23,6 +24,7 @@ const m = vi.hoisted((): HookMocks => ({
   settings: { watchAlertsEnabled: true },
   vapid: "vapid-key",
   hasSubscription: false,
+  prefs: null,
   supported: true,
   needsInstall: false,
   permission: "default",
@@ -39,6 +41,7 @@ vi.mock("convex/react", () => ({
     if (args === "skip") return undefined;
     if (ref.name === "getPlatformSettings") return m.settings;
     if (ref.name === "hasMySubscription") return m.hasSubscription;
+    if (ref.name === "getMyPreferences") return m.prefs;
     return m.vapid;
   },
   useMutation: () => m.save,
@@ -50,6 +53,7 @@ vi.mock("convex/_generated/api", () => ({
         getPlatformSettings: { name: "getPlatformSettings" },
       },
     },
+    userPreferences: { getMyPreferences: { name: "getMyPreferences" } },
     push: {
       getVapidPublicKey: { name: "getVapidPublicKey" },
       hasMySubscription: { name: "hasMySubscription" },
@@ -79,6 +83,8 @@ describe("useWatchAlerts", () => {
     m.settings = { watchAlertsEnabled: true };
     m.vapid = "vapid-key";
     m.hasSubscription = false;
+    m.prefs = null;
+    localStorage.clear();
     m.supported = true;
     m.needsInstall = false;
     m.permission = "default";
@@ -165,6 +171,95 @@ describe("useWatchAlerts", () => {
       result.current.promptProps.onOpenChange(false);
     });
     expect(result.current.promptProps.open).toBe(false);
+  });
+
+  it("remembers Not now for 30 days and then asks again", async () => {
+    const first = renderHook(() => useWatchAlerts());
+    await act(async () => {
+      await first.result.current.afterWatch();
+    });
+    expect(first.result.current.promptProps.open).toBe(true);
+    act(() => {
+      first.result.current.promptProps.onOpenChange(false);
+    });
+    expect(
+      localStorage.getItem("agribid.watchAlertsPromptDismissedAt")
+    ).not.toBe(null);
+
+    const again = renderHook(() => useWatchAlerts());
+    await act(async () => {
+      expect(await again.result.current.afterWatch()).toBe(
+        WATCHING_SAVED_MESSAGE
+      );
+    });
+    expect(again.result.current.promptProps.open).toBe(false);
+
+    localStorage.setItem(
+      "agribid.watchAlertsPromptDismissedAt",
+      String(Date.now() - 31 * 24 * 3_600_000)
+    );
+    const later = renderHook(() => useWatchAlerts());
+    await act(async () => {
+      await later.result.current.afterWatch();
+    });
+    expect(later.result.current.promptProps.open).toBe(true);
+  });
+
+  it("still asks when storage is blocked", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    const { result } = renderHook(() => useWatchAlerts());
+    await act(async () => {
+      await result.current.afterWatch();
+    });
+    expect(result.current.promptProps.open).toBe(true);
+    act(() => {
+      result.current.promptProps.onOpenChange(false);
+    });
+    expect(result.current.promptProps.open).toBe(false);
+    vi.restoreAllMocks();
+  });
+
+  it("keeps the saved copy when the user switched both alerts off", async () => {
+    m.hasSubscription = true;
+    m.prefs = {
+      notificationsBidOutbid: false,
+      notificationsWatchlistEnding: "disabled",
+    };
+    const off = renderHook(() => useWatchAlerts());
+    expect(await off.result.current.afterWatch()).toBe(WATCHING_SAVED_MESSAGE);
+
+    // Either one still on keeps the promise.
+    m.prefs = {
+      notificationsBidOutbid: false,
+      notificationsWatchlistEnding: "1h",
+    };
+    const closing = renderHook(() => useWatchAlerts());
+    expect(await closing.result.current.afterWatch()).toBe(WATCHING_MESSAGE);
+    m.prefs = {
+      notificationsBidOutbid: true,
+      notificationsWatchlistEnding: "24h",
+    };
+    const outbid = renderHook(() => useWatchAlerts());
+    expect(await outbid.result.current.afterWatch()).toBe(WATCHING_MESSAGE);
+  });
+
+  it("does not promise after Allow when both alerts are off", async () => {
+    m.prefs = {
+      notificationsBidOutbid: false,
+      notificationsWatchlistEnding: "disabled",
+    };
+    const { result } = renderHook(() => useWatchAlerts());
+    act(() => {
+      result.current.promptProps.onAllow();
+    });
+    await waitFor(() => {
+      expect(m.showToast).toHaveBeenCalledWith(WATCHING_SAVED_MESSAGE);
+    });
   });
 
   it("subscribes and confirms after Allow", async () => {

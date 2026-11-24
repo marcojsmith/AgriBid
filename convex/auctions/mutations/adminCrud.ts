@@ -1,6 +1,7 @@
 import { v, ConvexError, type Infer } from "convex/values";
 
 import { mutation } from "../../_generated/server";
+import { CLOSING_SOON_WINDOW_MS } from "../../constants";
 import { requireAdmin, resolveUserId } from "../../lib/auth";
 import { deleteAuctionEngagementScores } from "../../lib/lotCounters";
 import { findWinningBid, settleLot } from "../internal";
@@ -135,6 +136,23 @@ export const updateAuctionHandler = async (
         throw new ConvexError(
           "Auction endTime cannot shorten below an assigned lot's extended end time"
         );
+      }
+    }
+  }
+
+  // A later close makes an alert already sent stale: re-arm it once the sale
+  // is more than an hour from closing again (earlier closes keep it as is).
+  if (
+    args.endTime !== undefined &&
+    args.endTime > auction.endTime &&
+    args.endTime - Date.now() > CLOSING_SOON_WINDOW_MS
+  ) {
+    for (const lot of assignedLots) {
+      if (lot.closingSoonNotifiedAt !== undefined) {
+        await ctx.db.patch("lots", lot._id, {
+          closingSoonNotifiedAt: undefined,
+          closingSoonCursor: undefined,
+        });
       }
     }
   }

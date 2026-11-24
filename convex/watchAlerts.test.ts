@@ -269,6 +269,30 @@ describe("outbid push", () => {
     expect(await scheduled(t)).toHaveLength(0);
   });
 
+  it("alerts the previous leader when a third bidder's proxy takes the lead", async () => {
+    const t = makeContext();
+    await setAlerts(t, true);
+    const { lotId } = await seed(t);
+    await watch(t, ALICE, lotId);
+    await bid(t, ALICE, lotId, 1000);
+    // Carol's standing proxy (max R5 000) answers Bob's bid and wins.
+    await t.run((ctx) =>
+      ctx.db.insert("proxy_bids", {
+        lotId,
+        bidderId: "user_carol",
+        maxBid: 5000,
+        updatedAt: Date.now(),
+      })
+    );
+    await bid(t, BOB, lotId, 1100);
+    const lot = await t.run((ctx) => ctx.db.get("lots", lotId));
+    expect(lot?.winnerId).toBe("user_carol");
+    const notes = await t.run((ctx) => ctx.db.query("notifications").collect());
+    expect(notes).toHaveLength(1);
+    expect(notes[0].recipientId).toBe(ALICE);
+    expect(notes[0].message).toContain(`R${NBSP}1${NBSP}200`);
+  });
+
   it("does not alert when a proxy bid keeps the previous leader on top", async () => {
     const t = makeContext();
     await setAlerts(t, true);
@@ -478,7 +502,7 @@ describe("closing-soon alerts", () => {
 
     const first = await t.mutation(internal.cronJobs.sendClosingSoonAlerts, {});
     expect(first).toEqual({
-      notified: CLOSING_SOON_MAX_NOTIFICATIONS - 50,
+      notified: CLOSING_SOON_MAX_NOTIFICATIONS,
       hasMore: true,
     });
     const rescheduled = (await scheduled(t)).filter((s) =>
@@ -491,9 +515,131 @@ describe("closing-soon alerts", () => {
       {}
     );
     expect(second).toEqual({
-      notified: CLOSING_SOON_MAX_NOTIFICATIONS - 50,
+      notified: CLOSING_SOON_MAX_NOTIFICATIONS - 100,
       hasMore: false,
     });
+    // Nobody was alerted twice, and both lots are done.
+    const notes = await t.run((ctx) => ctx.db.query("notifications").collect());
+    expect(notes).toHaveLength((CLOSING_SOON_MAX_NOTIFICATIONS - 50) * 2);
+    const lots = await t.run((ctx) => ctx.db.query("lots").collect());
+    expect(
+      lots.every(
+        (l) =>
+          l.closingSoonNotifiedAt !== undefined &&
+          l.closingSoonCursor === undefined
+      )
+    ).toBe(true);
+  });
+
+  it("alerts a lot with more watchers than one run allows across runs, nobody twice", async () => {
+    const t = makeContext();
+    await setAlerts(t, true);
+    const { lotId } = await seed(t);
+    const total = 250;
+    await t.run(async (ctx) => {
+      for (let i = 0; i < total; i++) {
+        await ctx.db.insert("watchlist", {
+          userId: `w${String(i)}`,
+          lotId,
+        });
+      }
+    });
+    expect(await run(t)).toEqual({
+      notified: CLOSING_SOON_MAX_NOTIFICATIONS,
+      hasMore: true,
+    });
+    const partial = await t.run((ctx) => ctx.db.get("lots", lotId));
+    expect(partial?.closingSoonNotifiedAt).toBeUndefined();
+    expect(partial?.closingSoonCursor).toBeTypeOf("number");
+
+    expect(await run(t)).toEqual({
+      notified: total - CLOSING_SOON_MAX_NOTIFICATIONS,
+      hasMore: false,
+    });
+    const done = await t.run((ctx) => ctx.db.get("lots", lotId));
+    expect(done?.closingSoonNotifiedAt).toBeTypeOf("number");
+    expect(done?.closingSoonCursor).toBeUndefined();
+
+    const recipients = (
+      await t.run((ctx) => ctx.db.query("notifications").collect())
+    ).map((n) => n.recipientId);
+    expect(recipients).toHaveLength(total);
+    expect(new Set(recipients).size).toBe(total);
+    expect(await run(t)).toEqual({ notified: 0, hasMore: false });
+  });
+
+  it("alerts again after the lot is reassigned or its sale is pushed back", async () => {
+    const t = makeContext();
+    await setAlerts(t, true);
+    const { lotId, auctionId } = await seed(t);
+    await t.run((ctx) =>
+      ctx.db.insert("profiles", {
+        userId: "user_admin",
+        name: "admin",
+        role: "admin",
+        isVerified: true,
+        kycStatus: "verified",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+    const asAdmin = t.withIdentity({ subject: "user_admin" });
+    await watch(t, ALICE, lotId);
+    const notifications = () =>
+      t.run((ctx) => ctx.db.query("notifications").collect());
+
+    expect(await run(t)).toEqual({ notified: 1, hasMore: false });
+    expect(await notifications()).toHaveLength(1);
+
+    // The sale is pushed back past the window: the flag is cleared...
+    await asAdmin.mutation(api.auctions.mutations.adminCrud.updateAuction, {
+      auctionId,
+      endTime: Date.now() + 3 * 60 * MINUTE,
+    });
+    expect(
+      (await t.run((ctx) => ctx.db.get("lots", lotId)))?.closingSoonNotifiedAt
+    ).toBeUndefined();
+    expect(await run(t)).toEqual({ notified: 0, hasMore: false });
+
+    // ...and the alert goes out again once it is within the hour.
+    vi.advanceTimersByTime(2.5 * 60 * MINUTE);
+    expect(await run(t)).toEqual({ notified: 1, hasMore: false });
+    expect(await notifications()).toHaveLength(2);
+
+    // Unassign and assign to another sale: the flag is cleared again.
+    await asAdmin.mutation(api.auctions.mutations.assignment.unassignLot, {
+      lotId,
+    });
+    expect(
+      (await t.run((ctx) => ctx.db.get("lots", lotId)))?.closingSoonNotifiedAt
+    ).toBeUndefined();
+    await t.run((ctx) => ctx.db.patch("lots", lotId, { status: "approved" }));
+    const other = await t.run((ctx) =>
+      ctx.db.insert("auctions", {
+        title: "Other",
+        startTime: Date.now() - MINUTE,
+        endTime: Date.now() + 20 * MINUTE,
+        status: "published",
+        createdBy: "admin",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+    );
+    await t.run((ctx) =>
+      ctx.db.patch("lots", lotId, { closingSoonNotifiedAt: 1 })
+    );
+    await asAdmin.mutation(
+      api.auctions.mutations.assignment.assignLotToAuction,
+      {
+        lotId,
+        auctionId: other,
+      }
+    );
+    expect(
+      (await t.run((ctx) => ctx.db.get("lots", lotId)))?.closingSoonNotifiedAt
+    ).toBeUndefined();
+    expect(await run(t)).toEqual({ notified: 1, hasMore: false });
+    expect(await notifications()).toHaveLength(3);
   });
 
   it("the cron wrapper is a no-op while the job is off", async () => {

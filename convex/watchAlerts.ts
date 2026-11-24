@@ -169,10 +169,10 @@ export async function notifyOutbidWatcher(
  * Sends the "closing in 1 hour" alert to every watcher of the open lots of
  * published sales ending within the hour, once per lot (`closingSoonNotifiedAt`).
  * Bounded to {@link CLOSING_SOON_MAX_NOTIFICATIONS} watcher notifications per
- * run: a lot is only started when its watchers fit what is left of the budget
- * (a single lot with more watchers than the whole budget notifies its first
- * {@link CLOSING_SOON_MAX_NOTIFICATIONS}), and `hasMore` tells the gated cron
- * wrapper to reschedule.
+ * run. A lot whose watchers do not all fit is left part-done (its
+ * `closingSoonCursor` remembers the last watcher alerted, so nobody is alerted
+ * twice) and only gets `closingSoonNotifiedAt` once the last watcher is done;
+ * `hasMore` tells the gated cron wrapper to reschedule.
  *
  * @param ctx - Mutation context
  * @param now - Current time (ms)
@@ -203,17 +203,22 @@ export async function sendClosingSoonAlertsHandler(
       );
     for await (const lot of lots) {
       if (lot.closingSoonNotifiedAt !== undefined) continue;
-      const watchers = await ctx.db
-        .query("watchlist")
-        .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
-        .take(CLOSING_SOON_MAX_NOTIFICATIONS);
-      if (
-        notified > 0 &&
-        notified + watchers.length > CLOSING_SOON_MAX_NOTIFICATIONS
-      ) {
+      const remaining = CLOSING_SOON_MAX_NOTIFICATIONS - notified;
+      if (remaining <= 0) {
         hasMore = true;
         break sales;
       }
+      // Resume after the last watcher a previous run finished; one extra row
+      // tells whether more are left.
+      const after = lot.closingSoonCursor ?? -1;
+      const page = await ctx.db
+        .query("watchlist")
+        .withIndex("by_lot", (q) =>
+          q.eq("lotId", lot._id).gt("_creationTime", after)
+        )
+        .take(remaining + 1);
+      const done = page.length <= remaining;
+      const watchers = page.slice(0, remaining);
       const closesAt = formatSastTime(lot.extendedEndTime ?? sale.endTime);
       for (const watcher of watchers) {
         if (!(await allowsAlert(ctx, watcher.userId, "closing"))) continue;
@@ -227,7 +232,18 @@ export async function sendClosingSoonAlertsHandler(
         );
       }
       notified += watchers.length;
-      await ctx.db.patch("lots", lot._id, { closingSoonNotifiedAt: now });
+      if (done) {
+        await ctx.db.patch("lots", lot._id, {
+          closingSoonNotifiedAt: now,
+          closingSoonCursor: undefined,
+        });
+      } else {
+        await ctx.db.patch("lots", lot._id, {
+          closingSoonCursor: watchers[watchers.length - 1]._creationTime,
+        });
+        hasMore = true;
+        break sales;
+      }
     }
   }
 

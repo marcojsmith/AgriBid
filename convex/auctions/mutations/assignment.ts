@@ -76,6 +76,8 @@ export const assignLotToAuctionHandler = async (
     auctionId: args.auctionId,
     lotNumber,
     status: "assigned",
+    closingSoonNotifiedAt: undefined,
+    closingSoonCursor: undefined,
     resolvedBuyerPremiumPct,
     premiumSource,
     resolvedSellerCommissionPct: auction.defaultSellerCommissionPct,
@@ -134,6 +136,8 @@ export const unassignLotHandler = async (
     auctionId: undefined,
     lotNumber: undefined,
     status: "approved",
+    closingSoonNotifiedAt: undefined,
+    closingSoonCursor: undefined,
   });
   await adjustLotStatusCounters(ctx, "assigned", "approved");
   await syncAuctionLotCount(ctx, lot, {
