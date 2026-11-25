@@ -63,6 +63,10 @@ vi.mock("../lib/storage", () => ({
   }),
 }));
 
+vi.mock("../lib/lotPayments", () => ({
+  createLotPayment: vi.fn(),
+}));
+
 vi.mock("./internal", () => ({
   findWinningBid: vi.fn(),
   isReserveMet: vi.fn(),

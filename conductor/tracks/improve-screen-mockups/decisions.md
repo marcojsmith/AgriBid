@@ -65,6 +65,73 @@ Each page starts from every decision below. Add new ones as the owner confirms t
 - **Reserve not met at close:** the lot goes to **"Under consideration"**. The seller can choose to accept the top bid. Bidders see that status instead of Sold or Not sold. The seller has **48 hours** to decide (owner, 2026-11-23); after that the lot is Not sold.
 - **Inspection:** AgriBid does not inspect machines. Condition claims are always labelled "Seller says:". Never show "Inspected by AgriBid".
 
+## Register / sign-in / deposit (2026-11-24)
+
+- Round 1 (`rounds/register-r1.html`, notes `register-r1-notes.md`): 4 steps (Details, ID, Address, Deposit; 3 when the deposit is off), one status page for pending / rejected / deposit received / approved, "Finish registration · Step n of 4" on lot pages. Owner answers:
+  - **Deposit payment:** manual EFT. Each buyer gets a unique reference; "I've paid" or proof on WhatsApp; admin marks it received. No payment gateway.
+  - **Pay before approval:** yes, both can happen at once. Bidding opens when documents are approved AND the deposit is received.
+  - **Review time:** "within 2 business days".
+  - **Proof of address:** utility bill, bank statement or lease, not older than 3 months, photo or PDF.
+  - **Foreign buyers:** accept a passport as well as a 13-digit SA ID.
+  - **Bank details:** come from Admin settings (never hard-coded or invented).
+  - **Rejected documents:** the buyer replaces only the rejected document; no limit on tries.
+  - **Refunds and expiry:** the deposit is refunded to the same account it came from; unfinished registrations never expire.
+  - **Mobile number:** "We call you about lots you win." confirmed.
+- **LOCKED 2026-11-24: Round 2 (`rounds/register-r2.html`, notes `register-r2-notes.md`) is the approved Register / sign-in / deposit design.** It adds the SA ID / Passport choice, the passport photo page upload, "within 2 business days", replace-only-the-rejected-document, and the same-account refund line. Fix in build: the header avatar initials follow the signed-in user.
+
+- **Build decisions (owner, 2026-11-24):**
+  - **Existing verified buyers:** no waiver. When the deposit setting is on, they must pay the deposit before they can bid again.
+  - **Copy not in the frames (approved):**
+    - Lot page, a document was rejected: "One document needs replacing." with the button "Replace document".
+    - Lot page, deposit not yet received: "Pay your R 5 000 deposit to bid." with the button "Pay deposit".
+    - Step 3 button when the deposit is off: "Send documents".
+    - Bank details not set: "Bank details aren't set up yet. WhatsApp us and we'll send them."
+  - **Desktop side card:** drop "Seller ID checked (FICA)" and "Inspection photos on every lot".
+  - **Release order:** keep the registration deposit switched off on prod until the admin deposit page (WP4) is live, then switch it on with the owner.
+
+## Watched-lot alerts (2026-11-24, D9b)
+
+- **Outbid alert:** only to bidders who also watch the lot.
+- **Permission:** ask for notification permission right after the heart tap (when not yet granted).
+- **Admin switch:** a separate on/off setting from sale-open reminders.
+- Alerts: "You've been outbid" and "Closing in 1 hour" for watched lots. The watching toast promises them only when the user has a push subscription and the setting is on.
+
+## My bids (2026-11-25)
+
+- Round 1 (`rounds/mybids-r1.html`, notes `mybids-r1-notes.md`). Owner answers, all as recommended:
+  - **Tabs:** Watching is a tab of My bids (Bidding · Won · Lost · Watching).
+  - **Auto-watch:** placing a bid automatically watches the lot.
+  - **Deposit:** credited once, against the first won lot's payment.
+  - **Payment reference:** each won lot has its own reference (e.g. `AB-1042`).
+  - **Collection details:** the seller phone and collection address show only after payment is confirmed.
+  - **Countdown colours:** amber under 1 hour, red under 10 minutes.
+  - **Payment deadline:** a winner must pay within 2 business days.
+  - **Under consideration:** the lot stays under Bidding ("With the seller") until the seller decides.
+
+## Account and seller page (2026-11-25)
+
+- Round 1 (`rounds/profile-r1.html`, notes `profile-r1-notes.md`). Keep two pages: Account replaces `/settings` and `/kyc`; the public seller page stays separate. Owner answers:
+  - **Deposit refund:** "Ask for refund" in Account, only when the buyer has no unpaid won lots.
+  - **Seller name:** the business name, otherwise first name plus surname initial.
+  - **Reviews:** hidden until the seller has at least 3.
+  - **Message seller:** removed.
+  - **Bio:** admin-moderated.
+  - **Notifications:** only the 3 push switches; the old email, SMS and proxy-bid settings are dropped.
+  - **Public URL:** a name slug, not the Clerk userId.
+  - **Account deletion (POPIA):** a later round.
+- **Round 2 layout (owner):**
+  - Account sections go in order of how often they're used. Selling comes before Notifications.
+  - Rework the seller page layout. "Report this seller" becomes a flag icon in the corner.
+- **LOCKED 2026-11-25: Round 2 is the approved design for My bids (`rounds/mybids-r2.html`) and for Account and seller page (`rounds/profile-r2.html`).** Round 2 answers (all as recommended):
+  - **VAT on the seller page:** "VAT registered" only for VAT sellers; other sellers show "Private seller".
+  - **Seller type:** left off the public header; it shows in Account only.
+  - **Report reasons:** misleading listing, suspected fraud, offensive content, other.
+  - **Slug clashes:** add `-2` to the second one. A slug is set once and stays; after a rename, the old slug redirects.
+- **Fix in build:**
+  - The empty gap and double divider above "Sell equipment" in `account-buyer`.
+  - The seller-page countdown follows the shared demo clock.
+  - No blank line between the title and the meta on seller lot cards.
+
 ## Link previews (2026-11-22)
 
 - Owner: the current share preview is bad. Root causes:

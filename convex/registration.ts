@@ -21,6 +21,7 @@ import {
   MAX_PROFILE_FIELD_LENGTH,
 } from "./constants";
 import { requireAuth, requireProfile } from "./lib/auth";
+import { isReferenceTaken } from "./lib/lotPayments";
 import { bidEligibilityValidator, hasAllDetails } from "./lib/bidEligibility";
 import { getBidEligibility } from "./lib/bidGuard";
 import {
@@ -473,11 +474,8 @@ export const startMyDeposit = mutation({
 
     for (let attempt = 0; attempt < REFERENCE_ATTEMPTS; attempt++) {
       const reference = generateReference();
-      const taken = await ctx.db
-        .query("registrationDeposits")
-        .withIndex("by_reference", (q) => q.eq("reference", reference))
-        .first();
-      if (taken) continue;
+      // Unique across deposits AND lot payments: both are quoted on EFTs.
+      if (await isReferenceTaken(ctx, reference)) continue;
       const now = Date.now();
       await ctx.db.insert("registrationDeposits", {
         userId,

@@ -69,6 +69,20 @@ Order: D1 → D2 → D3 → D4 → D5 → D6 → D7 → D8 → D9, then the Regi
 
 R1 notes: `computeBidEligibility` is pure in `convex/lib/bidEligibility.ts` (importable from `src/`); the database-backed `getBidEligibility` and `requireCanBid` live in `convex/lib/bidGuard.ts` so the pure file does not pull in the Convex runtime. Verified buyers who change ID type are refused (their documents are already approved). An invalid upload is rejected by throwing, so the file is left for the orphan sweep (deleting it in the same mutation would be rolled back).
 
+## My bids, Account and seller page build (from 2026-11-25)
+
+| WP  | Title                                                                                         | Risk                                       | Depends    | Status    | PR  |
+| --- | --------------------------------------------------------------------------------------------- | ------------------------------------------ | ---------- | --------- | --- |
+| M1  | Won-lot payments backend                                                                      | **risky** (schema, settlement, money, PII) | none       | in review |     |
+| M2  | Bidding extras backend: auto-watch, refund request, getMyBids fields, notification prefs      | **risky** (bid flow, money)                | M1         | planned   |     |
+| M3  | Seller page backend: slug, trimmed public query, reviews gate, report reasons, bio moderation | **risky** (public data, PII)               | none       | planned   |     |
+| M4  | My bids page (UI)                                                                             | low                                        | M1, M2     | planned   |     |
+| M5  | Account page (UI)                                                                             | low                                        | M1, M2     | planned   |     |
+| M6  | Seller page (UI)                                                                              | low                                        | M3         | planned   |     |
+| M7  | Admin: payments, refund requests, bio moderation                                              | **risky** (admin mutations)                | M1, M2, M3 | planned   |     |
+
+M1 done as: new `lotPayments` table (one row per won lot, own `AB-` reference unique across deposits and payments, pay-by two business days in SAST, amounts bid / premium / VAT / total / deposit credit / amount due from `calculateBuyerTotal`, whole rand), created by `createLotPayment` in `convex/lib/lotPayments.ts` from all three sale paths (`settleLot`, `resolveConsideration` accept, `closeLotEarly`) in the same mutation. The registration deposit is credited once (`registrationDeposits.creditedLotId`). Buyer API in `convex/lotPayments.ts` (`getMyWonLots`, `claimLotPaid`, `getMyCollectionDetails`, `getMyPaymentSummary`, `updateMyCollectionAddress`, `getMyCollectionAddress`), admin API in `convex/admin/lotPayments.ts` (`listLotPayments`, `confirmLotPayment`). Seller phone and collection address (encrypted `profiles.collectionAddress`) are returned to the winner only once the payment is confirmed. Deviations from the brief: `createLotPayment(ctx, lot, winnerId, bid, at)` takes the hammer price explicitly (the lot snapshot is stale on the accept path); `notifyUser` and `formatNotificationRand` moved to `convex/lib/notify.ts` (re-exported from `auctions/internal`) to avoid an import cycle; admin `voidBid` is refused on a sold lot that has a payment record (reassigning the winner after a sale is a follow-up). No backfill: lots sold before this shipped have no payment row, and `wbtImport` / `wbtDemo` showcase lots never get one.
+
 ## Work packages
 
 ### WP0 · Track docs (Haiku thread, docs-only)

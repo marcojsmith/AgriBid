@@ -319,6 +319,9 @@ export default defineSchema({
     bio: v.optional(v.string()),
     phoneNumber: v.optional(v.string()), // Encrypted PII
     companyName: v.optional(v.string()),
+    // Where a winning buyer collects the lot. Encrypted PII; shown to the
+    // winner only after an admin confirms their payment.
+    collectionAddress: v.optional(v.string()),
     location: v.optional(v.string()),
     // Seller VAT status and type (seller- or admin-set). Unset = unknown, which
     // buyers' estimates treat as VAT-registered (worst case).
@@ -403,11 +406,46 @@ export default defineSchema({
     markedReceivedBy: v.optional(v.string()),
     refundedAt: v.optional(v.number()),
     refundedBy: v.optional(v.string()),
+    // The lot whose payment this deposit was credited against (once only).
+    creditedLotId: v.optional(v.id("lots")),
+    creditedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_userId", ["userId"])
     .index("by_reference", ["reference"])
+    .index("by_status_and_updatedAt", ["status", "updatedAt"]),
+
+  // One payment record per won lot (manual EFT). The reference is permanent and
+  // never collides with a registration deposit reference.
+  lotPayments: defineTable({
+    lotId: v.id("lots"),
+    buyerId: v.string(),
+    sellerId: v.string(),
+    reference: v.string(),
+    bid: v.number(),
+    premium: v.number(),
+    vat: v.number(),
+    total: v.number(),
+    depositCredit: v.number(),
+    amountDue: v.number(),
+    vatKind: v.union(v.literal("vat"), v.literal("private")),
+    status: v.union(
+      v.literal("awaiting"),
+      v.literal("paid_claimed"),
+      v.literal("confirmed")
+    ),
+    payBy: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    paidClaimedAt: v.optional(v.number()),
+    confirmedAt: v.optional(v.number()),
+    confirmedBy: v.optional(v.string()),
+  })
+    .index("by_lotId", ["lotId"])
+    .index("by_reference", ["reference"])
+    .index("by_buyerId_and_status", ["buyerId", "status"])
+    .index("by_buyerId_and_createdAt", ["buyerId", "createdAt"])
     .index("by_status_and_updatedAt", ["status", "updatedAt"]),
 
   // New Admin Features
