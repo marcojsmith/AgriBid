@@ -14,6 +14,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { calculateBuyerTotal } from "./lib/buyerTotal";
 import { addBusinessDays } from "./lib/businessDays";
 import { encryptPII } from "./lib/encryption";
+import { DEMO_BIDDER_IDS } from "./lib/wbtImport";
 import {
   createLotPayment,
   generateUniqueReference,
@@ -221,7 +222,9 @@ async function pay(
   return await t.run(async (ctx) => {
     const lot = await ctx.db.get("lots", lotId);
     if (!lot) throw new Error("lot missing");
-    return await createLotPayment(ctx, lot, buyer, bid, at);
+    const payment = await createLotPayment(ctx, lot, buyer, bid, at);
+    if (!payment) throw new Error("no payment created");
+    return payment;
   });
 }
 
@@ -1095,5 +1098,121 @@ describe("getLotPaymentByLot", () => {
       payment._id
     );
     expect(await t.run((ctx) => getLotPaymentByLot(ctx, other))).toBeNull();
+  });
+});
+
+describe("guards around a paid sale", () => {
+  /**
+   * A sold lot with a payment record and its winning bid.
+   *
+   * @param t - Test context
+   * @returns The lot id
+   */
+  async function soldLot(t: Ctx): Promise<Id<"lots">> {
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId);
+    await insertBid(t, lotId, BUYER, 8000);
+    await as(t, ADMIN).mutation(api.auctions.closeLotEarly, { lotId });
+    return lotId;
+  }
+
+  it("refuses to refund a deposit already credited against a lot", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    await insertDeposit(t);
+    const lotId = await insertLot(t, auctionId);
+    await pay(t, lotId, 100_000);
+
+    await expect(
+      as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+        userId: BUYER,
+      })
+    ).rejects.toThrow("credited against a won lot");
+    const deposit = await t.run((ctx) =>
+      ctx.db.query("registrationDeposits").first()
+    );
+    expect(deposit?.status).toBe("received");
+  });
+
+  it("still refunds a received deposit that was never credited", async () => {
+    const t = makeContext();
+    await seedWorld(t);
+    await insertDeposit(t);
+
+    await as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+      userId: BUYER,
+    });
+
+    const deposit = await t.run((ctx) =>
+      ctx.db.query("registrationDeposits").first()
+    );
+    expect(deposit?.status).toBe("refunded");
+  });
+
+  it("blocks moving a paid sold lot back to another status", async () => {
+    const t = makeContext();
+    const lotId = await soldLot(t);
+
+    await expect(
+      as(t, ADMIN).mutation(api.auctions.adminUpdateLot, {
+        lotId,
+        updates: { status: "assigned" },
+      })
+    ).rejects.toThrow("payment record");
+    const bulk = await as(t, ADMIN).mutation(api.auctions.bulkUpdateLots, {
+      lotIds: [lotId],
+      updates: { status: "unsold" },
+    });
+
+    expect(bulk.skipped).toEqual([lotId]);
+    expect(bulk.updated).toEqual([]);
+    const lot = await t.run((ctx) => ctx.db.get("lots", lotId));
+    expect(lot?.status).toBe("sold");
+    // Editing other fields of a sold lot, or re-saving "sold", still works.
+    await as(t, ADMIN).mutation(api.auctions.adminUpdateLot, {
+      lotId,
+      updates: { status: "sold", title: "Renamed" },
+    });
+  });
+
+  it("lets a legacy sold lot without a payment change status", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, { status: "sold" });
+
+    const bulk = await as(t, ADMIN).mutation(api.auctions.bulkUpdateLots, {
+      lotIds: [lotId],
+      updates: { status: "unsold" },
+    });
+
+    expect(bulk.updated).toEqual([lotId]);
+  });
+
+  it("syncLotWinners leaves a paid sold lot's winner alone", async () => {
+    const t = makeContext();
+    const lotId = await soldLot(t);
+    await insertBid(t, lotId, OTHER, 9000);
+
+    await as(t, ADMIN).mutation(api.admin.mutations.syncLotWinners, {});
+
+    const lot = await t.run((ctx) => ctx.db.get("lots", lotId));
+    expect(lot?.winnerId).toBe(BUYER);
+  });
+
+  it("creates no payment for a showcase demo bidder", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId);
+    const demo = DEMO_BIDDER_IDS[0];
+
+    const created = await t.run(async (ctx) => {
+      const lot = await ctx.db.get("lots", lotId);
+      if (!lot) throw new Error("lot missing");
+      return await createLotPayment(ctx, lot, demo, 10_000, FRIDAY);
+    });
+
+    expect(created).toBeNull();
+    expect(await payments(t)).toHaveLength(0);
+    expect(await notificationsFor(t, demo)).toHaveLength(0);
   });
 });

@@ -523,6 +523,13 @@ export const markDepositRefunded = mutation({
     if (deposit.status !== "received") {
       throw new ConvexError("Only a received deposit can be refunded.");
     }
+    if (deposit.creditedLotId !== undefined) {
+      // Already credited against a won lot's payment: refunding it as well
+      // would pay the buyer twice.
+      throw new ConvexError(
+        "This deposit was credited against a won lot's payment and can't be refunded."
+      );
+    }
 
     const now = Date.now();
     await ctx.db.patch("registrationDeposits", deposit._id, {

@@ -544,6 +544,13 @@ async function deleteLotAndRelated(
     .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
     .take(50);
   for (const flag of flags) await ctx.db.delete("lotFlags", flag._id);
+  const payments = await ctx.db
+    .query("lotPayments")
+    .withIndex("by_lotId", (q) => q.eq("lotId", lot._id))
+    .take(5);
+  for (const payment of payments) {
+    await ctx.db.delete("lotPayments", payment._id);
+  }
   await removeLotWatchData(ctx, lot._id);
   await deleteAuctionImages(ctx, lot.images);
   await ctx.db.delete("lots", lot._id);

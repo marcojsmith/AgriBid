@@ -50,7 +50,8 @@ type SeedTableNames =
   | "userActivity"
   | "lotFlags"
   | "profileFlags"
-  | "lotFees";
+  | "lotFees"
+  | "lotPayments";
 
 const BATCH_SIZE = 500;
 
@@ -1196,6 +1197,7 @@ export const runSeed = mutation({
         "lotFlags",
         "profileFlags",
         "lotFees",
+        "lotPayments",
         "counters",
         "lotViewers",
         "engagementScores",
@@ -1254,6 +1256,8 @@ export const clearAuctions = mutation({
     await clearLotScopedCounters(ctx);
     const auctionsCount = await clearAuctionsTableWithStorage(ctx);
     const lotFeesCount = await clearTable(ctx, "lotFees");
+    // Payments belong to the lots just deleted.
+    await clearTable(ctx, "lotPayments");
 
     await resetLotFeeCounters(ctx);
 
@@ -1294,6 +1298,7 @@ export const clearAllData = mutation({
       "engagementScores",
       "equipmentMetadata",
       "lotFees",
+      "lotPayments",
     ];
 
     let totalDeleted = 0;

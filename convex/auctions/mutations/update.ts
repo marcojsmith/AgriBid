@@ -6,6 +6,7 @@ import { safeDelete } from "../../lib/storage";
 import { provinceValidator, type Province } from "../../lib/provinces";
 import { logAudit } from "../../admin_utils";
 import { syncAuctionLotCount } from "../../lib/lotCounters";
+import { getLotPaymentByLot } from "../../lib/lotPayments";
 import {
   assertImageAnglesMatchImages,
   assertValidColdStartVideo,
@@ -303,6 +304,19 @@ export const adminUpdateLotHandler = async (
     );
   }
 
+  // A sold lot with a payment record keeps its sale: moving it back would leave
+  // the buyer owing money (and a credited deposit) for a lot that isn't sold.
+  if (
+    oldStatus === "sold" &&
+    newStatus !== undefined &&
+    newStatus !== "sold" &&
+    (await getLotPaymentByLot(ctx, lot._id))
+  ) {
+    throw new ConvexError(
+      "This lot has a payment record. Its status can't be changed after sale."
+    );
+  }
+
   const { clearProvince, coldStartVideo, ...fieldUpdates } = args.updates;
   const patchData: typeof fieldUpdates & {
     coldStartVideo?: Id<"_storage">;
@@ -495,6 +509,17 @@ export const bulkUpdateLotsHandler = async (
 
       // Lots under consideration only settle through Accept / Decline / expiry.
       if (oldStatus === "under_consideration" && newStatus !== undefined) {
+        skipped.push(id);
+        continue;
+      }
+
+      // Sold lots with a payment record keep their sale (see adminUpdateLot).
+      if (
+        oldStatus === "sold" &&
+        newStatus !== undefined &&
+        newStatus !== "sold" &&
+        (await getLotPaymentByLot(ctx, id))
+      ) {
         skipped.push(id);
         continue;
       }

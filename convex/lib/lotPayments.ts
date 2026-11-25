@@ -21,6 +21,7 @@ import { percentToFraction, resolveBuyerPremium } from "./buyerPremium";
 import { formatNotificationRand, notifyUser } from "./notify";
 import { generateReference } from "./registration";
 import { resolveLotSellerVat } from "./sellerVat";
+import { isDemoBidder } from "./wbtImport";
 
 /** Business days a buyer has to pay after the lot is sold. */
 export const PAY_BY_BUSINESS_DAYS = 2;
@@ -150,7 +151,8 @@ export async function resolveLotBuyerFees(
  * @param winnerId - The winning buyer
  * @param bid - The hammer price
  * @param at - The sale time (settlement or accept time)
- * @returns The payment record
+ * @returns The payment record, or null for a showcase demo bidder (the
+ *   imported demo sales never produce real payments)
  */
 export async function createLotPayment(
   ctx: MutationCtx,
@@ -158,7 +160,8 @@ export async function createLotPayment(
   winnerId: string,
   bid: number,
   at: number
-): Promise<Doc<"lotPayments">> {
+): Promise<Doc<"lotPayments"> | null> {
+  if (isDemoBidder(winnerId)) return null;
   const existing = await ctx.db
     .query("lotPayments")
     .withIndex("by_lotId", (q) => q.eq("lotId", lot._id))

@@ -381,6 +381,10 @@ export const syncLotWinners = mutation({
     let updatedCount = 0;
 
     for (const lot of results.page) {
+      // A sold lot with a payment record keeps the winner it was sold to.
+      if (lot.status === "sold" && (await getLotPaymentByLot(ctx, lot._id))) {
+        continue;
+      }
       const highestBid = await ctx.db
         .query("bids")
         .withIndex("by_lot", (q) => q.eq("lotId", lot._id))
