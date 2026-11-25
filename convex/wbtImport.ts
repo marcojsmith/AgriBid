@@ -19,6 +19,7 @@ import {
   syncAuctionLotCount,
 } from "./lib/lotCounters";
 import { provinceValidator } from "./lib/provinces";
+import { getLotPaymentByLot } from "./lib/lotPayments";
 import { deleteAuctionImages } from "./lib/storage";
 import {
   DEMO_BIDDER_IDS,
@@ -444,6 +445,8 @@ export const retireOldDemo = internalMutation({
   returns: v.object({
     applied: v.boolean(),
     rows: v.array(retireRow),
+    /** Lots left alone because a buyer has a payment record on them. */
+    keptWithPayment: v.number(),
   }),
   handler: async (ctx, args) => {
     const apply = args.apply === true;
@@ -457,7 +460,15 @@ export const retireOldDemo = internalMutation({
       .query("lots")
       .withIndex("by_seedId", (q) => q.gte("seedId", "wbt;"))
       .take(500);
-    const lots = [...below, ...above];
+    const candidates = [...below, ...above];
+    // A lot a real buyer won (it has a payment record) is never deleted: that
+    // would erase their payment and leave their deposit credit dangling.
+    const lots: Doc<"lots">[] = [];
+    let keptWithPayment = 0;
+    for (const lot of candidates) {
+      if (await getLotPaymentByLot(ctx, lot._id)) keptWithPayment++;
+      else lots.push(lot);
+    }
 
     const lotIds = new Set<Id<"lots">>(lots.map((lot) => lot._id));
     const titled = (await ctx.db.query("auctions").take(500)).filter(
@@ -494,7 +505,7 @@ export const retireOldDemo = internalMutation({
         title: auction.title,
       })),
     ];
-    if (!apply) return { applied: false, rows };
+    if (!apply) return { applied: false, rows, keptWithPayment };
 
     for (const lot of lots) {
       await deleteLotAndRelated(ctx, lot);
@@ -510,7 +521,7 @@ export const retireOldDemo = internalMutation({
       await ctx.db.delete("auctions", auction._id);
     }
     await recalculateCounters(ctx);
-    return { applied: true, rows };
+    return { applied: true, rows, keptWithPayment };
   },
 });
 

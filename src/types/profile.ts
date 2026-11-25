@@ -16,7 +16,8 @@ export type ActivityType =
   | "listing_created"
   | "listing_sold"
   | "bid_placed"
-  | "bid_won";
+  | "bid_won"
+  | "payment_claimed";
 
 export interface ActivityMeta {
   icon: LucideIcon;

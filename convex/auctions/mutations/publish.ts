@@ -10,6 +10,7 @@ import {
 } from "../../lib/auth";
 import { logAudit, updateCounter } from "../../admin_utils";
 import { getBidCount } from "../../lib/lotCounters";
+import { createLotPayment } from "../../lib/lotPayments";
 import {
   AUCTION_FLAG_AUTO_HIDE_THRESHOLD,
   MAX_FLAG_DETAILS_LENGTH,
@@ -311,10 +312,11 @@ export const closeLotEarlyHandler = async (
     finalStatus = "unsold";
   }
 
+  const settledAt = Date.now();
   await ctx.db.patch("lots", lot._id, {
     status: finalStatus,
     winnerId,
-    settledAt: Date.now(),
+    settledAt,
   });
 
   await updateCounter(ctx, "lots", "active", -1);
@@ -323,6 +325,9 @@ export const closeLotEarlyHandler = async (
     await updateCounter(ctx, "lots", "soldCount", 1);
     await updateCounter(ctx, "lots", "salesVolume", winningAmount ?? 0);
     await calculateAndRecordFees(ctx, lot, winningAmount);
+    if (winnerId !== undefined && winningAmount !== undefined) {
+      await createLotPayment(ctx, lot, winnerId, winningAmount, settledAt);
+    }
   }
 
   await logAuctionSettlementActivity(ctx, lot, finalStatus, winnerId);

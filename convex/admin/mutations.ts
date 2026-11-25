@@ -14,7 +14,7 @@
  * - faq.ts: createFaqItem, updateFaqItem, deleteFaqItem, reorderFaqItems
  */
 
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { mutation } from "../_generated/server";
 import { requireAdmin, getAuthUser, resolveUserId } from "../lib/auth";
@@ -26,6 +26,7 @@ import {
 } from "../auctions/internal";
 import { logAudit, updateCounter } from "../admin_utils";
 import { adjustBidCount } from "../lib/lotCounters";
+import { getLotPaymentByLot } from "../lib/lotPayments";
 import { sellerResponseTimeValidator } from "../lib/provinces";
 
 // --- Re-export specialized mutation modules ---
@@ -84,6 +85,15 @@ export const voidBid = mutation({
 
     const lot = await ctx.db.get("lots", bid.lotId);
     if (!lot) throw new Error("Lot not found");
+
+    // A sold lot with a payment record has amounts and a deposit credit built on
+    // this bid; changing the winner after the sale is not supported yet. Throwing
+    // rolls back the void above.
+    if (lot.status === "sold" && (await getLotPaymentByLot(ctx, lot._id))) {
+      throw new ConvexError(
+        "This lot has a payment record. Voiding bids after sale isn't supported yet."
+      );
+    }
 
     if (lot.status === "under_consideration") {
       // The seller is deciding on the highest valid bid, not the latest one.
@@ -371,6 +381,10 @@ export const syncLotWinners = mutation({
     let updatedCount = 0;
 
     for (const lot of results.page) {
+      // A sold lot with a payment record keeps the winner it was sold to.
+      if (lot.status === "sold" && (await getLotPaymentByLot(ctx, lot._id))) {
+        continue;
+      }
       const highestBid = await ctx.db
         .query("bids")
         .withIndex("by_lot", (q) => q.eq("lotId", lot._id))

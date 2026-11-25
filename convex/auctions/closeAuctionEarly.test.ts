@@ -26,6 +26,10 @@ vi.mock("../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
+vi.mock("../lib/lotPayments", () => ({
+  createLotPayment: vi.fn(),
+}));
+
 vi.mock("./internal", () => ({
   findWinningBid: vi.fn(),
   isReserveMet: vi.fn(),

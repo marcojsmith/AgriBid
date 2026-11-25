@@ -16,7 +16,8 @@ export type ActivityType =
   | "listing_created"
   | "listing_sold"
   | "bid_placed"
-  | "bid_won";
+  | "bid_won"
+  | "payment_claimed";
 
 /**
  * Validator for `ActivityType`, matching the `userActivity.type` schema field.
@@ -30,7 +31,8 @@ export const ActivityTypeValidator = v.union(
   v.literal("listing_created"),
   v.literal("listing_sold"),
   v.literal("bid_placed"),
-  v.literal("bid_won")
+  v.literal("bid_won"),
+  v.literal("payment_claimed")
 );
 
 /**
@@ -38,6 +40,7 @@ export const ActivityTypeValidator = v.union(
  * role changes are private; everyone else sees only public marketplace activity.
  */
 const PRIVATE_ACTIVITY_TYPES: ReadonlySet<ActivityType> = new Set([
+  "payment_claimed",
   "verification_requested",
   "verification_approved",
   "verification_rejected",

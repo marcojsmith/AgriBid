@@ -522,7 +522,7 @@ export const LotDetailValidator = v.object({
  * @returns The percentage-row premium (undefined when no such row is active)
  *   and the sum of the active fixed buyer fees in rand
  */
-async function activeBuyerFees(
+export async function activeBuyerFees(
   ctx: QueryCtx
 ): Promise<{ rowsFraction: number | undefined; fixedFees: number }> {
   const fees = await ctx.db

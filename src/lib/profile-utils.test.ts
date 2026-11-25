@@ -143,6 +143,7 @@ describe("profile-utils", () => {
       expect(types).toContain("listing_sold");
       expect(types).toContain("bid_placed");
       expect(types).toContain("bid_won");
+      expect(types).toContain("payment_claimed");
     });
 
     it("has required properties for each type", () => {

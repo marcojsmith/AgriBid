@@ -97,6 +97,10 @@ const {
   isReserveMet: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock("../../lib/lotPayments", () => ({
+  createLotPayment: vi.fn(),
+}));
+
 vi.mock("../internal", () => ({
   calculateAndRecordFees,
   logAuctionSettlementActivity,

@@ -103,13 +103,22 @@ export function useBulkOperations() {
     if (selectedAuctions.length === 0 || !bulkStatusTarget) return;
     setIsBulkProcessing(true);
     try {
-      await bulkUpdateAuctionsMutation({
+      const result = await bulkUpdateAuctionsMutation({
         lotIds: selectedAuctions,
         updates: { status: bulkStatusTarget },
       });
-      toast.success(
-        `Updated ${String(selectedAuctions.length)} lots to ${bulkStatusTarget}`
-      );
+      // The server skips lots it must not change (under consideration, or sold
+      // with a payment record), so report what really happened.
+      const updated: number =
+        (result as { updated?: unknown[] } | undefined)?.updated?.length ??
+        selectedAuctions.length;
+      const skipped = selectedAuctions.length - updated;
+      toast.success(`Updated ${String(updated)} lots to ${bulkStatusTarget}`);
+      if (skipped > 0) {
+        toast.error(
+          `${String(skipped)} lot${skipped === 1 ? "" : "s"} could not be changed (under consideration, or already sold)`
+        );
+      }
       setSelectedAuctions([]);
       setBulkStatusTarget(null);
     } catch (err) {

@@ -594,6 +594,96 @@ describe("retireOldDemo", () => {
     expect(await t.run((ctx) => ctx.db.get("lots", ids.old))).not.toBeNull();
   });
 
+  it("keeps an old demo lot a real buyer has a payment on (and its sale)", async () => {
+    const t = createTestContext();
+    const ids = await seedOld(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("lots", ids.old, {
+        auctionId: ids.oldSale,
+        status: "sold",
+        winnerId: "real-buyer",
+      });
+      await ctx.db.insert("lotPayments", {
+        lotId: ids.old,
+        buyerId: "real-buyer",
+        sellerId: "s",
+        reference: "AB-KEPT1",
+        bid: 1,
+        premium: 0,
+        vat: 0,
+        total: 1,
+        depositCredit: 0,
+        amountDue: 1,
+        vatKind: "vat",
+        status: "awaiting",
+        payBy: 2,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+
+    const dry = await t.mutation(internal.wbtImport.retireOldDemo, {});
+    const report = await t.mutation(internal.wbtImport.retireOldDemo, {
+      apply: true,
+    });
+
+    expect(dry.keptWithPayment).toBe(1);
+    expect(report.keptWithPayment).toBe(1);
+    expect(report.rows).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.get("lots", ids.old))).not.toBeNull();
+    expect(
+      await t.run((ctx) => ctx.db.query("lotPayments").collect())
+    ).toHaveLength(1);
+    expect(
+      await t.run((ctx) => ctx.db.get("auctions", ids.oldSale))
+    ).not.toBeNull();
+  });
+
+  it("keeps an old demo lot a real buyer has a payment on (and its sale)", async () => {
+    const t = createTestContext();
+    const ids = await seedOld(t);
+    await t.run(async (ctx) => {
+      await ctx.db.patch("lots", ids.old, {
+        auctionId: ids.oldSale,
+        status: "sold",
+        winnerId: "real-buyer",
+      });
+      await ctx.db.insert("lotPayments", {
+        lotId: ids.old,
+        buyerId: "real-buyer",
+        sellerId: "s",
+        reference: "AB-KEPT1",
+        bid: 1,
+        premium: 0,
+        vat: 0,
+        total: 1,
+        depositCredit: 0,
+        amountDue: 1,
+        vatKind: "vat",
+        status: "awaiting",
+        payBy: 2,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+    });
+
+    const dry = await t.mutation(internal.wbtImport.retireOldDemo, {});
+    const report = await t.mutation(internal.wbtImport.retireOldDemo, {
+      apply: true,
+    });
+
+    expect(dry.keptWithPayment).toBe(1);
+    expect(report.keptWithPayment).toBe(1);
+    expect(report.rows).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.get("lots", ids.old))).not.toBeNull();
+    expect(
+      await t.run((ctx) => ctx.db.query("lotPayments").collect())
+    ).toHaveLength(1);
+    expect(
+      await t.run((ctx) => ctx.db.get("auctions", ids.oldSale))
+    ).not.toBeNull();
+  });
+
   it("leaves an old-titled sale alone while it still holds another lot", async () => {
     const t = createTestContext();
     const ids = await seedOld(t);

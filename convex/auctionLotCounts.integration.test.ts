@@ -345,9 +345,16 @@ describe("per-sale visible lot counter", () => {
     });
     expect(await counterOf(t, world.auctionA)).toBe(1);
 
-    await asAdmin(t).mutation(api.auctions.bulkUpdateLots, {
+    // Setting a lot to sold by hand is refused (lots sell only by closing or a
+    // seller's accept): the bulk call skips both and the count stays.
+    const sold = await asAdmin(t).mutation(api.auctions.bulkUpdateLots, {
       lotIds: [a, b],
       updates: { status: "sold" },
+    });
+    expect(sold.updated).toEqual([]);
+    await asAdmin(t).mutation(api.auctions.bulkUpdateLots, {
+      lotIds: [a, b],
+      updates: { status: "unsold" },
     });
     expect(await counterOf(t, world.auctionA)).toBe(2);
 

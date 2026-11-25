@@ -22,6 +22,7 @@ import {
 import { decryptPII, logAudit } from "../admin_utils";
 import { formatNotificationRand, notifyUser } from "../auctions/internal";
 import { requireAdmin } from "../lib/auth";
+import { applyDepositCredit } from "../lib/lotPayments";
 import { getBidEligibility } from "../lib/bidGuard";
 import type { RegDocKind } from "../lib/registration";
 import { requiredKinds, syncKycStatus } from "../lib/registration";
@@ -489,6 +490,9 @@ export const markDepositReceived = mutation({
       updatedAt: now,
     });
 
+    // Credit the deposit against the buyer's earliest awaiting payment, if any.
+    await applyDepositCredit(ctx, args.userId, now);
+
     const profile = await loadProfile(ctx, args.userId);
     const canBid =
       profile !== null && (await getBidEligibility(ctx, profile)).kind === "ok";
@@ -523,15 +527,27 @@ export const markDepositRefunded = mutation({
     if (deposit.status !== "received") {
       throw new ConvexError("Only a received deposit can be refunded.");
     }
+    const received = deposit.receivedAmount ?? deposit.amount;
+    // What a won lot's payment already used can't be refunded as well.
+    const credited =
+      deposit.creditedLotId === undefined
+        ? 0
+        : (deposit.creditedAmount ?? received);
+    const refunded = Math.max(0, received - credited);
+    if (refunded <= 0) {
+      throw new ConvexError(
+        "This deposit was credited against a won lot's payment and can't be refunded."
+      );
+    }
 
     const now = Date.now();
     await ctx.db.patch("registrationDeposits", deposit._id, {
       status: "refunded",
       refundedAt: now,
       refundedBy: admin.userId ?? admin._id,
+      refundedAmount: refunded,
       updatedAt: now,
     });
-    const refunded = deposit.receivedAmount ?? deposit.amount;
     await notifyUser(ctx, {
       recipientId: args.userId,
       type: "info",
