@@ -26,7 +26,7 @@ import {
   loadUnpaidPayments,
   refundableRemainder,
 } from "./lib/depositRefund";
-import { isReferenceTaken } from "./lib/lotPayments";
+import { applyDepositCredit, isReferenceTaken } from "./lib/lotPayments";
 import { formatNotificationRand, notifyUser } from "./lib/notify";
 import { bidEligibilityValidator, hasAllDetails } from "./lib/bidEligibility";
 import { getBidEligibility } from "./lib/bidGuard";
@@ -618,11 +618,15 @@ export const cancelDepositRefundRequest = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
     if (deposit?.status !== "refund_requested") return { success: true };
+    const now = Date.now();
     await ctx.db.patch("registrationDeposits", deposit._id, {
       status: "received",
       refundRequestedAt: undefined,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+    // A lot may have been won while the deposit was `refund_requested` (the
+    // credit only applies to a `received` deposit), so credit it now.
+    await applyDepositCredit(ctx, userId, now);
     return { success: true };
   },
 });

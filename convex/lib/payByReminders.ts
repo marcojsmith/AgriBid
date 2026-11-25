@@ -49,6 +49,9 @@ export async function sendPayByRemindersHandler(
       reminderSentAt: now,
       updatedAt: now,
     });
+    // Nothing left to pay (the deposit covered it): only waiting for an admin
+    // to confirm, so there is nothing to remind the buyer about.
+    if (payment.amountDue <= 0) continue;
     await notifyUser(ctx, {
       recipientId: payment.buyerId,
       type: "warning",

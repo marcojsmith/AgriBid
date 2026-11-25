@@ -864,7 +864,23 @@ export const getMyBidsOverviewHandler = async (ctx: QueryCtx) => {
   const lots = (
     await Promise.all(Array.from(lotIds, (id) => ctx.db.get("lots", id)))
   ).filter((lot): lot is Doc<"lots"> => lot !== null);
-  const stats = await computeLotStatsForUser(ctx, userId, lotIds);
+  // A bidder's own bids on one lot only ever go up (each must beat the price),
+  // so their newest non-voided bid is their highest: one read per lot instead
+  // of collecting every bid they placed on it.
+  const highestBids = new Map<Id<"lots">, number>();
+  await Promise.all(
+    Array.from(lotIds, async (lotId) => {
+      const newest = await ctx.db
+        .query("bids")
+        .withIndex("by_bidder_lot", (q) =>
+          q.eq("bidderId", userId).eq("lotId", lotId)
+        )
+        .order("desc")
+        .filter((q) => q.neq(q.field("status"), "voided"))
+        .first();
+      if (newest) highestBids.set(lotId, newest.amount);
+    })
+  );
 
   const live: Doc<"lots">[] = [];
   const considering: Doc<"lots">[] = [];
@@ -909,16 +925,16 @@ export const getMyBidsOverviewHandler = async (ctx: QueryCtx) => {
 
   const toRow = async (lot: Doc<"lots">) => {
     const summary = summaryById.get(lot._id);
-    const lotStats = stats.get(lot._id);
-    if (!summary || !lotStats) return null;
+    const highestBid = highestBids.get(lot._id);
+    if (!summary || highestBid === undefined) return null;
     const premium = await resolveBuyerPremium(ctx, lot);
     const isLeader = lot.winnerId === userId;
     return {
       ...summary,
-      myHighestBid: lotStats.highestBid,
+      myHighestBid: highestBid,
       isWinning:
         lot.status === "assigned" &&
-        lotStats.highestBid === lot.currentPrice &&
+        highestBid === lot.currentPrice &&
         isLeader,
       isLeadingConsideration: lot.status === "under_consideration" && isLeader,
       // The caller holds a valid bid here, so the lot has bids.

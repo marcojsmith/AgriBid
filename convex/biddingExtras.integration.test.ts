@@ -574,6 +574,60 @@ describe("deposit refund request", () => {
     expect((await row(t))?.status).toBe("received");
   });
 
+  it("cancelling credits a lot that was won while the refund was requested", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, {
+      status: "under_consideration",
+      winnerId: ALICE,
+    });
+    await deposit(t);
+    await asAlice(t).mutation(api.registration.requestDepositRefund, {});
+    // The seller accepts the top bid while the refund is only requested.
+    await t.run(async (ctx) => {
+      const lot = await ctx.db.get("lots", lotId);
+      if (!lot) throw new Error("missing");
+      await createLotPayment(ctx, lot, ALICE, 1100, Date.now());
+    });
+    const before = await t.run((ctx) => ctx.db.query("lotPayments").first());
+    expect(before?.depositCredit).toBe(0);
+
+    await asAlice(t).mutation(api.registration.cancelDepositRefundRequest, {});
+
+    const after = await t.run((ctx) => ctx.db.query("lotPayments").first());
+    expect(after?.depositCredit).toBe(after?.total);
+    expect(after?.amountDue).toBe(0);
+    expect((await row(t))?.creditedLotId).toBe(lotId);
+  });
+
+  it("an admin cannot refund a requested deposit once the buyer owes a payment", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, { status: "sold" });
+    await deposit(t);
+    await asAlice(t).mutation(api.registration.requestDepositRefund, {});
+    await payment(t, lotId, "awaiting");
+
+    await expect(
+      as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+        userId: ALICE,
+      })
+    ).rejects.toThrow("won lots that aren't paid yet");
+    expect((await row(t))?.status).toBe("refund_requested");
+  });
+
+  it("an admin cannot mark a requested deposit received again", async () => {
+    const t = makeContext();
+    await seedWorld(t);
+    await deposit(t, { status: "refund_requested" });
+    await expect(
+      as(t, ADMIN).mutation(api.admin.registration.markDepositReceived, {
+        userId: ALICE,
+        receivedAmount: 5000,
+      })
+    ).rejects.toThrow("the buyer has asked for it back");
+  });
+
   it("an admin can mark a requested refund as refunded", async () => {
     const t = makeContext();
     const auctionId = await seedWorld(t);
@@ -1305,6 +1359,20 @@ describe("pay-by reminder", () => {
     });
     expect(await run(t)).toEqual({ sent: 0, hasMore: false });
     expect(await notificationsFor(t, ALICE)).toHaveLength(0);
+  });
+
+  it("stamps but does not remind a payment the deposit already covers", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId);
+    await t.run((ctx) =>
+      addPayment(ctx, lotId, { depositCredit: 1208, amountDue: 0 })
+    );
+    expect(await run(t)).toEqual({ sent: 1, hasMore: false });
+    expect(await notificationsFor(t, ALICE)).toHaveLength(0);
+    expect(await pushBatches(t)).toHaveLength(0);
+    const payment = await t.run((ctx) => ctx.db.query("lotPayments").first());
+    expect(payment?.reminderSentAt).toBe(Date.now());
   });
 
   it("reminds an undated lot as 'your lot'", async () => {

@@ -22,6 +22,7 @@ import {
 import { decryptPII, logAudit } from "../admin_utils";
 import { formatNotificationRand, notifyUser } from "../auctions/internal";
 import { requireAdmin } from "../lib/auth";
+import { loadUnpaidPayments } from "../lib/depositRefund";
 import { applyDepositCredit } from "../lib/lotPayments";
 import { getBidEligibility } from "../lib/bidGuard";
 import type { RegDocKind } from "../lib/registration";
@@ -473,7 +474,9 @@ export const markDepositReceived = mutation({
       throw new ConvexError(
         deposit.status === "received"
           ? "This deposit is already marked received."
-          : "A refunded deposit can't be marked received until the buyer pays again."
+          : deposit.status === "refund_requested"
+            ? "This deposit was already received; the buyer has asked for it back."
+            : "A refunded deposit can't be marked received until the buyer pays again."
       );
     }
     // Written so that NaN also fails.
@@ -532,6 +535,17 @@ export const markDepositRefunded = mutation({
       deposit.status !== "refund_requested"
     ) {
       throw new ConvexError("Only a received deposit can be refunded.");
+    }
+    // The buyer asked while nothing was owed; a lot may have been sold to them
+    // since (e.g. the seller accepted a top bid), and the deposit is then still
+    // needed for that payment.
+    if (deposit.status === "refund_requested") {
+      const { awaiting, claimed } = await loadUnpaidPayments(ctx, args.userId);
+      if (awaiting.length + claimed.length > 0) {
+        throw new ConvexError(
+          "This buyer has won lots that aren't paid yet. Ask them to cancel the request or pay first."
+        );
+      }
     }
     const received = deposit.receivedAmount ?? deposit.amount;
     // What a won lot's payment already used can't be refunded as well.
