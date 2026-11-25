@@ -90,7 +90,9 @@ export function makeRegistration(
       status: NonNullable<Registration["deposit"]>["status"];
       amount: number;
       receivedAt?: number;
+      refundRequestedAt?: number;
       refundedAt?: number;
+      refundableAmount?: number;
     } | null;
   } = {}
 ): Registration {
@@ -100,7 +102,13 @@ export function makeRegistration(
     details: makeDetails(),
     documents: [],
     deposit: deposit
-      ? { receivedAt: undefined, refundedAt: undefined, ...deposit }
+      ? {
+          receivedAt: undefined,
+          refundRequestedAt: undefined,
+          refundedAt: undefined,
+          refundableAmount: deposit.amount,
+          ...deposit,
+        }
       : null,
     depositSettings: { enabled: true, amount: 5000, refundDays: 3 },
     submittedAt: undefined,

@@ -14,6 +14,7 @@ import { getEnv } from "./config";
 import { SALE_REMINDER_BATCH, SALE_REMINDER_STALE_MS } from "./constants";
 import { getAuthenticatedUserId, getAuthUser, resolveUserId } from "./lib/auth";
 import { isAllowedPushEndpoint, type PushMessage } from "./lib/pushDelivery";
+import { pushSwitchAllows } from "./lib/pushToUser";
 
 /** Longest push endpoint URL we store. */
 const MAX_ENDPOINT_LENGTH = 2048;
@@ -283,10 +284,18 @@ export async function sendDueSaleRemindersHandler(
       message: body,
       link: url,
     });
-    const subscriptions = await ctx.db
-      .query("pushSubscriptions")
-      .withIndex("by_userId", (q) => q.eq("userId", reminder.userId))
-      .take(SUBSCRIPTIONS_PER_USER);
+    // "Sales opening" switched off: the reminder is still marked sent and the
+    // in-app notification written, but no push is queued.
+    const subscriptions = (await pushSwitchAllows(
+      ctx,
+      reminder.userId,
+      "notificationsSalesOpening"
+    ))
+      ? await ctx.db
+          .query("pushSubscriptions")
+          .withIndex("by_userId", (q) => q.eq("userId", reminder.userId))
+          .take(SUBSCRIPTIONS_PER_USER)
+      : [];
     for (const subscription of subscriptions) {
       messages.push({
         endpoint: subscription.endpoint,

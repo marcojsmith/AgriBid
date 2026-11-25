@@ -33,6 +33,12 @@ const preferenceFields = {
   notificationsAuctionWon: v.optional(v.boolean()),
   notificationsSellerAuctionApproved: v.optional(v.boolean()),
   notificationsEmailEnabled: v.optional(v.boolean()),
+  /** Push switch: outbid and closing-in-1-hour alerts (unset = on). */
+  notificationsWatchedLots: v.optional(v.boolean()),
+  /** Push switch: payment and collection notices for won lots (unset = on). */
+  notificationsLotsWon: v.optional(v.boolean()),
+  /** Push switch: "sale is open" reminders (unset = on). */
+  notificationsSalesOpening: v.optional(v.boolean()),
 };
 
 /**

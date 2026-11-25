@@ -252,6 +252,11 @@ describe("outbid push", () => {
     await setAlerts(t, true);
     const { lotId } = await seed(t);
     await bid(t, ALICE, lotId, 1000);
+    // Bidding watches the lot, so Alice has to stop watching it first.
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query("watchlist").collect();
+      for (const row of rows) await ctx.db.delete("watchlist", row._id);
+    });
     await bid(t, BOB, lotId, 1100);
     expect(
       await t.run((ctx) => ctx.db.query("notifications").collect())

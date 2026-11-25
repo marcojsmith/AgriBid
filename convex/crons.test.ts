@@ -22,6 +22,7 @@ vi.mock("./_generated/api", () => ({
       refreshEngagementScores: "refreshEngagementScores",
       sendSaleReminders: "sendSaleReminders",
       sendClosingSoonAlerts: "sendClosingSoonAlerts",
+      sendPaymentReminders: "sendPaymentReminders",
     },
   },
 }));
@@ -91,6 +92,13 @@ describe("Crons Coverage", () => {
       "send closing soon alerts",
       { minutes: 5 },
       "sendClosingSoonAlerts",
+      {}
+    );
+
+    expect(crons.interval).toHaveBeenCalledWith(
+      "send payment reminders",
+      { minutes: 15 },
+      "sendPaymentReminders",
       {}
     );
   });

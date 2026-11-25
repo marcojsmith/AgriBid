@@ -62,6 +62,7 @@ const depositStatusValidator = v.union(
   v.literal("awaiting"),
   v.literal("paid_claimed"),
   v.literal("received"),
+  v.literal("refund_requested"),
   v.literal("refunded")
 );
 
@@ -77,6 +78,7 @@ const DepositRowValidator = v.object({
   paidClaimedAt: v.optional(v.number()),
   receivedAt: v.optional(v.number()),
   receivedAmount: v.optional(v.number()),
+  refundRequestedAt: v.optional(v.number()),
   refundedAt: v.optional(v.number()),
   updatedAt: v.number(),
 });
@@ -188,6 +190,7 @@ async function toDepositRow(
     paidClaimedAt: deposit.paidClaimedAt,
     receivedAt: deposit.receivedAt,
     receivedAmount: deposit.receivedAmount,
+    refundRequestedAt: deposit.refundRequestedAt,
     refundedAt: deposit.refundedAt,
     updatedAt: deposit.updatedAt,
   };
@@ -524,7 +527,10 @@ export const markDepositRefunded = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const deposit = await requireDeposit(ctx, args.userId);
-    if (deposit.status !== "received") {
+    if (
+      deposit.status !== "received" &&
+      deposit.status !== "refund_requested"
+    ) {
       throw new ConvexError("Only a received deposit can be refunded.");
     }
     const received = deposit.receivedAmount ?? deposit.amount;

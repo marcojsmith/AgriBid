@@ -61,6 +61,7 @@ describe("cronJobs", () => {
       "refresh_engagement_scores",
       "send_sale_reminders",
       "send_closing_soon_alerts",
+      "send_payment_reminders",
     ]);
   });
 

@@ -98,6 +98,17 @@ crons.interval(
 );
 
 /**
+ * Remind buyers a day before a won-lot payment is due. Once per payment
+ * (`reminderSentAt`), bounded per run.
+ */
+crons.interval(
+  "send payment reminders",
+  { minutes: 15 },
+  internal.cronJobs.sendPaymentReminders,
+  {}
+);
+
+/**
  * Daily job to process error reports and create GitHub issues.
  * Runs at 2 AM UTC to avoid peak hours.
  */

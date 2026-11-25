@@ -19,6 +19,7 @@ export type CronJobKey =
   | "refresh_engagement_scores"
   | "send_sale_reminders"
   | "send_closing_soon_alerts"
+  | "send_payment_reminders"
   | "weekly_mock_data_reset";
 
 /** Static description of a toggleable background job. */
@@ -109,6 +110,14 @@ export const CRON_JOBS: readonly CronJobDefinition[] = [
     description:
       "Sends the 1-hour-before-close push to everyone who watches a lot. Also requires Watched-lot alerts to be switched on in Admin settings.",
     schedule: "Every 5 minutes",
+    defaultEnabled: true,
+  },
+  {
+    key: "send_payment_reminders",
+    label: "Send payment reminders",
+    description:
+      "Tells buyers a day before their won-lot payment is due (in-app, plus push unless they switched Lots you win off).",
+    schedule: "Every 15 minutes",
     defaultEnabled: true,
   },
   {

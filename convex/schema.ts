@@ -397,11 +397,14 @@ export default defineSchema({
       v.literal("awaiting"),
       v.literal("paid_claimed"),
       v.literal("received"),
+      // The buyer asked for the deposit back; it no longer counts for bidding.
+      v.literal("refund_requested"),
       v.literal("refunded")
     ),
     amount: v.number(),
     paidClaimedAt: v.optional(v.number()),
     receivedAt: v.optional(v.number()),
+    refundRequestedAt: v.optional(v.number()),
     receivedAmount: v.optional(v.number()),
     markedReceivedBy: v.optional(v.string()),
     refundedAt: v.optional(v.number()),
@@ -445,12 +448,15 @@ export default defineSchema({
     paidClaimedAt: v.optional(v.number()),
     confirmedAt: v.optional(v.number()),
     confirmedBy: v.optional(v.string()),
+    // When the "payment due tomorrow" reminder went out (once only).
+    reminderSentAt: v.optional(v.number()),
   })
     .index("by_lotId", ["lotId"])
     .index("by_reference", ["reference"])
     .index("by_buyerId_and_status", ["buyerId", "status"])
     .index("by_buyerId_and_createdAt", ["buyerId", "createdAt"])
-    .index("by_status_and_updatedAt", ["status", "updatedAt"]),
+    .index("by_status_and_updatedAt", ["status", "updatedAt"])
+    .index("by_status_and_payBy", ["status", "payBy"]),
 
   // New Admin Features
   auditLogs: defineTable({
@@ -659,6 +665,11 @@ export default defineSchema({
     notificationsAuctionWon: v.optional(v.boolean()),
     notificationsSellerAuctionApproved: v.optional(v.boolean()),
     notificationsEmailEnabled: v.optional(v.boolean()),
+    // The three push switches (unset = on): outbid and closing alerts for
+    // watched lots, payment and collection notices for won lots, sale openings.
+    notificationsWatchedLots: v.optional(v.boolean()),
+    notificationsLotsWon: v.optional(v.boolean()),
+    notificationsSalesOpening: v.optional(v.boolean()),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),
 

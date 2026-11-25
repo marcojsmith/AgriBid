@@ -11,6 +11,7 @@ import { mutation, query } from "../_generated/server";
 import { logAudit } from "../admin_utils";
 import { requireAdmin } from "../lib/auth";
 import { notifyUser } from "../lib/notify";
+import { pushLotsWon } from "../lib/pushToUser";
 
 const statusValidator = v.union(
   v.literal("awaiting"),
@@ -128,12 +129,19 @@ export const confirmLotPayment = mutation({
       lot?.lotNumber === undefined
         ? "your lot"
         : `Lot ${String(lot.lotNumber)}`;
+    const message = `Payment received for ${label}. Collection details are in My bids.`;
     await notifyUser(ctx, {
       recipientId: payment.buyerId,
       type: "success",
       title: "Payment received",
-      message: `Payment received for ${label}. Collection details are in My bids.`,
+      message,
       link: "/dashboard/bids",
+    });
+    await pushLotsWon(ctx, payment.buyerId, {
+      title: "Payment received",
+      body: message,
+      url: "/dashboard/bids",
+      tag: `paid-${payment.lotId}`,
     });
     await logAudit(ctx, {
       action: "LOT_PAYMENT_CONFIRMED",

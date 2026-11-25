@@ -179,6 +179,38 @@ describe("verified fast path", () => {
   });
 });
 
+describe("deposit that is being refunded", () => {
+  it.each(["refund_requested", "refunded"] as const)(
+    "does not satisfy the deposit requirement while %s",
+    async (deposit) => {
+      const t = makeContext();
+      await seed(t, { profile: { isVerified: true }, deposit });
+      await expect(guard(t)).rejects.toThrow(
+        "Your deposit hasn't been received yet."
+      );
+      expect(await t.run((ctx) => canUserBid(ctx, USER))).toBe(false);
+    }
+  );
+
+  it("still counts a received deposit whose amount was credited to a lot", async () => {
+    const t = makeContext();
+    await seed(t, { profile: { isVerified: true }, deposit: "received" });
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query("registrationDeposits").first();
+      const lotId = (await ctx.db.query("lots").first())?._id;
+      if (row) {
+        await ctx.db.patch("registrationDeposits", row._id, {
+          creditedAt: 1,
+          creditedAmount: 5000,
+          // No lot row exists in this fixture; only the credit fields matter.
+          ...(lotId ? { creditedLotId: lotId } : {}),
+        });
+      }
+    });
+    expect(await guard(t)).toMatchObject({ userId: USER });
+  });
+});
+
 describe("canUserBid", () => {
   it("is false without a profile and true for an eligible user", async () => {
     const t = makeContext();

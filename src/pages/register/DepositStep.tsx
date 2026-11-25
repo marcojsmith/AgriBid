@@ -65,7 +65,11 @@ export default function DepositStep() {
   if (eligibility.kind === "incomplete") {
     return <Navigate to={path(entryStep(registration))} replace />;
   }
-  if (!depositSettings.enabled || deposit?.status === "received") {
+  if (
+    !depositSettings.enabled ||
+    deposit?.status === "received" ||
+    deposit?.status === "refund_requested"
+  ) {
     return <Navigate to={path("status")} replace />;
   }
 

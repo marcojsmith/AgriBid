@@ -22,6 +22,7 @@ import {
   refreshEngagementScoresHandler,
 } from "./engagement";
 import { requireAdmin } from "./lib/auth";
+import { sendPayByRemindersHandler } from "./lib/payByReminders";
 import { sendDueSaleRemindersHandler } from "./push";
 import { sendClosingSoonAlertsHandler } from "./watchAlerts";
 import { runOrphanSweep } from "./storageCleanup";
@@ -287,6 +288,29 @@ export const sendClosingSoonAlerts = internalMutation({
       await ctx.scheduler.runAfter(
         0,
         internal.cronJobs.sendClosingSoonAlerts,
+        {}
+      );
+    }
+    return result;
+  },
+});
+
+/**
+ * Cron wrapper: send due pay-by reminders unless the job is disabled. A full
+ * batch reschedules itself through this wrapper, so the gate is re-checked.
+ */
+export const sendPaymentReminders = internalMutation({
+  args: {},
+  returns: v.object({ sent: v.number(), hasMore: v.boolean() }),
+  handler: async (ctx) => {
+    if (!(await isCronJobEnabled(ctx, "send_payment_reminders"))) {
+      return { sent: 0, hasMore: false };
+    }
+    const result = await sendPayByRemindersHandler(ctx, Date.now());
+    if (result.hasMore) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.cronJobs.sendPaymentReminders,
         {}
       );
     }

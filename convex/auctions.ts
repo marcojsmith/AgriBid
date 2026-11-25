@@ -28,6 +28,7 @@ export {
   getAllLots,
   getMyBids,
   getMyBidsCount,
+  getMyBidsOverview,
   getMyListings,
   getMyListingsCount,
   getMyListingsStats,

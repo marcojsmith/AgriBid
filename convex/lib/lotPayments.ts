@@ -19,6 +19,7 @@ import {
 } from "./buyerTotal";
 import { percentToFraction, resolveBuyerPremium } from "./buyerPremium";
 import { formatNotificationRand, notifyUser } from "./notify";
+import { pushLotsWon } from "./pushToUser";
 import { generateReference } from "./registration";
 import { resolveLotSellerVat } from "./sellerVat";
 import { isDemoBidder } from "./wbtImport";
@@ -213,12 +214,19 @@ export async function createLotPayment(
     lot.lotNumber === undefined
       ? lot.title
       : `Lot ${String(lot.lotNumber)} ${lot.title}`;
+  const winMessage = `You won ${label}. Pay ${formatNotificationRand(current?.amountDue ?? total)} by ${formatPayBy(payBy)}.`;
   await notifyUser(ctx, {
     recipientId: winnerId,
     type: "success",
     title: "You won this lot",
-    message: `You won ${label}. Pay ${formatNotificationRand(current?.amountDue ?? total)} by ${formatPayBy(payBy)}.`,
+    message: winMessage,
     link: "/dashboard/bids",
+  });
+  await pushLotsWon(ctx, winnerId, {
+    title: "You won this lot",
+    body: winMessage,
+    url: "/dashboard/bids",
+    tag: `won-${lot._id}`,
   });
 
   const created = await ctx.db.get("lotPayments", paymentId);

@@ -246,7 +246,12 @@ export function buildStatusRows(registration: Registration): StatusRowData[] {
   const { depositSettings, deposit } = registration;
   if (depositSettings.enabled) {
     const amount = formatRand(deposit?.amount ?? depositSettings.amount);
-    if (deposit?.status === "received") {
+    // A deposit with a refund requested still counts as received here; the
+    // refund request itself is shown on the Account page.
+    if (
+      deposit?.status === "received" ||
+      deposit?.status === "refund_requested"
+    ) {
       rows.push({
         key: "deposit",
         title: "Deposit",
