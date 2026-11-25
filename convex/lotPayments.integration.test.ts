@@ -19,6 +19,7 @@ import {
   createLotPayment,
   generateUniqueReference,
   getLotPaymentByLot,
+  releaseAllDepositCredits,
 } from "./lib/lotPayments";
 import { sellerDisplayName } from "./lotPayments";
 import schema from "./schema";
@@ -990,7 +991,7 @@ describe("getMyPaymentSummary", () => {
     const a = await insertLot(t, auctionId, { lotNumber: 1 });
     const b = await insertLot(t, auctionId, { lotNumber: 2 });
     const c = await insertLot(t, auctionId, { lotNumber: 3 });
-    const later = await pay(t, a, 10_000, BUYER, FRIDAY);
+    await pay(t, a, 10_000, BUYER, FRIDAY);
     await pay(t, b, 20_000, BUYER, FRIDAY - 3 * DAY);
     const done = await pay(t, c, 30_000, BUYER, FRIDAY - 10 * DAY);
     await t.run((ctx) =>
@@ -1004,13 +1005,15 @@ describe("getMyPaymentSummary", () => {
     );
 
     const earliest = (await payments(t)).find((p) => p.lotId === b);
+    // `a` was claimed, so only `b` is awaiting; the claimed one is not "next".
     expect(summary).toEqual({
       unpaidCount: 2,
+      awaitingCount: 1,
+      claimedCount: 1,
       nextPayBy: earliest?.payBy,
       nextAmountDue: earliest?.amountDue,
       nextLotId: b,
     });
-    expect(later.status).toBe("awaiting");
   });
 
   it("is empty when nothing is open", async () => {
@@ -1020,6 +1023,8 @@ describe("getMyPaymentSummary", () => {
       await as(t, OTHER).query(api.lotPayments.getMyPaymentSummary, {})
     ).toEqual({
       unpaidCount: 0,
+      awaitingCount: 0,
+      claimedCount: 0,
       nextPayBy: null,
       nextAmountDue: null,
       nextLotId: null,
@@ -1214,5 +1219,210 @@ describe("guards around a paid sale", () => {
     expect(created).toBeNull();
     expect(await payments(t)).toHaveLength(0);
     expect(await notificationsFor(t, demo)).toHaveLength(0);
+  });
+});
+
+describe("deposit credit timing and partial refunds", () => {
+  const deposit = (t: Ctx) =>
+    t.run((ctx) => ctx.db.query("registrationDeposits").first());
+
+  it("credits the first win once the deposit is received, not the second", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    await insertDeposit(t, "paid_claimed", { receivedAmount: undefined });
+    const first = await insertLot(t, auctionId);
+    const second = await insertLot(t, auctionId, { lotNumber: 8 });
+    const a = await pay(t, first, 100_000, BUYER, FRIDAY - DAY);
+    const b = await pay(t, second, 100_000, BUYER, FRIDAY);
+    expect(a.depositCredit).toBe(0);
+    expect(b.depositCredit).toBe(0);
+
+    await as(t, ADMIN).mutation(api.admin.registration.markDepositReceived, {
+      userId: BUYER,
+      receivedAmount: 5000,
+    });
+
+    const rows = await payments(t);
+    const firstRow = rows.find((r) => r.lotId === first);
+    const secondRow = rows.find((r) => r.lotId === second);
+    expect(firstRow).toMatchObject({
+      depositCredit: 5000,
+      amountDue: a.total - 5000,
+    });
+    expect(secondRow).toMatchObject({ depositCredit: 0, amountDue: b.total });
+    expect(await deposit(t)).toMatchObject({
+      creditedLotId: first,
+      creditedAmount: 5000,
+    });
+    // A later win gets nothing more.
+    const third = await insertLot(t, auctionId, { lotNumber: 9 });
+    expect((await pay(t, third, 100_000)).depositCredit).toBe(0);
+  });
+
+  it("marking received with no awaiting payment credits nothing yet", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    await insertDeposit(t, "awaiting", { receivedAmount: undefined });
+
+    await as(t, ADMIN).mutation(api.admin.registration.markDepositReceived, {
+      userId: BUYER,
+      receivedAmount: 5000,
+    });
+
+    expect((await deposit(t))?.creditedLotId).toBeUndefined();
+    // The first win after that takes the credit.
+    const lotId = await insertLot(t, auctionId);
+    expect((await pay(t, lotId, 100_000)).depositCredit).toBe(5000);
+  });
+
+  it("credits a deposit bigger than the lot and refunds the rest", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    await insertDeposit(t);
+    const lotId = await insertLot(t, auctionId);
+    const payment = await pay(t, lotId, 1000);
+    expect(payment.depositCredit).toBe(payment.total);
+    expect((await deposit(t))?.creditedAmount).toBe(payment.total);
+
+    await as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+      userId: BUYER,
+    });
+
+    expect(await deposit(t)).toMatchObject({
+      status: "refunded",
+      refundedAmount: 5000 - payment.total,
+    });
+    const notes = await notificationsFor(t, BUYER);
+    expect(notes[notes.length - 1].message).toContain("refunded");
+  });
+
+  it("refunds the whole deposit when nothing was credited", async () => {
+    const t = makeContext();
+    await seedWorld(t);
+    await insertDeposit(t);
+
+    await as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+      userId: BUYER,
+    });
+
+    expect((await deposit(t))?.refundedAmount).toBe(5000);
+  });
+
+  it("refuses a fully credited deposit", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    await insertDeposit(t);
+    const lotId = await insertLot(t, auctionId);
+    await pay(t, lotId, 100_000);
+
+    await expect(
+      as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+        userId: BUYER,
+      })
+    ).rejects.toThrow("credited against a won lot");
+  });
+});
+
+describe("claimLotPaid records the buyer's activity, not an admin audit", () => {
+  it("writes a user activity row and no audit entry", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId);
+    await pay(t, lotId, 10_000);
+
+    await as(t, BUYER).mutation(api.lotPayments.claimLotPaid, { lotId });
+
+    const activity = await t.run((ctx) =>
+      ctx.db.query("userActivity").collect()
+    );
+    const claimed = activity.filter((a) => a.type === "payment_claimed");
+    expect(claimed).toHaveLength(1);
+    expect(claimed[0]).toMatchObject({ userId: BUYER, relatedId: lotId });
+    const audits = await t.run((ctx) => ctx.db.query("auditLogs").collect());
+    expect(audits.map((a) => a.action)).not.toContain(
+      "LOT_PAYMENT_PAID_CLAIMED"
+    );
+  });
+});
+
+describe("profile reads after a collection address is saved", () => {
+  it("getMyProfile and getProfileForKYC still validate and never carry the address", async () => {
+    const t = makeContext();
+    await seedWorld(t);
+    await as(t, BUYER).mutation(api.lotPayments.updateMyCollectionAddress, {
+      address: "Farm 12, R64",
+    });
+
+    const mine = await as(t, BUYER).query(api.users.getMyProfile, {});
+    const kyc = await as(t, ADMIN).mutation(api.users.getProfileForKYC, {
+      userId: BUYER,
+    });
+
+    expect(JSON.stringify(mine)).not.toContain("collectionAddress");
+    expect(JSON.stringify(kyc)).not.toContain("collectionAddress");
+    expect(mine?.profile).not.toBeNull();
+    expect(kyc).not.toBeNull();
+  });
+});
+
+describe("admins cannot set lots to sold by hand", () => {
+  it("refuses assigned -> sold, single and bulk", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId);
+
+    await expect(
+      as(t, ADMIN).mutation(api.auctions.adminUpdateLot, {
+        lotId,
+        updates: { status: "sold" },
+      })
+    ).rejects.toThrow("Lots become sold only when they close");
+    const bulk = await as(t, ADMIN).mutation(api.auctions.bulkUpdateLots, {
+      lotIds: [lotId],
+      updates: { status: "sold" },
+    });
+
+    expect(bulk.skipped).toEqual([lotId]);
+    const lot = await t.run((ctx) => ctx.db.get("lots", lotId));
+    expect(lot?.status).toBe("assigned");
+  });
+
+  it("refuses a price change on a sold lot with a payment record", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId);
+    await insertBid(t, lotId, BUYER, 8000);
+    await as(t, ADMIN).mutation(api.auctions.closeLotEarly, { lotId });
+
+    for (const updates of [{ currentPrice: 1 }, { reservePrice: 1 }]) {
+      await expect(
+        as(t, ADMIN).mutation(api.auctions.adminUpdateLot, { lotId, updates })
+      ).rejects.toThrow("price can't be changed");
+    }
+  });
+});
+
+describe("clearing seed data frees deposit credits", () => {
+  it("releaseAllDepositCredits clears the credited fields", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    await insertDeposit(t);
+    const lotId = await insertLot(t, auctionId);
+    await pay(t, lotId, 100_000);
+    const before = await t.run((ctx) =>
+      ctx.db.query("registrationDeposits").first()
+    );
+    expect(before?.creditedLotId).toBe(lotId);
+
+    await t.run(async (ctx) => {
+      await releaseAllDepositCredits(ctx);
+    });
+
+    const after = await t.run((ctx) =>
+      ctx.db.query("registrationDeposits").first()
+    );
+    expect(after?.creditedLotId).toBeUndefined();
+    expect(after?.creditedAt).toBeUndefined();
+    expect(after?.creditedAmount).toBeUndefined();
   });
 });

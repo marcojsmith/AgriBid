@@ -77,6 +77,12 @@ export const ACTIVITY_META: Record<ActivityType, ActivityMeta> = {
     iconColor: "text-success",
     title: "Auction won",
   },
+  payment_claimed: {
+    icon: CreditCard,
+    bgClass: "bg-primary/10",
+    iconColor: "text-primary",
+    title: "Payment marked as paid",
+  },
 };
 
 /**

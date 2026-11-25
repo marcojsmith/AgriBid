@@ -33,6 +33,10 @@ import {
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 
+/** Shown when an admin tries to set a lot to sold by hand. */
+export const SOLD_ONLY_BY_SALE_MESSAGE =
+  "Lots become sold only when they close or a seller accepts.";
+
 /**
  * Lot statuses an admin may set through the legacy bulk/update mutations.
  */
@@ -304,8 +308,24 @@ export const adminUpdateLotHandler = async (
     );
   }
 
+  // A lot becomes sold only through settlement or a seller's accept: that is
+  // what creates the buyer's payment record and fees.
+  if (newStatus === "sold" && oldStatus !== "sold") {
+    throw new ConvexError(SOLD_ONLY_BY_SALE_MESSAGE);
+  }
   // A sold lot with a payment record keeps its sale: moving it back would leave
-  // the buyer owing money (and a credited deposit) for a lot that isn't sold.
+  // the buyer owing money (and a credited deposit) for a lot that isn't sold,
+  // and changing its price would break the amounts they were asked to pay.
+  if (
+    oldStatus === "sold" &&
+    (args.updates.currentPrice !== undefined ||
+      args.updates.reservePrice !== undefined) &&
+    (await getLotPaymentByLot(ctx, lot._id))
+  ) {
+    throw new ConvexError(
+      "This lot has a payment record. Its price can't be changed after sale."
+    );
+  }
   if (
     oldStatus === "sold" &&
     newStatus !== undefined &&
@@ -513,6 +533,11 @@ export const bulkUpdateLotsHandler = async (
         continue;
       }
 
+      // Lots become sold only through settlement or a seller's accept.
+      if (newStatus === "sold" && oldStatus !== "sold") {
+        skipped.push(id);
+        continue;
+      }
       // Sold lots with a payment record keep their sale (see adminUpdateLot).
       if (
         oldStatus === "sold" &&

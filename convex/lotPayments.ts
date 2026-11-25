@@ -18,7 +18,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { logAudit } from "./admin_utils";
+import { logActivity } from "./userActivity";
 import { resolveImageUrls } from "./auctions/helpers";
 import { requireAuth, requireProfile, resolveUserId } from "./lib/auth";
 import { decryptPII, encryptPII } from "./lib/encryption";
@@ -215,11 +215,13 @@ export const claimLotPaid = mutation({
       paidClaimedAt: now,
       updatedAt: now,
     });
-    await logAudit(ctx, {
-      action: "LOT_PAYMENT_PAID_CLAIMED",
-      targetId: payment.lotId,
-      targetType: "lot",
-      details: payment.reference,
+    // The buyer's own activity feed, not the admin audit log (which would
+    // record the buyer as an admin).
+    await logActivity(ctx, {
+      userId,
+      type: "payment_claimed",
+      description: `Marked ${payment.reference} as paid`,
+      relatedId: payment.lotId,
     });
     return { success: true };
   },
@@ -273,13 +275,18 @@ export const getMyCollectionDetails = query({
 });
 
 /**
- * Buyer: how many payments are open and which is due first, for the Account
- * banner and the refund guard. Open means awaiting or paid_claimed.
+ * Buyer: payment counts for the Account banner and the refund guard.
+ * `unpaidCount` is awaiting plus paid_claimed; the "next" fields describe the
+ * earliest awaiting payment only (a claimed one is waiting on an admin).
  */
 export const getMyPaymentSummary = query({
   args: {},
   returns: v.object({
+    /** Awaiting plus paid_claimed: every payment not yet confirmed. */
     unpaidCount: v.number(),
+    awaitingCount: v.number(),
+    claimedCount: v.number(),
+    /** The next three are the earliest AWAITING payment (null when none). */
     nextPayBy: v.union(v.number(), v.null()),
     nextAmountDue: v.union(v.number(), v.null()),
     nextLotId: v.union(v.id("lots"), v.null()),
@@ -296,10 +303,14 @@ export const getMyPaymentSummary = query({
           .take(SUMMARY_READ_CAP)
       )
     );
-    const open = [...awaiting, ...claimed].sort((a, b) => a.payBy - b.payBy);
-    const next = open.length > 0 ? open[0] : null;
+    const next = awaiting.reduce<Doc<"lotPayments"> | null>(
+      (best, row) => (best === null || row.payBy < best.payBy ? row : best),
+      null
+    );
     return {
-      unpaidCount: open.length,
+      unpaidCount: awaiting.length + claimed.length,
+      awaitingCount: awaiting.length,
+      claimedCount: claimed.length,
       nextPayBy: next?.payBy ?? null,
       nextAmountDue: next?.amountDue ?? null,
       nextLotId: next?.lotId ?? null,

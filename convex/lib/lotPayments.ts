@@ -168,20 +168,15 @@ export async function createLotPayment(
     .first();
   if (existing) return existing;
 
-  const [sellerProfile, vatRate, buyerFees, reference, deposit] =
-    await Promise.all([
-      ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
-        .unique(),
-      getVatRateHandler(ctx),
-      resolveLotBuyerFees(ctx, lot),
-      generateUniqueReference(ctx),
-      ctx.db
-        .query("registrationDeposits")
-        .withIndex("by_userId", (q) => q.eq("userId", winnerId))
-        .unique(),
-    ]);
+  const [sellerProfile, vatRate, buyerFees, reference] = await Promise.all([
+    ctx.db
+      .query("profiles")
+      .withIndex("by_userId", (q) => q.eq("userId", lot.sellerId))
+      .unique(),
+    getVatRateHandler(ctx),
+    resolveLotBuyerFees(ctx, lot),
+    generateUniqueReference(ctx),
+  ]);
   const { vatKind } = resolveLotSellerVat(lot, sellerProfile);
   const { premium, vat, total } = calculateBuyerTotal({
     bid,
@@ -190,12 +185,6 @@ export async function createLotPayment(
     vatBase: vatBaseForSeller(vatKind),
   });
 
-  const creditable =
-    deposit?.status === "received" && deposit.creditedLotId === undefined;
-  const depositCredit = creditable
-    ? Math.max(0, Math.min(deposit.receivedAmount ?? deposit.amount, total))
-    : 0;
-  const amountDue = total - depositCredit;
   const payBy = addBusinessDays(at, PAY_BY_BUSINESS_DAYS);
 
   const paymentId = await ctx.db.insert("lotPayments", {
@@ -207,21 +196,18 @@ export async function createLotPayment(
     premium,
     vat,
     total,
-    depositCredit,
-    amountDue,
+    depositCredit: 0,
+    amountDue: total,
     vatKind,
     status: "awaiting",
     payBy,
     createdAt: at,
     updatedAt: at,
   });
-  if (creditable) {
-    await ctx.db.patch("registrationDeposits", deposit._id, {
-      creditedLotId: lot._id,
-      creditedAt: at,
-      updatedAt: at,
-    });
-  }
+  // Credits the buyer's earliest awaiting payment (this one, unless an older
+  // one is still waiting) when their deposit is received and not yet used.
+  await applyDepositCredit(ctx, winnerId, at);
+  const current = await ctx.db.get("lotPayments", paymentId);
 
   const label =
     lot.lotNumber === undefined
@@ -231,13 +217,93 @@ export async function createLotPayment(
     recipientId: winnerId,
     type: "success",
     title: "You won this lot",
-    message: `You won ${label}. Pay ${formatNotificationRand(amountDue)} by ${formatPayBy(payBy)}.`,
+    message: `You won ${label}. Pay ${formatNotificationRand(current?.amountDue ?? total)} by ${formatPayBy(payBy)}.`,
     link: "/dashboard/bids",
   });
 
   const created = await ctx.db.get("lotPayments", paymentId);
   if (!created) throw new ConvexError("Couldn't create the payment record.");
   return created;
+}
+
+/**
+ * Credits a buyer's received registration deposit, once, against their earliest
+ * awaiting payment ("credited once, against the first won lot"). The credit is
+ * `min(deposit, total)`; what is left over can still be refunded.
+ *
+ * Called when a payment is created and when an admin marks the deposit
+ * received, so it works whichever happens first. Does nothing unless the
+ * deposit is `received` and not yet credited, and the buyer has an awaiting
+ * payment.
+ *
+ * @param ctx - Mutation context
+ * @param buyerId - The buyer
+ * @param at - Timestamp for the updates
+ * @returns The payment that received the credit, or null
+ */
+export async function applyDepositCredit(
+  ctx: MutationCtx,
+  buyerId: string,
+  at: number
+): Promise<Doc<"lotPayments"> | null> {
+  const deposit = await ctx.db
+    .query("registrationDeposits")
+    .withIndex("by_userId", (q) => q.eq("userId", buyerId))
+    .unique();
+  if (deposit?.status !== "received" || deposit.creditedLotId !== undefined) {
+    return null;
+  }
+  const awaiting = await ctx.db
+    .query("lotPayments")
+    .withIndex("by_buyerId_and_status", (q) =>
+      q.eq("buyerId", buyerId).eq("status", "awaiting")
+    )
+    .take(100);
+  const target = awaiting.reduce<Doc<"lotPayments"> | null>(
+    (best, row) =>
+      best === null || row.createdAt < best.createdAt ? row : best,
+    null
+  );
+  if (!target) return null;
+
+  const credit = Math.max(
+    0,
+    Math.min(deposit.receivedAmount ?? deposit.amount, target.total)
+  );
+  await ctx.db.patch("lotPayments", target._id, {
+    depositCredit: credit,
+    amountDue: target.total - credit,
+    updatedAt: at,
+  });
+  await ctx.db.patch("registrationDeposits", deposit._id, {
+    creditedLotId: target.lotId,
+    creditedAt: at,
+    creditedAmount: credit,
+    updatedAt: at,
+  });
+  return { ...target, depositCredit: credit, amountDue: target.total - credit };
+}
+
+/**
+ * Clears the credited-lot fields on every deposit. For the dev seed clears that
+ * delete all `lotPayments` rows, so no deposit is left pointing at a payment
+ * that no longer exists.
+ *
+ * @param ctx - Mutation context
+ */
+export async function releaseAllDepositCredits(
+  ctx: MutationCtx
+): Promise<void> {
+  // Dev-only clears: a bounded read is plenty (one deposit per user).
+  const deposits = await ctx.db.query("registrationDeposits").take(5000);
+  for (const deposit of deposits) {
+    if (deposit.creditedLotId === undefined) continue;
+    await ctx.db.patch("registrationDeposits", deposit._id, {
+      creditedLotId: undefined,
+      creditedAt: undefined,
+      creditedAmount: undefined,
+    });
+  }
 }
 
 /**

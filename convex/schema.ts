@@ -409,6 +409,10 @@ export default defineSchema({
     // The lot whose payment this deposit was credited against (once only).
     creditedLotId: v.optional(v.id("lots")),
     creditedAt: v.optional(v.number()),
+    // How much of the deposit that payment used (the rest can be refunded).
+    creditedAmount: v.optional(v.number()),
+    // What was refunded: the whole deposit, or the part not credited to a lot.
+    refundedAmount: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -547,7 +551,8 @@ export default defineSchema({
       v.literal("listing_created"),
       v.literal("listing_sold"),
       v.literal("bid_placed"),
-      v.literal("bid_won")
+      v.literal("bid_won"),
+      v.literal("payment_claimed")
     ),
     description: v.optional(v.string()),
     relatedId: v.optional(v.string()),

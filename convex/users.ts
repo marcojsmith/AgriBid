@@ -101,18 +101,26 @@ export const KYCDetailsValidator = v.object({
  * server: clients never see storage ids (`/api/storage/<id>` has no access
  * check), only a document count and the auth-checked download route.
  *
+ * It also drops `collectionAddress` (encrypted at rest; only the owner's
+ * `getMyCollectionAddress` and a confirmed winner's collection details return
+ * it, decrypted), which the strict profile validator does not carry.
+ *
  * @param profile - The profile row
- * @returns The profile without `kycDocuments` / `kycDocumentsEncrypted`
+ * @returns The profile without `kycDocuments`, `kycDocumentsEncrypted` and `collectionAddress`
  */
 function withoutDocumentRefs(
   profile: Doc<"profiles">
-): Omit<Doc<"profiles">, "kycDocuments" | "kycDocumentsEncrypted"> {
+): Omit<
+  Doc<"profiles">,
+  "kycDocuments" | "kycDocumentsEncrypted" | "collectionAddress"
+> {
   const rest: Partial<Doc<"profiles">> = { ...profile };
   delete rest.kycDocuments;
   delete rest.kycDocumentsEncrypted;
+  delete rest.collectionAddress;
   return rest as Omit<
     Doc<"profiles">,
-    "kycDocuments" | "kycDocumentsEncrypted"
+    "kycDocuments" | "kycDocumentsEncrypted" | "collectionAddress"
   >;
 }
 

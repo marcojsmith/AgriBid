@@ -18,6 +18,7 @@ import type { SellerType } from "./lib/lotSpecs";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getCallerRole } from "./lib/auth";
+import { releaseAllDepositCredits } from "./lib/lotPayments";
 import { deleteAuctionImages, safeDelete } from "./lib/storage";
 import { logAudit } from "./admin_utils";
 import { ensureLegalPageDraftRows } from "./lib/legalPages";
@@ -1256,7 +1257,8 @@ export const clearAuctions = mutation({
     await clearLotScopedCounters(ctx);
     const auctionsCount = await clearAuctionsTableWithStorage(ctx);
     const lotFeesCount = await clearTable(ctx, "lotFees");
-    // Payments belong to the lots just deleted.
+    // Payments belong to the lots just deleted; free the deposits they used.
+    await releaseAllDepositCredits(ctx);
     await clearTable(ctx, "lotPayments");
 
     await resetLotFeeCounters(ctx);
@@ -1305,6 +1307,7 @@ export const clearAllData = mutation({
 
     totalDeleted += await clearAuctionsTableWithStorage(ctx);
     totalDeleted += await clearLotsTableWithStorage(ctx);
+    await releaseAllDepositCredits(ctx);
 
     for (const tableName of appTables) {
       totalDeleted += await clearTable(ctx, tableName);
