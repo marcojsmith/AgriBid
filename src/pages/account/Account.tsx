@@ -201,6 +201,7 @@ export default function Account() {
                 stats={stats}
                 profile={profile ?? {}}
                 slug={slug}
+                userId={userId}
               />
             ) : null}
             {registration && deposit ? (

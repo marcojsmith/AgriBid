@@ -1,4 +1,9 @@
-import { useState, type ReactNode, type SyntheticEvent } from "react";
+import {
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react";
 import { Helmet } from "react-helmet-async";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -108,6 +113,27 @@ function SellerForm({ profile, collectionAddress, bio }: FormProps) {
   const pending = bio?.bioPending !== undefined && bio.bioStatus === "pending";
   const rejected = bio?.bioStatus === "rejected";
 
+  /**
+   * Arrow keys move the selection through the seller types.
+   *
+   * @param event - The key press on a seller type button
+   */
+  const moveType = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? 1
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? -1
+          : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const from = type ? SELLER_TYPES.indexOf(type) : -1;
+    const next =
+      SELLER_TYPES[(from + step + SELLER_TYPES.length) % SELLER_TYPES.length];
+    setType(next);
+    document.getElementById(`seller-type-${next}`)?.focus();
+  };
+
   const save = async (event: SyntheticEvent) => {
     event.preventDefault();
     setError(null);
@@ -119,12 +145,19 @@ function SellerForm({ profile, collectionAddress, bio }: FormProps) {
         bioChanged &&
         about.trim() !== "" &&
         about.trim() !== (bio?.bio ?? "").trim();
+      // Back to the live text while an edit waits (or was refused): the server
+      // only drops the review entry when asked to withdraw it.
+      const backToLive =
+        bio?.bioStatus !== undefined &&
+        about.trim() !== "" &&
+        about.trim() === (bio.bio ?? "").trim();
       await updateProfile({
         companyName: company.trim(),
         location: location.trim(),
         vatRegistered: vat,
         ...(type ? { sellerType: type } : {}),
         ...(bioChanged ? { bio: about.trim() } : {}),
+        ...(bioChanged && backToLive ? { withdrawPendingBio: true } : {}),
       });
       if (address.trim() !== collectionAddress.trim()) {
         try {
@@ -209,9 +242,17 @@ function SellerForm({ profile, collectionAddress, bio }: FormProps) {
           {SELLER_TYPES.map((value) => (
             <button
               key={value}
+              id={`seller-type-${value}`}
               type="button"
               role="radio"
               aria-checked={type === value}
+              tabIndex={
+                type === value ||
+                (type === undefined && value === SELLER_TYPES[0])
+                  ? 0
+                  : -1
+              }
+              onKeyDown={moveType}
               onClick={() => {
                 setType(value);
               }}

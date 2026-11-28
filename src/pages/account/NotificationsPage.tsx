@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { usePushStatus } from "@/hooks/usePushStatus";
-import { WATCHED_ALERTS_ON_PATCH, watchedAlertsOn } from "@/lib/account";
+import { WATCHED_ALERTS_ON_PATCH, watchedAlertsAny } from "@/lib/account";
 import { buildTitle } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -256,7 +256,7 @@ export default function NotificationsPage() {
                 }
                 checked={
                   item.key === "notificationsWatchedLots"
-                    ? watchedAlertsOn(prefs)
+                    ? watchedAlertsAny(prefs)
                     : prefs?.[item.key] !== false
                 }
                 disabled={state !== "on"}

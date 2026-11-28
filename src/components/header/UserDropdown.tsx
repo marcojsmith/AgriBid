@@ -119,6 +119,43 @@ function buildLinks(input: {
 }
 
 /**
+ * Whether a menu link is the one for the page being shown. A link matches on
+ * path and on every query parameter it names; one without a query ("My bids")
+ * gives way to a sibling that names the current query ("Watching" on
+ * `?tab=watching`).
+ *
+ * @param link - The link to test
+ * @param links - All the menu links
+ * @param pathname - The current path
+ * @param search - The current query string
+ * @returns True when the link is for the current page
+ */
+function isLinkActive(
+  link: MenuLink,
+  links: MenuLink[],
+  pathname: string,
+  search: string
+): boolean {
+  const current = new URLSearchParams(search);
+  const matches = (href: string): boolean => {
+    const target = new URL(href, "https://agribid.local");
+    return (
+      target.pathname === pathname &&
+      [...target.searchParams].every(([k, v]) => current.get(k) === v)
+    );
+  };
+  if (!matches(link.href)) return false;
+  const named = (href: string) =>
+    [...new URL(href, "https://agribid.local").searchParams].length;
+  return !links.some(
+    (other) =>
+      other !== link &&
+      named(other.href) > named(link.href) &&
+      matches(other.href)
+  );
+}
+
+/**
  * The count at the right edge of a menu row. The row's link carries the spoken
  * label, so the number itself is hidden from screen readers.
  *
@@ -190,6 +227,10 @@ export function UserDropdown({
     });
   };
 
+  const closeSheet = () => {
+    setSheetPath(null);
+  };
+
   const trigger = (onClick?: () => void): ReactNode => (
     <Button
       variant="ghost"
@@ -246,6 +287,7 @@ export function UserDropdown({
   const registrationPrompt = isVerified ? null : (
     <Link
       to="/register"
+      onClick={closeSheet}
       className="flex min-h-11 items-center gap-3 rounded-md border border-warning/20 bg-warning/10 p-3 text-warning"
     >
       <ShieldAlert aria-hidden="true" className="size-5" />
@@ -298,6 +340,7 @@ export function UserDropdown({
                   <li key={link.name} className="border-b border-border">
                     <Link
                       to={link.href}
+                      onClick={closeSheet}
                       aria-label={
                         link.badge
                           ? `${link.name}, ${link.badge.label}`
@@ -341,7 +384,12 @@ export function UserDropdown({
         ) : null}
         {links.map((link) => {
           const Icon = link.icon;
-          const isActive = location.pathname === link.href;
+          const isActive = isLinkActive(
+            link,
+            links,
+            location.pathname,
+            location.search
+          );
           return (
             <DropdownMenuItem
               key={link.name}

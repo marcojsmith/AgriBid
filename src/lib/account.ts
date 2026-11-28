@@ -361,24 +361,28 @@ export interface AlertPrefs {
 }
 
 /**
- * Whether watched-lot alerts really reach the user. The new switch turns both
- * alerts off, but the retired outbid and ending settings (no screen edits them
- * any more) still gate each alert on the server, so a user who once turned one
- * off must see the switch off, and turning it on must clear them.
+ * Whether at least one watched-lot alert (outbid, or closing in 1 hour) still
+ * reaches the user. The switch turns both off with `notificationsWatchedLots`;
+ * the retired outbid and ending settings still gate each alert on the server,
+ * so the switch is on while either alert is allowed. Shared by the switch, the
+ * count, the My bids summary and the watch prompt so they cannot disagree.
  *
  * @param prefs - The saved preferences, or null
- * @returns True when outbid and closing-soon alerts are both allowed
+ * @returns True when at least one alert is allowed
  */
-export function watchedAlertsOn(prefs: AlertPrefs | null | undefined): boolean {
+export function watchedAlertsAny(
+  prefs: AlertPrefs | null | undefined
+): boolean {
   const ending = prefs?.notificationsWatchlistEnding;
   return (
     prefs?.notificationsWatchedLots !== false &&
-    prefs?.notificationsBidOutbid !== false &&
-    (ending === undefined || ending === "1h")
+    (prefs?.notificationsBidOutbid !== false ||
+      ending === undefined ||
+      ending === "1h")
   );
 }
 
-/** The fields that make {@link watchedAlertsOn} true. */
+/** The fields that make {@link watchedAlertsAny} true. */
 export const WATCHED_ALERTS_ON_PATCH = {
   notificationsWatchedLots: true,
   notificationsBidOutbid: true,
@@ -394,7 +398,7 @@ export const WATCHED_ALERTS_ON_PATCH = {
  */
 export function alertsOnCount(prefs: AlertPrefs | null | undefined): number {
   return [
-    watchedAlertsOn(prefs),
+    watchedAlertsAny(prefs),
     prefs?.notificationsLotsWon !== false,
     prefs?.notificationsSalesOpening !== false,
   ].filter(Boolean).length;

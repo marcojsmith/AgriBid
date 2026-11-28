@@ -82,15 +82,20 @@ export function usePushStatus(): PushStatus {
   // Bumped by turnOn and turnOff so a refresh that started earlier (a focus
   // event while the permission prompt was closing) cannot overwrite them.
   const actionVersion = useRef(0);
+  // True while turnOn or turnOff runs: a focus refresh then would read the
+  // browser subscription before it is dropped and save it again.
+  const inFlight = useRef(false);
 
   useEffect(() => {
     let active = true;
     const refresh = () => {
+      if (inFlight.current) return;
       const version = actionVersion.current;
       setPermission(readPermission());
       currentSubscription()
         .then((subscription) => {
-          if (!active || version !== actionVersion.current) return;
+          if (!active || inFlight.current) return;
+          if (version !== actionVersion.current) return;
           setLocal(subscription !== null);
           // Keep the saved copy of this phone fresh: another device may have
           // made the server say yes, or the saved row may have been pruned.
@@ -113,6 +118,7 @@ export function usePushStatus(): PushStatus {
   const turnOn = useCallback(async (): Promise<TurnOnResult> => {
     if (browserNeedsHomeScreenInstall()) return "install";
     actionVersion.current += 1;
+    inFlight.current = true;
     setBusy(true);
     try {
       const result = await requestReminderPermission();
@@ -129,19 +135,30 @@ export function usePushStatus(): PushStatus {
       setLocal(true);
       return "on";
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }, [vapidKey, saveSubscription]);
 
   const turnOff = useCallback(async (): Promise<void> => {
     actionVersion.current += 1;
+    inFlight.current = true;
     setBusy(true);
     try {
       const endpoint = await unsubscribeFromPush();
       // The browser has dropped it whatever the server says next.
       setLocal(false);
-      if (endpoint !== null) await removeSubscription({ endpoint });
+      if (endpoint !== null) {
+        // Retry once, quietly: this phone is already off, so a failed removal
+        // is not an error worth showing.
+        try {
+          await removeSubscription({ endpoint });
+        } catch {
+          await removeSubscription({ endpoint }).catch(() => undefined);
+        }
+      }
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }, [removeSubscription]);

@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { api } from "convex/_generated/api";
 import type { FunctionReference } from "convex/server";
 import { HelmetProvider } from "react-helmet-async";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, matchPath } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -190,7 +190,7 @@ describe("Account", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /View my public page/ })
-    ).toHaveAttribute("href", "/sellers/naidoo-landbou");
+    ).toHaveAttribute("href", "/profile/user_1");
     expect(screen.getByText("You can bid")).toBeInTheDocument();
     expect(screen.getByText(/Credited to Lot 1 JCB 3CX/)).toBeInTheDocument();
     expect(screen.getByText("On · 3 alerts")).toBeInTheDocument();
@@ -260,6 +260,17 @@ describe("Account", () => {
       "location"
     );
     vi.unstubAllGlobals();
+  });
+
+  it("links the public page to a route that exists today", () => {
+    seed();
+    renderPage();
+    const href =
+      screen
+        .getByRole("link", { name: /View my public page/ })
+        .getAttribute("href") ?? "";
+    // App.test.tsx renders /profile/:userId; /sellers/:slug arrives with M6.
+    expect(matchPath("/profile/:userId", href)).not.toBeNull();
   });
 
   it("hides the public page link when there is no slug", () => {

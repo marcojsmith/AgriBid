@@ -43,7 +43,7 @@ vi.mock("@/components/ds/showToast", () => ({ showToast: m.toast }));
  */
 function renderPage(
   state: string,
-  prefs: Record<string, boolean> | null = null,
+  prefs: Record<string, boolean | string> | null = null,
   settings: Record<string, boolean> = {}
 ) {
   m.push.state = state;
@@ -141,8 +141,18 @@ describe("NotificationsPage", () => {
     });
   });
 
-  it("shows Watched lots off while a retired setting blocks it, and turning it on clears them", async () => {
+  it("keeps Watched lots on while one alert still gets through", () => {
     renderPage("on", { notificationsBidOutbid: false });
+    expect(
+      screen.getByRole("switch", { name: /Watched lots/ })
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("shows Watched lots off when retired settings block both alerts, and turning it on clears them", async () => {
+    renderPage("on", {
+      notificationsBidOutbid: false,
+      notificationsWatchlistEnding: "24h",
+    });
     const watched = screen.getByRole("switch", { name: /Watched lots/ });
     expect(watched).toHaveAttribute("aria-checked", "false");
     fireEvent.click(watched);

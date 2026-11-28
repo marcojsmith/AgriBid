@@ -187,6 +187,63 @@ describe("SellerDetails", () => {
     expect(screen.getByLabelText("About")).toHaveValue("We farm maize.");
   });
 
+  it("withdraws the pending edit when the text goes back to the live one", async () => {
+    renderPage({
+      bio: "We farm maize.",
+      bioPending: "New text",
+      bioStatus: "pending",
+    });
+    fireEvent.change(screen.getByLabelText("About"), {
+      target: { value: "We farm maize." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      expect(m.toast).toHaveBeenCalledWith("Seller details saved.");
+    });
+    expect(mutationMock(api.users.updateMyProfile)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bio: "We farm maize.",
+        withdrawPendingBio: true,
+      })
+    );
+  });
+
+  it("does not withdraw when the pending text is only edited", async () => {
+    renderPage({
+      bio: "We farm maize.",
+      bioPending: "New text",
+      bioStatus: "pending",
+    });
+    fireEvent.change(screen.getByLabelText("About"), {
+      target: { value: "Newer text" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => {
+      expect(m.toast).toHaveBeenCalled();
+    });
+    expect(
+      mutationMock(api.users.updateMyProfile).mock.calls[0]?.[0]
+    ).not.toHaveProperty("withdrawPendingBio");
+  });
+
+  it("moves the seller type with the arrow keys", () => {
+    renderPage();
+    const first = screen.getByRole("radio", { name: "Farming business" });
+    first.focus();
+    fireEvent.keyDown(first, { key: "ArrowRight" });
+    const checked = screen
+      .getAllByRole("radio")
+      .filter((r) => r.getAttribute("aria-checked") === "true");
+    expect(checked).toHaveLength(1);
+    expect(checked[0]).not.toBe(first);
+    expect(checked[0]).toHaveFocus();
+    fireEvent.keyDown(checked[0], { key: "ArrowLeft" });
+    expect(first).toHaveAttribute("aria-checked", "true");
+    fireEvent.keyDown(first, { key: "ArrowLeft" });
+    expect(first).toHaveAttribute("aria-checked", "false");
+    fireEvent.keyDown(first, { key: "a" });
+  });
+
   it("reports a failed withdraw", async () => {
     mutationMock(api.users.updateMyProfile).mockRejectedValue(new Error("no"));
     renderPage({ bioPending: "x", bioStatus: "pending" });

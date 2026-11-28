@@ -275,6 +275,22 @@ describe("UserDropdown links", () => {
     expect(screen.queryByText(/Settings/)).toBeNull();
   });
 
+  it.each([
+    ["/dashboard/bids?tab=watching", "Watching", "My bids"],
+    ["/dashboard/bids?tab=won", "My bids", "Watching"],
+    ["/dashboard/bids", "My bids", "Watching"],
+  ])("highlights only the link for %s", (url, active, other) => {
+    window.history.pushState({}, "", url);
+    renderIt();
+    expect(screen.getByRole("link", { name: active })).toHaveClass(
+      "text-primary"
+    );
+    expect(screen.getByRole("link", { name: other })).not.toHaveClass(
+      "text-primary"
+    );
+    window.history.pushState({}, "", "/");
+  });
+
   it("shows My listings for sellers", () => {
     renderIt({ role: "seller" });
     expect(screen.getByRole("link", { name: "My listings" })).toHaveAttribute(
@@ -343,5 +359,34 @@ describe("UserDropdown on a phone", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(onSignOut).toHaveBeenCalled();
+  });
+
+  it("closes the sheet when the link for the current page is tapped", async () => {
+    window.history.pushState({}, "", "/account");
+    render(
+      <BrowserRouter>
+        <UserDropdown
+          userData={{ name: "Thandi Naidoo", email: "t@x.za", _id: "1" }}
+          isLoadingProfile={false}
+          isVerified={false}
+          kycStatus="unverified"
+          role="buyer"
+          onSignOut={vi.fn()}
+        />
+      </BrowserRouter>
+    );
+    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(await screen.findByRole("link", { name: "Account" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(
+      await screen.findByRole("link", { name: /Finish registration/ })
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    window.history.pushState({}, "", "/");
   });
 });

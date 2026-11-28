@@ -47,6 +47,8 @@ interface SellingProps {
   profile: { companyName?: string; vatRegistered?: boolean };
   /** The public seller page slug, or null (the link is hidden). */
   slug: string | null | undefined;
+  /** The user's id, for the public profile route that exists today. */
+  userId: string | undefined;
 }
 
 /**
@@ -56,10 +58,11 @@ interface SellingProps {
  * @param props - Component props
  * @param props.stats - Listing counts
  * @param props.profile - Seller facts
- * @param props.slug - Public page slug
+ * @param props.slug - Public page slug; only decides whether the link shows
+ * @param props.userId - The user's id, used for the profile link
  * @returns The section
  */
-export function SellingSection({ stats, profile, slug }: SellingProps) {
+export function SellingSection({ stats, profile, slug, userId }: SellingProps) {
   return (
     <AccountSection id="selling" title="Selling" className="mt-5">
       <RowList>
@@ -75,9 +78,10 @@ export function SellingSection({ stats, profile, slug }: SellingProps) {
           to="/account/seller"
         />
       </RowList>
-      {slug ? (
+      {slug && userId ? (
         <Link
-          to={`/sellers/${slug}`}
+          // M6: switch to /sellers/${slug}
+          to={`/profile/${userId}`}
           className="mt-1 inline-flex min-h-11 items-center gap-1 text-[15px] font-semibold"
         >
           View my public page

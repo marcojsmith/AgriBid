@@ -291,16 +291,44 @@ describe("usePushStatus freshness", () => {
     expect(m.save).not.toHaveBeenCalled();
   });
 
-  it("ends off even when the server removal fails", async () => {
+  it("ends off, and retries the removal once, when the server removal fails", async () => {
     m.remove.mockRejectedValue(new Error("down"));
     const { result } = renderHook(() => usePushStatus());
     await waitFor(() => {
       expect(result.current.state).toBe("on");
     });
     await act(async () => {
-      await expect(result.current.turnOff()).rejects.toThrow("down");
+      await result.current.turnOff();
     });
+    expect(m.remove).toHaveBeenCalledTimes(2);
     expect(result.current.state).toBe("off");
     expect(result.current.busy).toBe(false);
+  });
+
+  it("does not re-save the subscription when focus returns during turnOff", async () => {
+    const { result } = renderHook(() => usePushStatus());
+    await waitFor(() => {
+      expect(result.current.state).toBe("on");
+    });
+    m.save.mockClear();
+    let release: (endpoint: string) => void = () => undefined;
+    m.unsubscribe.mockReturnValue(
+      new Promise<string>((resolve) => {
+        release = resolve;
+      })
+    );
+    let done: Promise<void> = Promise.resolve();
+    act(() => {
+      done = result.current.turnOff();
+    });
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await act(async () => {
+      release(sub.endpoint);
+      await done;
+    });
+    expect(m.save).not.toHaveBeenCalled();
+    expect(result.current.state).toBe("off");
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   accountBanner,
-  watchedAlertsOn,
+  watchedAlertsAny,
   alertsOnCount,
   notificationsSummary,
   canAskRefund,
@@ -291,15 +291,21 @@ describe("notifications", () => {
     ).toBe(0);
   });
 
-  it("treats retired watched-lot settings that are off as the switch being off", () => {
-    expect(watchedAlertsOn(null)).toBe(true);
-    expect(watchedAlertsOn({ notificationsWatchedLots: false })).toBe(false);
-    expect(watchedAlertsOn({ notificationsBidOutbid: false })).toBe(false);
-    expect(watchedAlertsOn({ notificationsWatchlistEnding: "24h" })).toBe(
-      false
+  it("keeps the switch on while either watched-lot alert still gets through", () => {
+    expect(watchedAlertsAny(null)).toBe(true);
+    expect(watchedAlertsAny({ notificationsWatchedLots: false })).toBe(false);
+    expect(watchedAlertsAny({ notificationsBidOutbid: false })).toBe(true);
+    expect(
+      watchedAlertsAny({
+        notificationsBidOutbid: false,
+        notificationsWatchlistEnding: "24h",
+      })
+    ).toBe(false);
+    expect(watchedAlertsAny({ notificationsWatchlistEnding: "24h" })).toBe(
+      true
     );
-    expect(watchedAlertsOn({ notificationsWatchlistEnding: "1h" })).toBe(true);
-    expect(alertsOnCount({ notificationsBidOutbid: false })).toBe(2);
+    expect(watchedAlertsAny({ notificationsWatchlistEnding: "1h" })).toBe(true);
+    expect(alertsOnCount({ notificationsBidOutbid: false })).toBe(3);
   });
 
   it("words every state", () => {
