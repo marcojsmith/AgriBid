@@ -107,6 +107,8 @@ Each page starts from every decision below. Add new ones as the owner confirms t
   - **Countdown colours:** amber under 1 hour, red under 10 minutes.
   - **Payment deadline:** a winner must pay within 2 business days.
   - **Under consideration:** the lot stays under Bidding ("With the seller") until the seller decides.
+- **Credited deposit (owner, 2026-11-25):** a buyer whose deposit was credited against a won lot can keep bidding; no new deposit needed.
+- **Build rules (coordinator, 2026-11-25):** when the deposit covers a lot in full, the payment is confirmed automatically. A buyer can't request a deposit refund while leading an open or under-consideration lot, or while a won lot is unpaid.
 
 ## Account and seller page (2026-11-25)
 

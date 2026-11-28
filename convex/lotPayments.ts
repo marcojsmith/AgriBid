@@ -22,13 +22,11 @@ import { logActivity } from "./userActivity";
 import { resolveImageUrls } from "./auctions/helpers";
 import { requireAuth, requireProfile, resolveUserId } from "./lib/auth";
 import { decryptPII, encryptPII } from "./lib/encryption";
+import { loadUnpaidPayments } from "./lib/depositRefund";
 import { collectByFrom } from "./lib/lotPayments";
 
 /** Longest accepted collection address. */
 export const MAX_COLLECTION_ADDRESS_LENGTH = 300;
-
-/** Payment rows read for the summary (a buyer has few open ones). */
-const SUMMARY_READ_CAP = 100;
 
 const paymentStatusValidator = v.union(
   v.literal("awaiting"),
@@ -293,16 +291,7 @@ export const getMyPaymentSummary = query({
   }),
   handler: async (ctx) => {
     const userId = await callerId(ctx);
-    const [awaiting, claimed] = await Promise.all(
-      (["awaiting", "paid_claimed"] as const).map((status) =>
-        ctx.db
-          .query("lotPayments")
-          .withIndex("by_buyerId_and_status", (q) =>
-            q.eq("buyerId", userId).eq("status", status)
-          )
-          .take(SUMMARY_READ_CAP)
-      )
-    );
+    const { awaiting, claimed } = await loadUnpaidPayments(ctx, userId);
     const next = awaiting.reduce<Doc<"lotPayments"> | null>(
       (best, row) => (best === null || row.payBy < best.payBy ? row : best),
       null

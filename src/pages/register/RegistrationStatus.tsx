@@ -1,9 +1,10 @@
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { Link, Navigate } from "react-router-dom";
 
 import { Banner } from "@/components/ds/Banner";
 import { RegStatusList } from "@/components/ds/RegStatusList";
+import { showToast } from "@/components/ds/showToast";
 import { WhyBox } from "@/components/ds/WhyBox";
 import { LoadingPage } from "@/components/LoadingIndicator";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
   rejectedDocuments,
   statusFootnote,
 } from "@/lib/registrationCopy";
+import { getErrorMessage } from "@/lib/utils";
 
 import { RegisterLayout } from "./RegisterLayout";
 
@@ -29,6 +31,7 @@ import { RegisterLayout } from "./RegisterLayout";
  */
 export default function RegistrationStatus() {
   const registration = useQuery(api.registration.getMyRegistration);
+  const cancelRefund = useMutation(api.registration.cancelDepositRefundRequest);
   const { callbackUrl, path } = useRegisterParams();
   const callback = useCallbackLot(callbackUrl);
 
@@ -40,7 +43,23 @@ export default function RegistrationStatus() {
   const rows = buildStatusRows(registration).map(({ action, ...row }) => ({
     ...row,
     action: action ? (
-      action.replace ? (
+      action.command === "cancel_refund" ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="min-h-11"
+          onClick={() => {
+            cancelRefund({}).catch((err: unknown) => {
+              showToast(
+                getErrorMessage(err, "Couldn't cancel your refund request."),
+                "error"
+              );
+            });
+          }}
+        >
+          {action.label}
+        </Button>
+      ) : action.replace ? (
         <Button asChild size="sm" className="min-h-11 no-underline">
           <Link to={path(action.step, { replace: true })}>{action.label}</Link>
         </Button>

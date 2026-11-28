@@ -5,7 +5,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
@@ -653,6 +653,16 @@ describe("AuctionDetail (lot page)", () => {
   });
 
   describe("under consideration", () => {
+    // The seeded decision deadline is 26 Nov 2026; keep "now" before it.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(Date.UTC(2026, 10, 25, 9, 0));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     const considering = (over: Record<string, unknown> = {}) => {
       setup({
         status: "under_consideration",

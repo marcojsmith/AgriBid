@@ -38,7 +38,8 @@ export type BidEligibility =
   | { kind: "incomplete"; step: 1 | 2 | 3; totalSteps: 3 | 4 }
   | { kind: "under_review"; depositReceived: boolean }
   | { kind: "needs_replacing"; count: number }
-  | { kind: "deposit_due"; amount: number };
+  | { kind: "deposit_due"; amount: number }
+  | { kind: "refund_requested" };
 
 /** Validator matching {@link BidEligibility}. */
 export const bidEligibilityValidator = v.union(
@@ -50,7 +51,8 @@ export const bidEligibilityValidator = v.union(
   }),
   v.object({ kind: v.literal("under_review"), depositReceived: v.boolean() }),
   v.object({ kind: v.literal("needs_replacing"), count: v.number() }),
-  v.object({ kind: v.literal("deposit_due"), amount: v.number() })
+  v.object({ kind: v.literal("deposit_due"), amount: v.number() }),
+  v.object({ kind: v.literal("refund_requested") })
 );
 
 /**
@@ -79,8 +81,9 @@ export function hasAllDetails(profile: EligibilityProfile): boolean {
 /**
  * Works out a user's bid eligibility from plain data.
  *
- * Order of checks: verified and deposit satisfied is `ok`; verified without
- * the deposit is `deposit_due`; a rejected document is `needs_replacing`; a
+ * Order of checks: verified and deposit satisfied is `ok`; verified with
+ * a refund requested is `refund_requested`; verified without the deposit is
+ * `deposit_due`; a rejected document is `needs_replacing`; a
  * submitted (or legacy pending) registration is `under_review`; otherwise the
  * first unfinished step is `incomplete`.
  *
@@ -103,12 +106,16 @@ export function computeBidEligibility(input: {
   const depositReceived = deposit?.status === "received";
 
   if (profile.isVerified) {
-    return !depositSetting.enabled || depositReceived
-      ? { kind: "ok" }
-      : {
-          kind: "deposit_due",
-          amount: deposit?.amount ?? depositSetting.amount,
-        };
+    if (!depositSetting.enabled || depositReceived) return { kind: "ok" };
+    // The buyer asked for the deposit back: bidding stays shut until they
+    // cancel the request, and the copy says so instead of "pay a deposit".
+    if (deposit?.status === "refund_requested") {
+      return { kind: "refund_requested" };
+    }
+    return {
+      kind: "deposit_due",
+      amount: deposit?.amount ?? depositSetting.amount,
+    };
   }
 
   const rejected = documents.filter((doc) => doc.status === "rejected").length;

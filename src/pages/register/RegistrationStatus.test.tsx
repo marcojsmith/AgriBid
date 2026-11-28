@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { api } from "convex/_generated/api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -6,6 +6,7 @@ import RegistrationStatus from "./RegistrationStatus";
 import {
   makeDoc,
   makeRegistration,
+  mutationMock,
   renderAt,
   resetConvexState,
   SA_DETAILS,
@@ -290,6 +291,59 @@ describe("RegistrationStatus", () => {
     expect(
       screen.getByRole("link", { name: "Back to Lot 3" })
     ).toBeInTheDocument();
+  });
+
+  describe("refund requested", () => {
+    beforeEach(() => {
+      setQuery(
+        api.registration.getMyRegistration,
+        makeRegistration({
+          eligibility: { kind: "refund_requested" },
+          details: SA_DETAILS,
+          documents: [
+            makeDoc("id_front", "approved"),
+            makeDoc("id_back", "approved"),
+            makeDoc("proof_of_address", "approved"),
+          ],
+          deposit: {
+            reference: "AB-7K3F2",
+            status: "refund_requested",
+            amount: 5000,
+          },
+        })
+      );
+    });
+
+    it("says so and offers to cancel the request", async () => {
+      const cancel = mutationMock(api.registration.cancelDepositRefundRequest);
+      cancel.mockResolvedValue({ success: true });
+      renderStatus();
+      expect(
+        screen.getByText(
+          "You asked for your deposit back. Cancel the request to bid."
+        )
+      ).toBeInTheDocument();
+      expect(row("Deposit")).toHaveTextContent("Refund requested");
+      fireEvent.click(
+        within(row("Deposit")).getByRole("button", { name: "Cancel request" })
+      );
+      await waitFor(() => {
+        expect(cancel).toHaveBeenCalledWith({});
+      });
+    });
+
+    it("keeps the page usable when cancelling fails", async () => {
+      const cancel = mutationMock(api.registration.cancelDepositRefundRequest);
+      cancel.mockRejectedValue(new Error("nope"));
+      renderStatus();
+      fireEvent.click(screen.getByRole("button", { name: "Cancel request" }));
+      await waitFor(() => {
+        expect(cancel).toHaveBeenCalled();
+      });
+      expect(
+        screen.getByRole("button", { name: "Cancel request" })
+      ).toBeInTheDocument();
+    });
   });
 
   it("redirects an unfinished registration to its step", () => {

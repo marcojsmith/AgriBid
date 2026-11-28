@@ -375,6 +375,15 @@ export function registrationSticky(
         cta: "Pay",
         ctaVariant: "primary",
       };
+    case "refund_requested":
+      return {
+        title: "Deposit refund asked",
+        sub: "Cancel the request to bid",
+        subTone: "default",
+        urgent: false,
+        cta: "Manage",
+        ctaVariant: "outline",
+      };
   }
 }
 

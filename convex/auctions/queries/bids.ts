@@ -12,9 +12,13 @@ import {
   calculateUserBidStats,
 } from "./shared";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { BidValidator, toLotSummaries } from "../helpers";
+import { getBuyerPremiumPct } from "../../admin/platformSettings";
+import { BidValidator, activeBuyerFees, toLotSummaries } from "../helpers";
 import { countQuery } from "../../admin_utils";
 import { getAuthenticatedProfile } from "../../lib/auth";
+import { percentToFraction, resolveBuyerPremium } from "../../lib/buyerPremium";
+import { nextMinBid } from "../../lib/nextMinBid";
+import { resolveLotSellerVat } from "../../lib/sellerVat";
 import { parseOffsetCursor } from "../../lib/pagination";
 import { resolveDisplayNames } from "../../lib/userNames";
 
@@ -772,4 +776,231 @@ export const getMyBidsStats = query({
     totalExposure: v.number(),
   }),
   handler: getMyBidsStatsHandler,
+});
+
+/** Newest bids read to find the lots the caller bid on (like the `ending` sort). */
+const OVERVIEW_BID_CAP = 600;
+
+/** Distinct lots considered for the overview (newest bid first). */
+const OVERVIEW_LOT_CAP = 200;
+
+/** Rows returned in the "Lost" tab. */
+const OVERVIEW_LOST_CAP = 50;
+
+/** Payment rows counted for the "Won" tab. */
+const WON_COUNT_CAP = 500;
+
+/** Watchlist rows counted for the "Watching" tab. */
+const WATCHING_COUNT_CAP = 500;
+
+/** One lot on the My bids tabs: the summary plus the caller's position. */
+const MyBidRowValidator = v.object({
+  ...LotSummaryValidator.fields,
+  myHighestBid: v.number(),
+  /** `assigned` and the caller leads. */
+  isWinning: v.boolean(),
+  /** `under_consideration` and the caller's bid is the top bid. */
+  isLeadingConsideration: v.boolean(),
+  /** The lowest amount the next bid may be (what the confirm sheet starts at). */
+  nextMinBid: v.number(),
+  sellerVatKind: v.union(v.literal("vat"), v.literal("private")),
+  /** Buyer's premium as a fraction (0.12 = 12%) and fixed fees, for the confirm sheet. */
+  buyerPremiumFraction: v.number(),
+  buyerFixedFees: v.number(),
+});
+
+/** The result shape of {@link getMyBidsOverviewHandler}. */
+const MyBidsOverviewValidator = v.object({
+  bidding: v.array(MyBidRowValidator),
+  lost: v.array(MyBidRowValidator),
+  counts: v.object({
+    bidding: v.number(),
+    won: v.number(),
+    lost: v.number(),
+    watching: v.number(),
+  }),
+});
+
+/**
+ * The My bids tabs in one read: lots the caller is bidding on (live, then under
+ * consideration), lots they lost, and the counts for all four tabs.
+ *
+ * Lots come from the caller's newest {@link OVERVIEW_BID_CAP} non-voided bids
+ * (via `by_bidder_timestamp`), deduped, newest first, at most
+ * {@link OVERVIEW_LOT_CAP} lots. Older bids and lots are not listed.
+ *
+ * - `bidding`: `assigned` lots by effective end time (soonest first), then
+ *   `under_consideration` lots by decision deadline.
+ * - `lost`: sold to someone else or unsold (a lot declined or expired after
+ *   consideration is unsold), newest bid first, at most {@link OVERVIEW_LOST_CAP}.
+ * - `counts.bidding` / `counts.lost`: the buckets within the caps above (lost is
+ *   counted before its row cap). `counts.won` is the caller's payment rows
+ *   plus lots they won that have no payment row (sold before payments existed;
+ *   found among the lots above, as there is no winner index). `counts.watching`
+ *   is capped at {@link WATCHING_COUNT_CAP}.
+ *
+ * @param ctx - Convex Query context
+ * @returns The overview, empty when signed out
+ */
+export const getMyBidsOverviewHandler = async (ctx: QueryCtx) => {
+  const userId = await getAuthenticatedUserId(ctx);
+  if (!userId) {
+    return {
+      bidding: [],
+      lost: [],
+      counts: { bidding: 0, won: 0, lost: 0, watching: 0 },
+    };
+  }
+
+  const bids = await ctx.db
+    .query("bids")
+    .withIndex("by_bidder_timestamp", (q) => q.eq("bidderId", userId))
+    .filter((q) => q.neq(q.field("status"), "voided"))
+    .order("desc")
+    .take(OVERVIEW_BID_CAP);
+
+  const lotIds = new Set<Id<"lots">>();
+  for (const bid of bids) {
+    if (lotIds.size >= OVERVIEW_LOT_CAP) break;
+    lotIds.add(bid.lotId);
+  }
+  const lots = (
+    await Promise.all(Array.from(lotIds, (id) => ctx.db.get("lots", id)))
+  ).filter((lot): lot is Doc<"lots"> => lot !== null);
+  // A bidder's own bids on one lot only ever go up (each must beat the price),
+  // so their newest non-voided bid is their highest: one read per lot instead
+  // of collecting every bid they placed on it.
+  const highestBids = new Map<Id<"lots">, number>();
+  await Promise.all(
+    Array.from(lotIds, async (lotId) => {
+      const newest = await ctx.db
+        .query("bids")
+        .withIndex("by_bidder_lot", (q) =>
+          q.eq("bidderId", userId).eq("lotId", lotId)
+        )
+        .order("desc")
+        .filter((q) => q.neq(q.field("status"), "voided"))
+        .first();
+      if (newest) highestBids.set(lotId, newest.amount);
+    })
+  );
+
+  const live: Doc<"lots">[] = [];
+  const considering: Doc<"lots">[] = [];
+  const lostLots: Doc<"lots">[] = [];
+  let legacyWon = 0;
+  for (const lot of lots) {
+    if (lot.status === "assigned") live.push(lot);
+    else if (lot.status === "under_consideration") considering.push(lot);
+    else if (lot.status === "unsold") lostLots.push(lot);
+    else if (lot.status === "sold") {
+      if (lot.winnerId !== userId) {
+        lostLots.push(lot);
+      } else {
+        const payment = await ctx.db
+          .query("lotPayments")
+          .withIndex("by_lotId", (q) => q.eq("lotId", lot._id))
+          .first();
+        if (!payment) legacyWon += 1;
+      }
+    }
+  }
+
+  const lostPage = lostLots.slice(0, OVERVIEW_LOST_CAP);
+  const selected = [...live, ...considering, ...lostPage];
+  const [summaries, sellers, buyerFees, platformPct] = await Promise.all([
+    toLotSummaries(ctx, selected),
+    Promise.all(
+      Array.from(new Set(selected.map((lot) => lot.sellerId)), (sellerId) =>
+        ctx.db
+          .query("profiles")
+          .withIndex("by_userId", (q) => q.eq("userId", sellerId))
+          .unique()
+      )
+    ),
+    activeBuyerFees(ctx),
+    getBuyerPremiumPct(ctx),
+  ]);
+  const sellerByUserId = new Map(
+    sellers.flatMap((profile) => (profile ? [[profile.userId, profile]] : []))
+  );
+  const summaryById = new Map(summaries.map((s) => [s._id, s]));
+
+  const toRow = async (lot: Doc<"lots">) => {
+    const summary = summaryById.get(lot._id);
+    const highestBid = highestBids.get(lot._id);
+    if (!summary || highestBid === undefined) return null;
+    const premium = await resolveBuyerPremium(ctx, lot);
+    const isLeader = lot.winnerId === userId;
+    return {
+      ...summary,
+      myHighestBid: highestBid,
+      isWinning:
+        lot.status === "assigned" &&
+        highestBid === lot.currentPrice &&
+        isLeader,
+      isLeadingConsideration: lot.status === "under_consideration" && isLeader,
+      // The caller holds a valid bid here, so the lot has bids.
+      nextMinBid: nextMinBid(lot, true),
+      sellerVatKind: resolveLotSellerVat(lot, sellerByUserId.get(lot.sellerId))
+        .vatKind,
+      buyerPremiumFraction:
+        premium.rate ??
+        buyerFees.rowsFraction ??
+        percentToFraction(platformPct),
+      buyerFixedFees: buyerFees.fixedFees,
+    };
+  };
+  const rows = async (list: Doc<"lots">[]) =>
+    (await Promise.all(list.map(toRow))).filter((row) => row !== null);
+  const endOf = (lot: Doc<"lots">) =>
+    lot.extendedEndTime ??
+    summaryById.get(lot._id)?.auctionEndTime ??
+    Number.MAX_SAFE_INTEGER;
+
+  const bidding = [
+    ...(await rows([...live].sort((a, b) => endOf(a) - endOf(b)))),
+    ...(await rows(
+      [...considering].sort(
+        (a, b) =>
+          (a.considerationDeadline ?? Number.MAX_SAFE_INTEGER) -
+          (b.considerationDeadline ?? Number.MAX_SAFE_INTEGER)
+      )
+    )),
+  ];
+  const lost = await rows(lostPage);
+
+  const [payments, watching] = await Promise.all([
+    ctx.db
+      .query("lotPayments")
+      .withIndex("by_buyerId_and_createdAt", (q) => q.eq("buyerId", userId))
+      .take(WON_COUNT_CAP),
+    ctx.db
+      .query("watchlist")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .take(WATCHING_COUNT_CAP),
+  ]);
+
+  return {
+    bidding,
+    lost,
+    counts: {
+      bidding: bidding.length,
+      won: payments.length + legacyWon,
+      lost: lostLots.length,
+      watching: watching.length,
+    },
+  };
+};
+
+/**
+ * Query: the My bids tabs (Bidding, Lost) with the Won and Watching counts.
+ * See {@link getMyBidsOverviewHandler} for the caps.
+ *
+ * @returns The overview
+ */
+export const getMyBidsOverview = query({
+  args: {},
+  returns: MyBidsOverviewValidator,
+  handler: getMyBidsOverviewHandler,
 });

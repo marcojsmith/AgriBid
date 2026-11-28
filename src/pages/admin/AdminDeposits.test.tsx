@@ -22,6 +22,17 @@ function rand(amount: number): string {
   return formatRand(amount).replace(/\u00A0/g, " ");
 }
 
+/**
+ * Matches the "Mark R x refunded" button whatever kind of space the amount uses.
+ *
+ * @param amount - The refundable amount
+ * @returns A name matcher for `getByRole`
+ */
+function refundName(amount: number): (name: string) => boolean {
+  return (name) =>
+    name.replace(/\u00A0/g, " ") === `Mark ${rand(amount)} refunded`;
+}
+
 import AdminDeposits from "./AdminDeposits";
 
 vi.mock("convex/react", () => ({
@@ -64,6 +75,7 @@ const claimed = {
   status: "paid_claimed" as const,
   amount: 5000,
   paidClaimedAt: Date.UTC(2026, 10, 20, 10, 0),
+  refundableAmount: 5000,
   updatedAt: 1,
 };
 const received = {
@@ -73,6 +85,7 @@ const received = {
   amount: 5000,
   receivedAmount: 5200,
   receivedAt: Date.UTC(2026, 10, 21, 10, 0),
+  refundableAmount: 5200,
   updatedAt: 2,
 };
 
@@ -127,6 +140,7 @@ describe("AdminDeposits", () => {
     for (const [label, status] of [
       ["Awaiting", "awaiting"],
       ["Received", "received"],
+      ["Refund requested", "refund_requested"],
       ["Refunded", "refunded"],
     ] as const) {
       fireEvent.click(screen.getByRole("radio", { name: label }));
@@ -257,7 +271,7 @@ describe("AdminDeposits", () => {
     expect(
       screen.queryByRole("button", { name: "Mark received" })
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Mark refunded" }));
+    fireEvent.click(screen.getByRole("button", { name: refundName(5200) }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent(
       `Refund ${rand(5200)} to the account it came from?`
@@ -269,6 +283,30 @@ describe("AdminDeposits", () => {
       expect(mutations["reg:refunded"]).toHaveBeenCalledWith({ userId: "u2" });
     });
     expect(toast.success).toHaveBeenCalledWith("Deposit marked refunded");
+  });
+
+  it("offers a requested refund with only what is left to give back", async () => {
+    setList([
+      {
+        ...received,
+        status: "refund_requested",
+        refundRequestedAt: Date.UTC(2026, 10, 23, 9, 0),
+        refundableAmount: 3735,
+      },
+    ]);
+    render(<AdminDeposits />);
+    expect(screen.getByText(/Requested /)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: refundName(3735) }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(
+      `Refund ${rand(3735)} to the account it came from?`
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Confirm refund" })
+    );
+    await waitFor(() => {
+      expect(mutations["reg:refunded"]).toHaveBeenCalledWith({ userId: "u2" });
+    });
   });
 
   it("shows no actions for a refunded deposit", () => {

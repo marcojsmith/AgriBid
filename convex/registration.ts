@@ -21,7 +21,13 @@ import {
   MAX_PROFILE_FIELD_LENGTH,
 } from "./constants";
 import { requireAuth, requireProfile } from "./lib/auth";
-import { isReferenceTaken } from "./lib/lotPayments";
+import {
+  isLeadingOpenLot,
+  loadUnpaidPayments,
+  refundableRemainder,
+} from "./lib/depositRefund";
+import { applyDepositCredit, isReferenceTaken } from "./lib/lotPayments";
+import { formatNotificationRand, notifyUser } from "./lib/notify";
 import { bidEligibilityValidator, hasAllDetails } from "./lib/bidEligibility";
 import { getBidEligibility } from "./lib/bidGuard";
 import {
@@ -54,8 +60,12 @@ const depositStatusValidator = v.union(
   v.literal("awaiting"),
   v.literal("paid_claimed"),
   v.literal("received"),
+  v.literal("refund_requested"),
   v.literal("refunded")
 );
+
+/** Admins told about a refund request (a handful exist). */
+const ADMIN_NOTIFY_CAP = 20;
 
 /** E.164 phone number, e.g. +27825550147. */
 const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
@@ -147,7 +157,10 @@ export const getMyRegistration = query({
           status: depositStatusValidator,
           amount: v.number(),
           receivedAt: v.optional(v.number()),
+          refundRequestedAt: v.optional(v.number()),
           refundedAt: v.optional(v.number()),
+          /** Rand a refund would return (received minus what a won lot used). */
+          refundableAmount: v.number(),
         })
       ),
       depositSettings: v.object({
@@ -235,7 +248,9 @@ export const getMyRegistration = query({
             status: deposit.status,
             amount: deposit.amount,
             receivedAt: deposit.receivedAt,
+            refundRequestedAt: deposit.refundRequestedAt,
             refundedAt: deposit.refundedAt,
+            refundableAmount: refundableRemainder(deposit),
           }
         : null,
       depositSettings,
@@ -520,6 +535,98 @@ export const claimMyDepositPaid = mutation({
         details: `Buyer says deposit ${deposit.reference} is paid`,
       });
     }
+    return { success: true };
+  },
+});
+
+/**
+ * Buyer: ask for the received deposit back. Allowed only when the deposit is
+ * `received`, something is left to refund (a won lot's credit is not
+ * refundable), every won lot is paid for (awaiting and paid_claimed count as
+ * unpaid), and the buyer does not lead a lot that is still open. Moves the
+ * deposit to `refund_requested`, which no longer counts towards bidding, and
+ * tells the admins.
+ */
+export const requestDepositRefund = mutation({
+  args: {},
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx) => {
+    const { userId } = await loadCaller(ctx);
+    const deposit = await ctx.db
+      .query("registrationDeposits")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (!deposit) throw new ConvexError("There's nothing left to refund.");
+    // Asking twice is harmless.
+    if (deposit.status === "refund_requested") return { success: true };
+    if (deposit.status !== "received" || refundableRemainder(deposit) <= 0) {
+      throw new ConvexError("There's nothing left to refund.");
+    }
+
+    const { awaiting, claimed } = await loadUnpaidPayments(ctx, userId);
+    if (awaiting.length + claimed.length > 0) {
+      throw new ConvexError("Pay for your won lots first.");
+    }
+    if (await isLeadingOpenLot(ctx, userId)) {
+      throw new ConvexError(
+        "You're the top bidder on a lot. You can ask once it's decided."
+      );
+    }
+
+    const now = Date.now();
+    await ctx.db.patch("registrationDeposits", deposit._id, {
+      status: "refund_requested",
+      refundRequestedAt: now,
+      updatedAt: now,
+    });
+    await logAudit(ctx, {
+      action: "DEPOSIT_REFUND_REQUESTED",
+      targetId: userId,
+      targetType: "user",
+      details: `Buyer asked for deposit ${deposit.reference} to be refunded`,
+    });
+    // Registration submissions only show up in the admin queue; a refund is a
+    // money-out step, so the admins are also told in-app.
+    const admins = await ctx.db
+      .query("profiles")
+      .withIndex("by_role", (q) => q.eq("role", "admin"))
+      .take(ADMIN_NOTIFY_CAP);
+    for (const admin of admins) {
+      await notifyUser(ctx, {
+        recipientId: admin.userId,
+        type: "info",
+        title: "Deposit refund requested",
+        message: `Deposit ${deposit.reference} (${formatNotificationRand(refundableRemainder(deposit))}) was requested back.`,
+        link: "/admin/deposits",
+      });
+    }
+    return { success: true };
+  },
+});
+
+/**
+ * Buyer: take a refund request back. `refund_requested` returns to `received`
+ * (the deposit counts for bidding again). Does nothing in any other status.
+ */
+export const cancelDepositRefundRequest = mutation({
+  args: {},
+  returns: v.object({ success: v.boolean() }),
+  handler: async (ctx) => {
+    const { userId } = await loadCaller(ctx);
+    const deposit = await ctx.db
+      .query("registrationDeposits")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .unique();
+    if (deposit?.status !== "refund_requested") return { success: true };
+    const now = Date.now();
+    await ctx.db.patch("registrationDeposits", deposit._id, {
+      status: "received",
+      refundRequestedAt: undefined,
+      updatedAt: now,
+    });
+    // A lot may have been won while the deposit was `refund_requested` (the
+    // credit only applies to a `received` deposit), so credit it now.
+    await applyDepositCredit(ctx, userId, now);
     return { success: true };
   },
 });

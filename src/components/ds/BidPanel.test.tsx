@@ -207,6 +207,16 @@ describe("BidPanel", () => {
     ).toHaveAttribute("href", STATUS);
   });
 
+  it("refund requested: says to cancel the request and links to Manage deposit", () => {
+    renderPanel({ eligibility: { kind: "refund_requested" } });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "You asked for your deposit back. Cancel the request to bid."
+    );
+    expect(
+      screen.getByRole("link", { name: "Manage deposit" })
+    ).toHaveAttribute("href", STATUS);
+  });
+
   it("deposit due: names the amount and links to Pay deposit", () => {
     renderPanel({ eligibility: { kind: "deposit_due", amount: 5000 } });
     expect(text(screen.getByRole("alert"))).toBe(

@@ -12,6 +12,7 @@ import {
 import { LotSummaryValidator, toLotSummaries } from "./auctions";
 import { requireAuth, resolveUserId, getAuthUser } from "./lib/auth";
 import { adjustWatcherCount } from "./lib/lotCounters";
+import { ensureWatching } from "./lib/watching";
 import type { Id, Doc } from "./_generated/dataModel";
 
 /** Lot statuses buyers can see (and therefore watch). */
@@ -54,11 +55,7 @@ export const toggleWatchlistHandler = async (
     if (!lot || !PUBLIC_LOT_STATUSES.includes(lot.status)) {
       throw new Error("Lot not found");
     }
-    await ctx.db.insert("watchlist", {
-      userId,
-      lotId: args.lotId,
-    });
-    await adjustWatcherCount(ctx, args.lotId, 1);
+    await ensureWatching(ctx, userId, args.lotId);
     return true; // Now watched
   }
 };

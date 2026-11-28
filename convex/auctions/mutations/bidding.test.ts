@@ -640,43 +640,43 @@ describe("Bidding Coverage", () => {
         getMinIncrement({
           startingPrice: 50,
           minIncrement: 50,
-        } as unknown as Doc<"lots">)
+        })
       ).toBe(50);
       expect(
         getMinIncrement({
           startingPrice: 500,
           minIncrement: 50,
-        } as unknown as Doc<"lots">)
+        })
       ).toBe(50);
       expect(
         getMinIncrement({
           startingPrice: 2000,
           minIncrement: 100,
-        } as unknown as Doc<"lots">)
+        })
       ).toBe(100);
       expect(
         getMinIncrement({
           startingPrice: 7000,
           minIncrement: 250,
-        } as unknown as Doc<"lots">)
+        })
       ).toBe(250);
       expect(
         getMinIncrement({
           startingPrice: 20000,
           minIncrement: 500,
-        } as unknown as Doc<"lots">)
+        })
       ).toBe(500);
       expect(
         getMinIncrement({
           startingPrice: 70000,
           minIncrement: 1000,
-        } as unknown as Doc<"lots">)
+        })
       ).toBe(1000);
       expect(
         getMinIncrement({
           startingPrice: 200000,
           minIncrement: 2500,
-        } as unknown as Doc<"lots">)
+        })
       ).toBe(2500);
     });
   });

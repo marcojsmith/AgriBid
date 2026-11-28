@@ -22,6 +22,7 @@ const ELIGIBILITIES = [
   [{ kind: "under_review", depositReceived: false }, "/register/status"],
   [{ kind: "needs_replacing", count: 1 }, "/register/status"],
   [{ kind: "deposit_due", amount: 5000 }, "/register/status"],
+  [{ kind: "refund_requested" }, "/register/status"],
   [{ kind: "ok" }, "/register/status"],
 ] as const;
 

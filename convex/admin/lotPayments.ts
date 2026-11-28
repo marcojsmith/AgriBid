@@ -10,7 +10,7 @@ import { paginationOptsValidator } from "convex/server";
 import { mutation, query } from "../_generated/server";
 import { logAudit } from "../admin_utils";
 import { requireAdmin } from "../lib/auth";
-import { notifyUser } from "../lib/notify";
+import { notifyPaymentConfirmed } from "../lib/lotPayments";
 
 const statusValidator = v.union(
   v.literal("awaiting"),
@@ -116,7 +116,6 @@ export const confirmLotPayment = mutation({
       throw new ConvexError("This payment is already confirmed.");
     }
 
-    const lot = await ctx.db.get("lots", payment.lotId);
     const now = Date.now();
     await ctx.db.patch("lotPayments", payment._id, {
       status: "confirmed",
@@ -124,17 +123,7 @@ export const confirmLotPayment = mutation({
       confirmedBy: admin.userId ?? admin._id,
       updatedAt: now,
     });
-    const label =
-      lot?.lotNumber === undefined
-        ? "your lot"
-        : `Lot ${String(lot.lotNumber)}`;
-    await notifyUser(ctx, {
-      recipientId: payment.buyerId,
-      type: "success",
-      title: "Payment received",
-      message: `Payment received for ${label}. Collection details are in My bids.`,
-      link: "/dashboard/bids",
-    });
+    await notifyPaymentConfirmed(ctx, payment);
     await logAudit(ctx, {
       action: "LOT_PAYMENT_CONFIRMED",
       targetId: payment.lotId,

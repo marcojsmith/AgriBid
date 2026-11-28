@@ -179,6 +179,75 @@ describe("verified fast path", () => {
   });
 });
 
+describe("deposit that is being refunded", () => {
+  it("does not satisfy the deposit requirement once refunded", async () => {
+    const t = makeContext();
+    await seed(t, { profile: { isVerified: true }, deposit: "refunded" });
+    await expect(guard(t)).rejects.toThrow(
+      "Your deposit hasn't been received yet."
+    );
+    expect(await t.run((ctx) => canUserBid(ctx, USER))).toBe(false);
+  });
+
+  it("does not satisfy it while a refund is requested, and says how to bid", async () => {
+    const t = makeContext();
+    await seed(t, {
+      profile: { isVerified: true },
+      deposit: "refund_requested",
+    });
+    await expect(guard(t)).rejects.toThrow(
+      "You asked for your deposit back. Cancel the request to bid."
+    );
+    expect(await t.run((ctx) => canUserBid(ctx, USER))).toBe(false);
+    const eligibility = await t.run(async (ctx) => {
+      const profile = await ctx.db.query("profiles").first();
+      if (!profile) throw new Error("missing");
+      return await getBidEligibility(ctx, profile);
+    });
+    expect(eligibility).toEqual({ kind: "refund_requested" });
+  });
+
+  it("still counts a received deposit whose amount was credited to a lot", async () => {
+    const t = makeContext();
+    await seed(t, { profile: { isVerified: true }, deposit: "received" });
+    await t.run(async (ctx) => {
+      const row = await ctx.db.query("registrationDeposits").first();
+      const categoryId = await ctx.db.insert("equipmentCategories", {
+        name: "Tractors",
+        isActive: true,
+      });
+      const creditedLotId = await ctx.db.insert("lots", {
+        title: "John Deere 8R",
+        make: "John Deere",
+        model: "8R",
+        year: 2020,
+        operatingHours: 1,
+        location: "Free State",
+        categoryId,
+        reservePrice: 1,
+        startingPrice: 1000,
+        currentPrice: 1000,
+        minIncrement: 100,
+        sellerId: "seller",
+        status: "sold",
+        images: { additional: [] },
+        createdAt: 1,
+      });
+      if (row) {
+        await ctx.db.patch("registrationDeposits", row._id, {
+          creditedLotId,
+          creditedAt: 1,
+          creditedAmount: 5000,
+        });
+      }
+    });
+    // Owner decision (2026-11-25): a credited deposit still lets the buyer bid.
+    // The deposit is both fully used (nothing left to refund) and received.
+    expect(await guard(t)).toMatchObject({ userId: USER });
+    expect(await t.run((ctx) => canUserBid(ctx, USER))).toBe(true);
+  });
+});
+
 describe("canUserBid", () => {
   it("is false without a profile and true for an eligible user", async () => {
     const t = makeContext();

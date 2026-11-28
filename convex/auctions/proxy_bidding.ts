@@ -100,7 +100,9 @@ export const getMyProxyBid = query({
  * @param lot - The lot document
  * @returns The minimum increment amount
  */
-export function getMinIncrement(lot: Doc<"lots">): number {
+export function getMinIncrement(
+  lot: Pick<Doc<"lots">, "minIncrement" | "startingPrice">
+): number {
   return (
     lot.minIncrement ||
     (lot.startingPrice < PRICE_THRESHOLD_FOR_INCREMENT

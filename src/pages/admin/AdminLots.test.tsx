@@ -8,7 +8,15 @@ import {
   act,
   cleanup,
 } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery, usePaginatedQuery, useMutation } from "convex/react";
 import { toast } from "sonner";
@@ -203,6 +211,16 @@ const mockAuctions = [
 ];
 
 describe("AdminLots", () => {
+  // The seeded decision deadline is 26 Nov 2026; keep "now" before it.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.UTC(2026, 10, 25, 9, 0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const closeAuctionEarlyMock = vi.fn();
   const bulkUpdateAuctionsMock = vi.fn();
   const adminUpdateLotMock = vi.fn();

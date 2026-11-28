@@ -64,6 +64,9 @@ async function allowsAlert(
     .query("userPreferences")
     .withIndex("by_userId", (q) => q.eq("userId", userId))
     .first();
+  // The "Watched lots" switch turns both alerts off; the legacy settings below
+  // still apply for users who switched one of them off before it existed.
+  if (prefs?.notificationsWatchedLots === false) return false;
   if (kind === "outbid") return prefs?.notificationsBidOutbid !== false;
   const ending = prefs?.notificationsWatchlistEnding;
   return ending === undefined || ending === "1h";

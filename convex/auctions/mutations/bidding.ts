@@ -4,6 +4,7 @@ import { mutation } from "../../_generated/server";
 import type { MutationCtx } from "../../_generated/server";
 import type { Id } from "../../_generated/dataModel";
 import { requireCanBid } from "../../lib/bidGuard";
+import { ensureWatching } from "../../lib/watching";
 import { logActivity } from "../../userActivity";
 import { notifyOutbidWatcher } from "../../watchAlerts";
 import { getMostRecentBid, handleNewBid } from "../proxy_bidding";
@@ -139,6 +140,10 @@ export const placeBidHandler = async (
     description: `Bid placed: R${args.amount.toLocaleString("en-ZA")}`,
     relatedId: args.lotId,
   });
+
+  // Bidding on a lot watches it, so outbid and closing alerts reach the bidder.
+  // Only the caller: proxy counter-bids placed for others never come through here.
+  await ensureWatching(ctx, userId, args.lotId);
 
   return {
     success: result.success,

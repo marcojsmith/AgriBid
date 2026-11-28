@@ -22,6 +22,11 @@ import {
 import { decryptPII, logAudit } from "../admin_utils";
 import { formatNotificationRand, notifyUser } from "../auctions/internal";
 import { requireAdmin } from "../lib/auth";
+import {
+  isLeadingOpenLot,
+  loadUnpaidPayments,
+  refundableRemainder,
+} from "../lib/depositRefund";
 import { applyDepositCredit } from "../lib/lotPayments";
 import { getBidEligibility } from "../lib/bidGuard";
 import type { RegDocKind } from "../lib/registration";
@@ -62,6 +67,7 @@ const depositStatusValidator = v.union(
   v.literal("awaiting"),
   v.literal("paid_claimed"),
   v.literal("received"),
+  v.literal("refund_requested"),
   v.literal("refunded")
 );
 
@@ -77,7 +83,10 @@ const DepositRowValidator = v.object({
   paidClaimedAt: v.optional(v.number()),
   receivedAt: v.optional(v.number()),
   receivedAmount: v.optional(v.number()),
+  refundRequestedAt: v.optional(v.number()),
   refundedAt: v.optional(v.number()),
+  /** What a refund would return (received minus what a won lot used). */
+  refundableAmount: v.number(),
   updatedAt: v.number(),
 });
 
@@ -188,7 +197,9 @@ async function toDepositRow(
     paidClaimedAt: deposit.paidClaimedAt,
     receivedAt: deposit.receivedAt,
     receivedAmount: deposit.receivedAmount,
+    refundRequestedAt: deposit.refundRequestedAt,
     refundedAt: deposit.refundedAt,
+    refundableAmount: refundableRemainder(deposit),
     updatedAt: deposit.updatedAt,
   };
 }
@@ -470,7 +481,9 @@ export const markDepositReceived = mutation({
       throw new ConvexError(
         deposit.status === "received"
           ? "This deposit is already marked received."
-          : "A refunded deposit can't be marked received until the buyer pays again."
+          : deposit.status === "refund_requested"
+            ? "This deposit was already received; the buyer has asked for it back."
+            : "A refunded deposit can't be marked received until the buyer pays again."
       );
     }
     // Written so that NaN also fails.
@@ -524,16 +537,30 @@ export const markDepositRefunded = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     const deposit = await requireDeposit(ctx, args.userId);
-    if (deposit.status !== "received") {
+    if (
+      deposit.status !== "received" &&
+      deposit.status !== "refund_requested"
+    ) {
       throw new ConvexError("Only a received deposit can be refunded.");
     }
-    const received = deposit.receivedAmount ?? deposit.amount;
+    // A lot may have been sold to the buyer since they asked: the deposit is
+    // then still needed for that payment.
+    if (deposit.status === "refund_requested") {
+      const { awaiting, claimed } = await loadUnpaidPayments(ctx, args.userId);
+      if (awaiting.length + claimed.length > 0) {
+        throw new ConvexError(
+          "This buyer has won lots that aren't paid yet. Ask them to cancel the request or pay first."
+        );
+      }
+    }
+    // Either way the deposit backs the bids on a lot that isn't decided yet.
+    if (await isLeadingOpenLot(ctx, args.userId)) {
+      throw new ConvexError(
+        "This buyer is the top bidder on a lot that isn't decided yet."
+      );
+    }
     // What a won lot's payment already used can't be refunded as well.
-    const credited =
-      deposit.creditedLotId === undefined
-        ? 0
-        : (deposit.creditedAmount ?? received);
-    const refunded = Math.max(0, received - credited);
+    const refunded = refundableRemainder(deposit);
     if (refunded <= 0) {
       throw new ConvexError(
         "This deposit was credited against a won lot's payment and can't be refunded."

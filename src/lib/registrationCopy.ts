@@ -21,12 +21,19 @@ export type Registration = NonNullable<
 export type RegStep = "details" | "id" | "address" | "deposit";
 
 /** Where a link on the status page goes. */
-export interface StatusAction {
-  label: string;
-  step: RegStep;
-  /** Open the step in replace mode (the rejected document's slot is empty). */
-  replace?: boolean;
-}
+export type StatusAction =
+  | {
+      label: string;
+      step: RegStep;
+      /** Open the step in replace mode (the rejected document's slot is empty). */
+      replace?: boolean;
+      command?: undefined;
+    }
+  | {
+      label: string;
+      /** Take back the buyer's deposit refund request. */
+      command: "cancel_refund";
+    };
 
 /** One row of the status page. */
 export interface StatusRowData {
@@ -246,7 +253,15 @@ export function buildStatusRows(registration: Registration): StatusRowData[] {
   const { depositSettings, deposit } = registration;
   if (depositSettings.enabled) {
     const amount = formatRand(deposit?.amount ?? depositSettings.amount);
-    if (deposit?.status === "received") {
+    if (deposit?.status === "refund_requested") {
+      rows.push({
+        key: "deposit",
+        title: "Deposit",
+        sub: `${amount} · Refund requested`,
+        tone: "neutral",
+        action: { label: "Cancel request", command: "cancel_refund" },
+      });
+    } else if (deposit?.status === "received") {
       rows.push({
         key: "deposit",
         title: "Deposit",
@@ -314,6 +329,13 @@ export function buildStatusBanners(registration: Registration): StatusBanner[] {
         {
           kind: "info",
           text: `Pay your ${formatRand(eligibility.amount)} deposit to bid.`,
+        },
+      ];
+    case "refund_requested":
+      return [
+        {
+          kind: "info",
+          text: "You asked for your deposit back. Cancel the request to bid.",
         },
       ];
     case "incomplete":
