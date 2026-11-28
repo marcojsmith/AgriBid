@@ -45,6 +45,7 @@ const TABS: readonly { value: DepositStatus; label: string }[] = [
   { value: "awaiting", label: "Awaiting" },
   { value: "paid_claimed", label: "Paid claimed" },
   { value: "received", label: "Received" },
+  { value: "refund_requested", label: "Refund requested" },
   { value: "refunded", label: "Refunded" },
 ];
 
@@ -60,6 +61,12 @@ const PAGE_SIZE = 50;
 function relevantDate(row: DepositRow): { label: string; at: number } | null {
   if (row.status === "refunded" && row.refundedAt !== undefined) {
     return { label: "Refunded", at: row.refundedAt };
+  }
+  if (
+    row.status === "refund_requested" &&
+    row.refundRequestedAt !== undefined
+  ) {
+    return { label: "Requested", at: row.refundRequestedAt };
   }
   if (row.status === "received" && row.receivedAt !== undefined) {
     return { label: "Received", at: row.receivedAt };
@@ -227,7 +234,8 @@ export default function AdminDeposits() {
                             Mark received
                           </Button>
                         )}
-                        {row.status === "received" && (
+                        {(row.status === "received" ||
+                          row.status === "refund_requested") && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -235,7 +243,7 @@ export default function AdminDeposits() {
                               setAction({ kind: "refunded", row });
                             }}
                           >
-                            Mark refunded
+                            {`Mark ${formatRand(row.refundableAmount)} refunded`}
                           </Button>
                         )}
                       </TableCell>
@@ -309,9 +317,8 @@ export default function AdminDeposits() {
             <DialogHeader>
               <DialogTitle>Mark deposit refunded</DialogTitle>
               <DialogDescription>
-                Refund{" "}
-                {formatRand(action.row.receivedAmount ?? action.row.amount)} to
-                the account it came from?
+                Refund {formatRand(action.row.refundableAmount)} to the account
+                it came from?
               </DialogDescription>
             </DialogHeader>
           )}

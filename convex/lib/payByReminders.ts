@@ -29,13 +29,13 @@ export async function sendPayByRemindersHandler(
 ): Promise<{ sent: number; hasMore: boolean }> {
   const due = await ctx.db
     .query("lotPayments")
-    .withIndex("by_status_and_payBy", (q) =>
+    .withIndex("by_status_and_reminderSentAt_and_payBy", (q) =>
       q
         .eq("status", "awaiting")
+        .eq("reminderSentAt", undefined)
         .gt("payBy", now)
         .lte("payBy", now + PAY_BY_REMINDER_WINDOW_MS)
     )
-    .filter((q) => q.eq(q.field("reminderSentAt"), undefined))
     .take(PAY_BY_REMINDER_BATCH);
 
   for (const payment of due) {

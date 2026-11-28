@@ -363,6 +363,16 @@ describe("stickyModel", () => {
       expect(model.sub).toMatch(/^R\s5\s000$/);
     });
 
+    it("refund requested: Manage", () => {
+      expect(
+        stickyModel({ ...base, registration: { kind: "refund_requested" } })
+      ).toMatchObject({
+        title: "Deposit refund asked",
+        sub: "Cancel the request to bid",
+        cta: "Manage",
+      });
+    });
+
     it("leaves the price model without a button when registered", () => {
       expect(stickyModel(base).cta).toBeUndefined();
     });

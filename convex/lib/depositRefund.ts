@@ -14,7 +14,8 @@ export const UNPAID_READ_CAP = 100;
 
 /**
  * What a deposit can still give back: what was received minus what a won lot's
- * payment already used.
+ * payment already used. A legacy row that names a credited lot but has no
+ * credited amount counts as fully used.
  *
  * @param deposit - The deposit row
  * @returns Rand that can be refunded (never negative)
@@ -22,13 +23,15 @@ export const UNPAID_READ_CAP = 100;
 export function refundableRemainder(
   deposit: Pick<
     Doc<"registrationDeposits">,
-    "amount" | "receivedAmount" | "creditedAmount"
+    "amount" | "receivedAmount" | "creditedAmount" | "creditedLotId"
   >
 ): number {
-  return Math.max(
-    0,
-    (deposit.receivedAmount ?? deposit.amount) - (deposit.creditedAmount ?? 0)
-  );
+  const received = deposit.receivedAmount ?? deposit.amount;
+  const credited =
+    deposit.creditedLotId === undefined
+      ? 0
+      : (deposit.creditedAmount ?? received);
+  return Math.max(0, received - credited);
 }
 
 /**
@@ -61,8 +64,9 @@ export async function loadUnpaidPayments(
 }
 
 /**
- * Whether the buyer currently leads a lot that is still open for bidding
- * (status `assigned` and `winnerId` is them). Reads at most
+ * Whether the buyer currently leads a lot that is not decided yet: still open
+ * for bidding (`assigned`) or closed below reserve and waiting for the seller
+ * (`under_consideration`), with `winnerId` set to them. Reads at most
  * {@link LEADING_CHECK_BID_CAP} of their newest non-voided bids, via
  * `by_bidder_timestamp`, and checks each distinct lot once.
  *
@@ -85,7 +89,12 @@ export async function isLeadingOpenLot(
     if (seen.has(bid.lotId)) continue;
     seen.add(bid.lotId);
     const lot = await ctx.db.get("lots", bid.lotId);
-    if (lot?.status === "assigned" && lot.winnerId === userId) return true;
+    if (
+      (lot?.status === "assigned" || lot?.status === "under_consideration") &&
+      lot.winnerId === userId
+    ) {
+      return true;
+    }
   }
   return false;
 }

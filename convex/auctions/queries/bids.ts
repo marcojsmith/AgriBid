@@ -787,6 +787,9 @@ const OVERVIEW_LOT_CAP = 200;
 /** Rows returned in the "Lost" tab. */
 const OVERVIEW_LOST_CAP = 50;
 
+/** Payment rows counted for the "Won" tab. */
+const WON_COUNT_CAP = 500;
+
 /** Watchlist rows counted for the "Watching" tab. */
 const WATCHING_COUNT_CAP = 500;
 
@@ -967,12 +970,11 @@ export const getMyBidsOverviewHandler = async (ctx: QueryCtx) => {
   ];
   const lost = await rows(lostPage);
 
-  const [paymentCount, watching] = await Promise.all([
-    countQuery(
-      ctx.db
-        .query("lotPayments")
-        .withIndex("by_buyerId_and_createdAt", (q) => q.eq("buyerId", userId))
-    ),
+  const [payments, watching] = await Promise.all([
+    ctx.db
+      .query("lotPayments")
+      .withIndex("by_buyerId_and_createdAt", (q) => q.eq("buyerId", userId))
+      .take(WON_COUNT_CAP),
     ctx.db
       .query("watchlist")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -984,7 +986,7 @@ export const getMyBidsOverviewHandler = async (ctx: QueryCtx) => {
     lost,
     counts: {
       bidding: bidding.length,
-      won: paymentCount + legacyWon,
+      won: payments.length + legacyWon,
       lost: lostLots.length,
       watching: watching.length,
     },

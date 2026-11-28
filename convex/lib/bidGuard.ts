@@ -34,6 +34,9 @@ export async function getBidEligibility(
       .withIndex("by_userId", (q) => q.eq("userId", profile.userId))
       .unique();
     if (deposit?.status === "received") return { kind: "ok" };
+    if (deposit?.status === "refund_requested") {
+      return { kind: "refund_requested" };
+    }
     const amount = deposit?.amount ?? (await getDepositSetting(ctx)).amount;
     return { kind: "deposit_due", amount };
   }
@@ -101,5 +104,9 @@ export async function requireCanBid(
       );
     case "deposit_due":
       throw new ConvexError("Your deposit hasn't been received yet.");
+    case "refund_requested":
+      throw new ConvexError(
+        "You asked for your deposit back. Cancel the request to bid."
+      );
   }
 }

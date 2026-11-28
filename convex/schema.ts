@@ -456,7 +456,11 @@ export default defineSchema({
     .index("by_buyerId_and_status", ["buyerId", "status"])
     .index("by_buyerId_and_createdAt", ["buyerId", "createdAt"])
     .index("by_status_and_updatedAt", ["status", "updatedAt"])
-    .index("by_status_and_payBy", ["status", "payBy"]),
+    .index("by_status_and_reminderSentAt_and_payBy", [
+      "status",
+      "reminderSentAt",
+      "payBy",
+    ]),
 
   // New Admin Features
   auditLogs: defineTable({

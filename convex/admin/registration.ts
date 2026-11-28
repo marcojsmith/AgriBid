@@ -22,7 +22,11 @@ import {
 import { decryptPII, logAudit } from "../admin_utils";
 import { formatNotificationRand, notifyUser } from "../auctions/internal";
 import { requireAdmin } from "../lib/auth";
-import { loadUnpaidPayments } from "../lib/depositRefund";
+import {
+  isLeadingOpenLot,
+  loadUnpaidPayments,
+  refundableRemainder,
+} from "../lib/depositRefund";
 import { applyDepositCredit } from "../lib/lotPayments";
 import { getBidEligibility } from "../lib/bidGuard";
 import type { RegDocKind } from "../lib/registration";
@@ -81,6 +85,8 @@ const DepositRowValidator = v.object({
   receivedAmount: v.optional(v.number()),
   refundRequestedAt: v.optional(v.number()),
   refundedAt: v.optional(v.number()),
+  /** What a refund would return (received minus what a won lot used). */
+  refundableAmount: v.number(),
   updatedAt: v.number(),
 });
 
@@ -193,6 +199,7 @@ async function toDepositRow(
     receivedAmount: deposit.receivedAmount,
     refundRequestedAt: deposit.refundRequestedAt,
     refundedAt: deposit.refundedAt,
+    refundableAmount: refundableRemainder(deposit),
     updatedAt: deposit.updatedAt,
   };
 }
@@ -536,9 +543,8 @@ export const markDepositRefunded = mutation({
     ) {
       throw new ConvexError("Only a received deposit can be refunded.");
     }
-    // The buyer asked while nothing was owed; a lot may have been sold to them
-    // since (e.g. the seller accepted a top bid), and the deposit is then still
-    // needed for that payment.
+    // A lot may have been sold to the buyer since they asked: the deposit is
+    // then still needed for that payment.
     if (deposit.status === "refund_requested") {
       const { awaiting, claimed } = await loadUnpaidPayments(ctx, args.userId);
       if (awaiting.length + claimed.length > 0) {
@@ -547,13 +553,14 @@ export const markDepositRefunded = mutation({
         );
       }
     }
-    const received = deposit.receivedAmount ?? deposit.amount;
+    // Either way the deposit backs the bids on a lot that isn't decided yet.
+    if (await isLeadingOpenLot(ctx, args.userId)) {
+      throw new ConvexError(
+        "This buyer is the top bidder on a lot that isn't decided yet."
+      );
+    }
     // What a won lot's payment already used can't be refunded as well.
-    const credited =
-      deposit.creditedLotId === undefined
-        ? 0
-        : (deposit.creditedAmount ?? received);
-    const refunded = Math.max(0, received - credited);
+    const refunded = refundableRemainder(deposit);
     if (refunded <= 0) {
       throw new ConvexError(
         "This deposit was credited against a won lot's payment and can't be refunded."

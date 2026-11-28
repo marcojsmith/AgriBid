@@ -569,7 +569,7 @@ export const requestDepositRefund = mutation({
     }
     if (await isLeadingOpenLot(ctx, userId)) {
       throw new ConvexError(
-        "You're the highest bidder on a lot. You can ask once it closes."
+        "You're the top bidder on a lot. You can ask once it's decided."
       );
     }
 

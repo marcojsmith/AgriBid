@@ -76,6 +76,14 @@ function registrationPrompt(
         href: hrefs.statusHref,
         variant: "default",
       };
+    case "refund_requested":
+      return {
+        kind: "info",
+        text: "You asked for your deposit back. Cancel the request to bid.",
+        label: "Manage deposit",
+        href: hrefs.statusHref,
+        variant: "outline",
+      };
   }
 }
 
@@ -116,7 +124,7 @@ interface BidPanelProps {
   registerHref: string;
   /** Where "Continue registration" goes (`/register?callbackUrl=…`). */
   registrationHref: string;
-  /** Where "See my registration", "Replace document" and "Pay deposit" go. */
+  /** Where "See my registration", "Replace document", "Pay deposit" and "Manage deposit" go. */
   registrationStatusHref: string;
   /** Where a signed-in viewer stands on registration. */
   eligibility: PanelEligibility;

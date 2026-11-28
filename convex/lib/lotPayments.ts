@@ -214,20 +214,24 @@ export async function createLotPayment(
     lot.lotNumber === undefined
       ? lot.title
       : `Lot ${String(lot.lotNumber)} ${lot.title}`;
-  const winMessage = `You won ${label}. Pay ${formatNotificationRand(current?.amountDue ?? total)} by ${formatPayBy(payBy)}.`;
-  await notifyUser(ctx, {
-    recipientId: winnerId,
-    type: "success",
-    title: "You won this lot",
-    message: winMessage,
-    link: "/dashboard/bids",
-  });
-  await pushLotsWon(ctx, winnerId, {
-    title: "You won this lot",
-    body: winMessage,
-    url: "/dashboard/bids",
-    tag: `won-${lot._id}`,
-  });
+  // The deposit covered everything: the payment was confirmed on the spot and
+  // the buyer already got the "Payment received" notice, so no "Pay R 0" notice.
+  if (current?.status !== "confirmed") {
+    const winMessage = `You won ${label}. Pay ${formatNotificationRand(current?.amountDue ?? total)} by ${formatPayBy(payBy)}.`;
+    await notifyUser(ctx, {
+      recipientId: winnerId,
+      type: "success",
+      title: "You won this lot",
+      message: winMessage,
+      link: "/dashboard/bids",
+    });
+    await pushLotsWon(ctx, winnerId, {
+      title: "You won this lot",
+      body: winMessage,
+      url: "/dashboard/bids",
+      tag: `won-${lot._id}`,
+    });
+  }
 
   const created = await ctx.db.get("lotPayments", paymentId);
   if (!created) throw new ConvexError("Couldn't create the payment record.");
@@ -289,7 +293,61 @@ export async function applyDepositCredit(
     creditedAmount: credit,
     updatedAt: at,
   });
-  return { ...target, depositCredit: credit, amountDue: target.total - credit };
+  const credited = {
+    ...target,
+    depositCredit: credit,
+    amountDue: target.total - credit,
+  };
+  // Nothing left to pay: no admin has anything to check, so confirm it now.
+  if (credited.amountDue <= 0) {
+    await ctx.db.patch("lotPayments", target._id, {
+      status: "confirmed",
+      confirmedAt: at,
+      confirmedBy: DEPOSIT_CONFIRMER,
+    });
+    await notifyPaymentConfirmed(ctx, target);
+    return {
+      ...credited,
+      status: "confirmed",
+      confirmedAt: at,
+      confirmedBy: DEPOSIT_CONFIRMER,
+    };
+  }
+  return credited;
+}
+
+/** `confirmedBy` of a payment the registration deposit covered in full. */
+export const DEPOSIT_CONFIRMER = "deposit";
+
+/**
+ * Tells the buyer their payment is confirmed (in-app, plus push unless they
+ * switched "Lots you win" off). Used by the admin confirmation and by a
+ * payment the deposit covered in full.
+ *
+ * @param ctx - Mutation context
+ * @param payment - The payment (only `lotId` and `buyerId` are read)
+ */
+export async function notifyPaymentConfirmed(
+  ctx: MutationCtx,
+  payment: Pick<Doc<"lotPayments">, "lotId" | "buyerId">
+): Promise<void> {
+  const lot = await ctx.db.get("lots", payment.lotId);
+  const label =
+    lot?.lotNumber === undefined ? "your lot" : `Lot ${String(lot.lotNumber)}`;
+  const message = `Payment received for ${label}. Collection details are in My bids.`;
+  await notifyUser(ctx, {
+    recipientId: payment.buyerId,
+    type: "success",
+    title: "Payment received",
+    message,
+    link: "/dashboard/bids",
+  });
+  await pushLotsWon(ctx, payment.buyerId, {
+    title: "Payment received",
+    body: message,
+    url: "/dashboard/bids",
+    tag: `paid-${payment.lotId}`,
+  });
 }
 
 /**

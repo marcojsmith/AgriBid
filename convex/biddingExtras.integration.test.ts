@@ -463,17 +463,43 @@ describe("deposit refund request", () => {
 
   it("refuses when a won lot's payment used the whole deposit", async () => {
     const t = makeContext();
-    await seedWorld(t);
-    await deposit(t, { creditedAmount: 5000, creditedAt: 2 });
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, { status: "sold" });
+    await deposit(t, {
+      creditedLotId: lotId,
+      creditedAmount: 5000,
+      creditedAt: 2,
+    });
     await expect(
       asAlice(t).mutation(api.registration.requestDepositRefund, {})
     ).rejects.toThrow("There's nothing left to refund.");
   });
 
+  it("treats a legacy credit without an amount as fully used", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, { status: "sold" });
+    await deposit(t, { creditedLotId: lotId, creditedAt: 2 });
+    await expect(
+      asAlice(t).mutation(api.registration.requestDepositRefund, {})
+    ).rejects.toThrow("There's nothing left to refund.");
+    // The admin side agrees (same remainder).
+    await expect(
+      as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+        userId: ALICE,
+      })
+    ).rejects.toThrow("credited against a won lot");
+  });
+
   it("allows a partly credited deposit and reports what is left", async () => {
     const t = makeContext();
-    await seedWorld(t);
-    await deposit(t, { creditedAmount: 1208, creditedAt: 2 });
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, { status: "sold" });
+    await deposit(t, {
+      creditedLotId: lotId,
+      creditedAmount: 1208,
+      creditedAt: 2,
+    });
     await asAlice(t).mutation(api.registration.requestDepositRefund, {});
     const registration = await asAlice(t).query(
       api.registration.getMyRegistration,
@@ -519,8 +545,25 @@ describe("deposit refund request", () => {
     await expect(
       asAlice(t).mutation(api.registration.requestDepositRefund, {})
     ).rejects.toThrow(
-      "You're the highest bidder on a lot. You can ask once it closes."
+      "You're the top bidder on a lot. You can ask once it's decided."
     );
+  });
+
+  it("refuses while leading a lot the seller is still deciding on", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, {
+      status: "under_consideration",
+      winnerId: ALICE,
+    });
+    await insertBid(t, lotId, ALICE, 1100);
+    await deposit(t);
+    await expect(
+      asAlice(t).mutation(api.registration.requestDepositRefund, {})
+    ).rejects.toThrow(
+      "You're the top bidder on a lot. You can ask once it's decided."
+    );
+    expect((await row(t))?.status).toBe("received");
   });
 
   it("allows it when outbid, when a voided bid led, or once the lot closed", async () => {
@@ -531,7 +574,7 @@ describe("deposit refund request", () => {
     const voided = await insertLot(t, auctionId, { winnerId: ALICE });
     await insertBid(t, voided, ALICE, 1100, { status: "voided" });
     const closed = await insertLot(t, auctionId, {
-      winnerId: ALICE,
+      winnerId: BOB,
       status: "under_consideration",
     });
     await insertBid(t, closed, ALICE, 1100);
@@ -578,12 +621,12 @@ describe("deposit refund request", () => {
     const t = makeContext();
     const auctionId = await seedWorld(t);
     const lotId = await insertLot(t, auctionId, {
-      status: "under_consideration",
+      status: "sold",
       winnerId: ALICE,
     });
     await deposit(t);
     await asAlice(t).mutation(api.registration.requestDepositRefund, {});
-    // The seller accepts the top bid while the refund is only requested.
+    // The lot sells to the buyer while the refund is only requested.
     await t.run(async (ctx) => {
       const lot = await ctx.db.get("lots", lotId);
       if (!lot) throw new Error("missing");
@@ -597,7 +640,48 @@ describe("deposit refund request", () => {
     const after = await t.run((ctx) => ctx.db.query("lotPayments").first());
     expect(after?.depositCredit).toBe(after?.total);
     expect(after?.amountDue).toBe(0);
+    // Nothing left to pay, so it is confirmed on the spot.
+    expect(after).toMatchObject({
+      status: "confirmed",
+      confirmedBy: "deposit",
+    });
     expect((await row(t))?.creditedLotId).toBe(lotId);
+  });
+
+  it("an admin cannot refund a deposit while the buyer leads an undecided lot", async () => {
+    for (const [status, deposit_status] of [
+      ["assigned", "received"],
+      ["assigned", "refund_requested"],
+      ["under_consideration", "received"],
+      ["under_consideration", "refund_requested"],
+    ] as const) {
+      const t = makeContext();
+      const auctionId = await seedWorld(t);
+      const lotId = await insertLot(t, auctionId, {
+        status,
+        winnerId: ALICE,
+      });
+      await insertBid(t, lotId, ALICE, 1100);
+      await deposit(t, { status: deposit_status });
+      await expect(
+        as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+          userId: ALICE,
+        })
+      ).rejects.toThrow("top bidder on a lot that isn't decided yet");
+      expect((await row(t))?.status).toBe(deposit_status);
+    }
+  });
+
+  it("an admin can refund once the buyer no longer leads anything", async () => {
+    const t = makeContext();
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, { winnerId: BOB });
+    await insertBid(t, lotId, ALICE, 1100);
+    await deposit(t);
+    await as(t, ADMIN).mutation(api.admin.registration.markDepositRefunded, {
+      userId: ALICE,
+    });
+    expect((await row(t))?.status).toBe("refunded");
   });
 
   it("an admin cannot refund a requested deposit once the buyer owes a payment", async () => {
@@ -674,7 +758,7 @@ describe("deposit refund request", () => {
     });
     pastCooldown();
     await expect(bid(t, ALICE, lotId, 1200)).rejects.toThrow(
-      "Your deposit hasn't been received yet."
+      "You asked for your deposit back. Cancel the request to bid."
     );
   });
 
@@ -689,7 +773,12 @@ describe("deposit refund request", () => {
         .unique();
       if (setting) await ctx.db.patch("settings", setting._id, { value: true });
     });
-    await deposit(t, { creditedAmount: 5000, creditedAt: 2 });
+    const creditedLot = await insertLot(t, auctionId, { status: "sold" });
+    await deposit(t, {
+      creditedLotId: creditedLot,
+      creditedAmount: 5000,
+      creditedAt: 2,
+    });
     const result = await bid(t, ALICE, lotId, 1000);
     expect(result.success).toBe(true);
   });
@@ -1284,6 +1373,130 @@ describe("Lots you win switch", () => {
     );
     expect(queued).toBe(0);
     expect(await pushBatches(t)).toHaveLength(0);
+  });
+});
+
+describe("a deposit that covers a lot in full", () => {
+  /**
+   * Alice's deposit row.
+   *
+   * @param t - Test context
+   * @param extra - Field overrides
+   */
+  async function deposit(
+    t: Ctx,
+    extra: Partial<Doc<"registrationDeposits">> = {}
+  ): Promise<void> {
+    await t.run(async (ctx) => {
+      await ctx.db.insert("registrationDeposits", {
+        userId: ALICE,
+        reference: "AB-DEP01",
+        status: "received",
+        amount: 5000,
+        receivedAmount: 5000,
+        createdAt: 1,
+        updatedAt: 1,
+        ...extra,
+      });
+    });
+  }
+
+  /**
+   * Sells a lot to Alice and creates the payment.
+   *
+   * @param t - Test context
+   * @returns The lot id
+   */
+  async function sellToAlice(t: Ctx): Promise<Id<"lots">> {
+    const auctionId = await seedWorld(t);
+    const lotId = await insertLot(t, auctionId, {
+      status: "sold",
+      winnerId: ALICE,
+    });
+    return lotId;
+  }
+
+  const create = (t: Ctx, lotId: Id<"lots">) =>
+    t.run(async (ctx) => {
+      const lot = await ctx.db.get("lots", lotId);
+      if (!lot) throw new Error("missing");
+      await createLotPayment(ctx, lot, ALICE, 1100, Date.now());
+    });
+
+  const payment = (t: Ctx) =>
+    t.run((ctx) => ctx.db.query("lotPayments").first());
+
+  it("confirms the payment when it is created and sends the confirmed notice instead of the win notice", async () => {
+    const t = makeContext();
+    const lotId = await sellToAlice(t);
+    await deposit(t);
+
+    await create(t, lotId);
+
+    expect(await payment(t)).toMatchObject({
+      status: "confirmed",
+      confirmedBy: "deposit",
+      confirmedAt: Date.now(),
+      amountDue: 0,
+    });
+    expect((await notificationsFor(t, ALICE)).map((n) => n.title)).toEqual([
+      "Payment received",
+    ]);
+    expect(await pushBatches(t)).toHaveLength(1);
+    // Collection details open up straight away.
+    const details = await as(t, ALICE).query(
+      api.lotPayments.getMyCollectionDetails,
+      { lotId }
+    );
+    expect(details).not.toBeNull();
+  });
+
+  it("confirms an awaiting payment when the deposit is marked received", async () => {
+    const t = makeContext();
+    const lotId = await sellToAlice(t);
+    await deposit(t, { status: "awaiting", receivedAmount: undefined });
+    await create(t, lotId);
+    expect((await payment(t))?.status).toBe("awaiting");
+
+    await as(t, ADMIN).mutation(api.admin.registration.markDepositReceived, {
+      userId: ALICE,
+      receivedAmount: 5000,
+    });
+
+    expect(await payment(t)).toMatchObject({
+      status: "confirmed",
+      confirmedBy: "deposit",
+      amountDue: 0,
+    });
+    expect((await notificationsFor(t, ALICE)).map((n) => n.title)).toContain(
+      "Payment received"
+    );
+  });
+
+  it("leaves a partly covered payment awaiting, with the win notice", async () => {
+    const t = makeContext();
+    const lotId = await sellToAlice(t);
+    await deposit(t, { amount: 500, receivedAmount: 500 });
+
+    await create(t, lotId);
+
+    const row = await payment(t);
+    expect(row?.status).toBe("awaiting");
+    expect(row?.amountDue).toBe((row?.total ?? 0) - 500);
+    expect((await notificationsFor(t, ALICE)).map((n) => n.title)).toEqual([
+      "You won this lot",
+    ]);
+  });
+
+  it("has nothing left to refund once a payment used the whole deposit", async () => {
+    const t = makeContext();
+    const lotId = await sellToAlice(t);
+    await deposit(t, { amount: 1000, receivedAmount: 1000 });
+    await create(t, lotId);
+    // R1 000 of the R1 000 deposit went to the payment (the rest is still due).
+    await expect(
+      as(t, ALICE).mutation(api.registration.requestDepositRefund, {})
+    ).rejects.toThrow("There's nothing left to refund.");
   });
 });
 

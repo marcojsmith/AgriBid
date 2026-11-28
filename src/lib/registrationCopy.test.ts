@@ -74,6 +74,7 @@ describe("entryStep", () => {
     [{ kind: "under_review", depositReceived: false }, "status"],
     [{ kind: "needs_replacing", count: 1 }, "status"],
     [{ kind: "deposit_due", amount: 5000 }, "status"],
+    [{ kind: "refund_requested" }, "status"],
     [{ kind: "ok" }, "status"],
   ] as const)("%j goes to %s", (eligibility, expected) => {
     expect(entryStep(makeRegistration({ eligibility }))).toBe(expected);
@@ -235,6 +236,25 @@ describe("buildStatusRows", () => {
     expect(rows[3]?.sub).toBe(`R${NBSP}5${NBSP}000 received`);
   });
 
+  it("shows a requested refund with a Cancel request action", () => {
+    const rows = buildStatusRows(
+      makeRegistration({
+        deposit: {
+          reference: "AB-7K3F2",
+          status: "refund_requested",
+          amount: 5000,
+        },
+      })
+    );
+    expect(rows[3]).toEqual({
+      key: "deposit",
+      title: "Deposit",
+      sub: `R${NBSP}5${NBSP}000 · Refund requested`,
+      tone: "neutral",
+      action: { label: "Cancel request", command: "cancel_refund" },
+    });
+  });
+
   it("keeps Pay now for a refunded deposit", () => {
     const rows = buildStatusRows(
       makeRegistration({
@@ -342,6 +362,19 @@ describe("buildStatusBanners and statusFootnote", () => {
       )
     ).toEqual([
       { kind: "info", text: `Pay your R${NBSP}5${NBSP}000 deposit to bid.` },
+    ]);
+  });
+
+  it("refund requested: says to cancel the request", () => {
+    expect(
+      buildStatusBanners(
+        makeRegistration({ eligibility: { kind: "refund_requested" } })
+      )
+    ).toEqual([
+      {
+        kind: "info",
+        text: "You asked for your deposit back. Cancel the request to bid.",
+      },
     ]);
   });
 
