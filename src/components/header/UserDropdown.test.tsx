@@ -1,6 +1,14 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { toast } from "sonner";
@@ -22,6 +30,8 @@ vi.mock("convex/_generated/api", () => ({
     messages: {
       getUnreadConversationCount: "messages:getUnreadConversationCount",
     },
+    lotPayments: { getMyPaymentSummary: "lotPayments:getMyPaymentSummary" },
+    registration: { getMyBidEligibility: "registration:getMyBidEligibility" },
   },
 }));
 
@@ -55,7 +65,6 @@ describe("UserDropdown", () => {
     isLoadingProfile: false,
     isVerified: true,
     kycStatus: "approved",
-    profileId: "profile-123",
     role: "user",
     onSignOut: vi.fn(),
   };
@@ -105,8 +114,8 @@ describe("UserDropdown", () => {
 
   it("shows menu content (mocked directly)", () => {
     renderWithRouter();
-    expect(screen.getByText("My Bids")).toBeInTheDocument();
-    expect(screen.getByText("Sign Out")).toBeInTheDocument();
+    expect(screen.getByText("My bids")).toBeInTheDocument();
+    expect(screen.getByText("Sign out")).toBeInTheDocument();
   });
 
   it("renders the Messages link to /messages", () => {
@@ -121,7 +130,7 @@ describe("UserDropdown", () => {
     expect(
       screen.getByRole("link", { name: "Messages, 3 unread" })
     ).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getAllByText("3").length).toBeGreaterThan(0);
   });
 
   it("hides the unread-conversations badge when there is nothing unread", () => {
@@ -133,9 +142,12 @@ describe("UserDropdown", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows Admin Dashboard link for admin role", () => {
+  it("shows Admin link for admin role", () => {
     renderWithRouter({ ...defaultProps, role: "admin" });
-    expect(screen.getByText("Admin Dashboard")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Admin" })).toHaveAttribute(
+      "href",
+      "/admin"
+    );
   });
 
   it("shows KYC prompt when unverified", () => {
@@ -196,7 +208,7 @@ describe("UserDropdown", () => {
     const onSignOut = vi.fn().mockResolvedValue(undefined);
     renderWithRouter({ ...defaultProps, onSignOut });
 
-    const signOutButton = screen.getByText("Sign Out");
+    const signOutButton = screen.getByText("Sign out");
     fireEvent.click(signOutButton);
 
     expect(onSignOut).toHaveBeenCalled();
@@ -214,7 +226,7 @@ describe("UserDropdown", () => {
     const onSignOut = vi.fn().mockRejectedValue(new Error("Failed"));
     renderWithRouter({ ...defaultProps, onSignOut });
 
-    const signOutButton = screen.getByText("Sign Out");
+    const signOutButton = screen.getByText("Sign out");
     fireEvent.click(signOutButton);
 
     await waitFor(() => {
@@ -222,5 +234,114 @@ describe("UserDropdown", () => {
         expect.stringContaining("Sign out failed")
       );
     });
+  });
+});
+
+describe("UserDropdown links", () => {
+  const props = {
+    userData: { name: "John Doe", email: "john@example.com", id: "1" },
+    isLoadingProfile: false,
+    isVerified: true,
+    kycStatus: "approved",
+    role: "buyer",
+    onSignOut: vi.fn().mockResolvedValue(undefined),
+  };
+  const renderIt = (over: Partial<typeof props> = {}) =>
+    render(
+      <BrowserRouter>
+        <UserDropdown {...props} {...over} />
+      </BrowserRouter>
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useQuery as Mock).mockReturnValue(0);
+  });
+
+  it("follows the menu frame and drops Public Profile and Settings", () => {
+    renderIt();
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href"));
+    expect(hrefs).toEqual([
+      "/auctions",
+      "/dashboard/bids",
+      "/dashboard/bids?tab=watching",
+      "/messages",
+      "/account",
+      "/support",
+    ]);
+    expect(screen.queryByText(/Public Profile/)).toBeNull();
+    expect(screen.queryByText(/Settings/)).toBeNull();
+  });
+
+  it("shows My listings for sellers", () => {
+    renderIt({ role: "seller" });
+    expect(screen.getByRole("link", { name: "My listings" })).toHaveAttribute(
+      "href",
+      "/dashboard/listings"
+    );
+  });
+
+  it("badges My bids with the number of lots to pay", () => {
+    (useQuery as Mock).mockImplementation((ref: string) =>
+      ref === "lotPayments:getMyPaymentSummary" ? { awaitingCount: 2 } : 0
+    );
+    renderIt();
+    expect(
+      screen.getByRole("link", { name: "My bids, 2 to pay" })
+    ).toBeInTheDocument();
+  });
+});
+
+describe("UserDropdown on a phone", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useQuery as Mock).mockImplementation((ref: string) =>
+      ref === "registration:getMyBidEligibility" ? { kind: "ok" } : 0
+    );
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("opens a sheet from the avatar with the links and Sign out", async () => {
+    const onSignOut = vi.fn().mockResolvedValue(undefined);
+    render(
+      <BrowserRouter>
+        <UserDropdown
+          userData={{ name: "Thandi Naidoo", email: "t@x.za", _id: "1" }}
+          isLoadingProfile={false}
+          isVerified={false}
+          kycStatus="unverified"
+          role="buyer"
+          onSignOut={onSignOut}
+        />
+      </BrowserRouter>
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button"));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("You can bid")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Finish registration/ })
+    ).toHaveAttribute("href", "/register");
+    expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute(
+      "href",
+      "/account"
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+    expect(onSignOut).toHaveBeenCalled();
   });
 });

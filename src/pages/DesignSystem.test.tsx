@@ -14,6 +14,11 @@ vi.mock("./DesignSystemMyBids", () => ({
   DesignSystemMyBids: () => <div data-testid="my-bids-frames" />,
 }));
 
+// Likewise the Account frames; they have their own test.
+vi.mock("./DesignSystemAccount", () => ({
+  DesignSystemAccount: () => <div data-testid="account-frames" />,
+}));
+
 import DesignSystem from "./DesignSystem";
 
 const renderPage = () =>

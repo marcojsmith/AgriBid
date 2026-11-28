@@ -16,7 +16,7 @@ import { notifyUser } from "../lib/notify";
 export const MAX_BIO_REJECTION_REASON_LENGTH = 300;
 
 /** Where a seller sees their About text and its review outcome. */
-const ACCOUNT_LINK = "/settings";
+const ACCOUNT_LINK = "/account/seller";
 
 /**
  * Loads a profile whose About edit is waiting for review.

@@ -3,10 +3,9 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Authenticated, Unauthenticated } from "convex/react";
 import { Menu, Phone, X } from "lucide-react";
-import { toast } from "sonner";
-import { useClerk } from "@clerk/clerk-react";
 
 import { useBranding } from "@/hooks/useBranding";
+import { useSignOut } from "@/hooks/useSignOut";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,11 +37,9 @@ const NAV_LINKS: readonly { name: string; href: string }[] = [
  * @returns A JSX.Element representing the application header
  */
 export const Header = () => {
-  const { signOut } = useClerk();
   const branding = useBranding();
   const userData = useUserProfile();
   const isLoadingProfile = userData === undefined;
-  const profileId = userData?.profile?.userId;
   const role = userData?.profile?.role;
   const isVerified = userData?.profile?.isVerified;
   const kycStatus = userData?.profile?.kycStatus;
@@ -55,15 +52,7 @@ export const Header = () => {
   const telephone = branding?.businessInfo?.telephone?.trim() ?? "";
   const tel = telLink(telephone);
 
-  const handleSignOut = async () => {
-    try {
-      await signOut({ redirectUrl: "/" });
-      void toast.success("Signed out successfully");
-    } catch (err) {
-      console.error("Sign out failed:", err);
-      void toast.error("Failed to sign out. Please try again.");
-    }
-  };
+  const handleSignOut = useSignOut();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background">
@@ -135,7 +124,6 @@ export const Header = () => {
               isLoadingProfile={isLoadingProfile}
               isVerified={isVerified ?? false}
               kycStatus={kycStatus}
-              profileId={profileId}
               role={role}
               onSignOut={handleSignOut}
             />

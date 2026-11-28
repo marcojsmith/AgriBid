@@ -82,14 +82,16 @@ export function useWatchAlerts(): WatchAlerts {
   const saveSubscription = useMutation(api.push.saveSubscription);
   const [promptOpen, setPromptOpen] = useState(false);
   const enabled = settings?.watchAlertsEnabled === true;
-  // The user's own Settings -> Notifications: outbid alerts are on unless
-  // switched off, the 1-hour alert only when the ending setting is unset or 1h.
-  // No saved row means the defaults (both on). Promise alerts if either is on.
+  // The user's Account -> Notifications "Watched lots" switch turns both off;
+  // otherwise outbid alerts are on unless switched off, the 1-hour alert only
+  // when the ending setting is unset or 1h. No saved row means the defaults
+  // (both on). Promise alerts if either is on.
   const ending = prefs?.notificationsWatchlistEnding;
   const wantsAlerts =
-    prefs?.notificationsBidOutbid !== false ||
-    ending === undefined ||
-    ending === "1h";
+    prefs?.notificationsWatchedLots !== false &&
+    (prefs?.notificationsBidOutbid !== false ||
+      ending === undefined ||
+      ending === "1h");
   const promise = wantsAlerts ? WATCHING_MESSAGE : WATCHING_SAVED_MESSAGE;
 
   /** Subscribes and saves; false when the browser or server refused. */

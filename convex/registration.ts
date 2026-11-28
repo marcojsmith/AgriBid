@@ -120,6 +120,8 @@ const DetailsValidator = v.object({
   phoneNumber: v.optional(v.string()),
   idNumber: v.optional(v.string()),
   passportNumber: v.optional(v.string()),
+  /** Last three characters of the ID or passport number, for display. */
+  idNumberLast3: v.optional(v.string()),
   countryOfIssue: v.optional(v.string()),
   streetAddress: v.optional(v.string()),
   town: v.optional(v.string()),
@@ -237,6 +239,7 @@ export const getMyRegistration = query({
         phoneNumber,
         idNumber,
         passportNumber,
+        idNumberLast3: (idNumber ?? passportNumber)?.slice(-3),
         countryOfIssue: profile.countryOfIssue,
         streetAddress,
         town,

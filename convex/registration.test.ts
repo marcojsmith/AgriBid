@@ -260,6 +260,28 @@ describe("saveMyDetails", () => {
     });
   });
 
+  it("returns only the last three characters of the ID or passport number for display", async () => {
+    const t = makeContext();
+    await seed(t);
+    await asBuyer(t).mutation(api.registration.saveMyDetails, saDetails);
+    const sa = await asBuyer(t).query(api.registration.getMyRegistration, {});
+    expect(sa?.details.idNumberLast3).toBe("087");
+
+    await asBuyer(t).mutation(api.registration.saveMyDetails, passportDetails);
+    const passport = await asBuyer(t).query(
+      api.registration.getMyRegistration,
+      {}
+    );
+    expect(passport?.details.idNumberLast3).toBe("456");
+  });
+
+  it("has no last-three field before any ID is saved", async () => {
+    const t = makeContext();
+    await seed(t);
+    const reg = await asBuyer(t).query(api.registration.getMyRegistration, {});
+    expect(reg?.details.idNumberLast3).toBeUndefined();
+  });
+
   it("stores a passport with the country in plain text", async () => {
     const t = makeContext();
     await seed(t);

@@ -31,7 +31,7 @@ export function AlertsSummary() {
         </p>
       </div>
       <Link
-        to="/settings"
+        to="/account/notifications"
         className="inline-flex min-h-11 items-center text-[15px] font-semibold text-primary underline"
       >
         Change

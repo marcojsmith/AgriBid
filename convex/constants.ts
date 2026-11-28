@@ -215,6 +215,8 @@ export const MAX_AUCTION_DESCRIPTION_LENGTH = 5000;
 export const MAX_FLAG_DETAILS_LENGTH = 1000;
 export const MAX_PROFILE_BIO_LENGTH = 1000;
 export const MAX_PROFILE_FIELD_LENGTH = 200;
+/** Longest accepted collection address (a seller's pick-up point). */
+export const MAX_COLLECTION_ADDRESS_LENGTH = 300;
 /** Longest accepted country-of-issue text on a passport registration. */
 export const MAX_COUNTRY_OF_ISSUE_LENGTH = 56;
 export const MAX_ERROR_REPORT_FIELD_LENGTH = 5000;

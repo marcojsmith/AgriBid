@@ -77,7 +77,7 @@ R1 notes: `computeBidEligibility` is pure in `convex/lib/bidEligibility.ts` (imp
 | M2  | Bidding extras backend: auto-watch, refund request, getMyBids fields, notification prefs      | **risky** (bid flow, money)                | M1         | in review |     |
 | M3  | Seller page backend: slug, trimmed public query, reviews gate, report reasons, bio moderation | **risky** (public data, PII)               | none       | in review |     |
 | M4  | My bids page (UI)                                                                             | low                                        | M1, M2     | in review |     |
-| M5  | Account page (UI)                                                                             | low                                        | M1, M2     | planned   |     |
+| M5  | Account page (UI)                                                                             | low                                        | M1, M2     | in review |     |
 | M6  | Seller page (UI)                                                                              | low                                        | M3         | planned   |     |
 | M7  | Admin: payments, refund requests, bio moderation                                              | **risky** (admin mutations)                | M1, M2, M3 | planned   |     |
 

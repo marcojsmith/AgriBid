@@ -87,7 +87,12 @@ vi.mock("./pages/AuctionContainerDetail", () =>
 vi.mock("./pages/FAQ", () => mockPage("faq"));
 vi.mock("./pages/SellerListings", () => mockPage("seller-listings"));
 vi.mock("./pages/Messages", () => mockPage("messages"));
-vi.mock("./pages/Settings", () => mockPage("settings"));
+vi.mock("./pages/account/Account", () => mockPage("account"));
+vi.mock("./pages/account/SellerDetails", () => mockPage("account-seller"));
+vi.mock("./pages/account/DepositPage", () => mockPage("account-deposit"));
+vi.mock("./pages/account/NotificationsPage", () =>
+  mockPage("account-notifications")
+);
 vi.mock("./pages/NotFound", () => mockPage("not-found"));
 
 // Mock App without its own BrowserRouter so we can control it with MemoryRouter
@@ -384,11 +389,21 @@ describe("App Routing", () => {
     expect(await screen.findByTestId("messages-page")).toBeInTheDocument();
   });
 
-  it("renders Settings for /settings", async () => {
-    renderApp("/settings");
-    expect(await screen.findByTestId("protected")).toBeInTheDocument();
-    expect(await screen.findByTestId("settings-page")).toBeInTheDocument();
-  });
+  it.each([
+    ["/account", "account"],
+    ["/account/seller", "account-seller"],
+    ["/account/deposit", "account-deposit"],
+    ["/account/notifications", "account-notifications"],
+    ["/settings", "account"],
+    ["/settings?x=1", "account"],
+  ])(
+    "renders %s as the Account area behind the sign-in guard",
+    async (path, testId) => {
+      renderApp(path);
+      expect(await screen.findByTestId("protected")).toBeInTheDocument();
+      expect(await screen.findByTestId(`${testId}-page`)).toBeInTheDocument();
+    }
+  );
 });
 
 describe("RouteErrorBoundary Integration", () => {
