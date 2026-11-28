@@ -36,7 +36,6 @@ vi.mock("./pages/AuctionDetail", () => mockPage("detail"));
 vi.mock("./pages/Sell", () => mockPage("sell"));
 vi.mock("./pages/Login", () => mockPage("login"));
 vi.mock("./pages/SignUp", () => mockPage("sign-up"));
-vi.mock("./pages/Watchlist", () => mockPage("watchlist"));
 vi.mock("./pages/admin/AdminDashboard", () => mockPage("admin-dashboard"));
 vi.mock("./pages/admin/AdminModeration", () => mockPage("admin-moderation"));
 vi.mock("./pages/admin/AdminLots", () => mockPage("admin-lots"));
@@ -151,10 +150,9 @@ describe("App Routing", () => {
     expect(await screen.findByTestId("sell-page")).toBeInTheDocument();
   });
 
-  it("renders Watchlist page for /watchlist", async () => {
+  it("redirects /watchlist to the Watching tab of My bids", async () => {
     renderApp("/watchlist");
-    expect(await screen.findByTestId("protected")).toBeInTheDocument();
-    expect(await screen.findByTestId("watchlist-page")).toBeInTheDocument();
+    expect(await screen.findByTestId("my-bids-page")).toBeInTheDocument();
   });
 
   it("renders MyBids page for /dashboard/bids", async () => {

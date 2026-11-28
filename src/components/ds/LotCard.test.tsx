@@ -141,4 +141,30 @@ describe("LotCard", () => {
     expect(screen.queryByText("Highest bid")).toBeNull();
     expect(screen.queryByText(/bids?$/)).toBeNull();
   });
+
+  it("hides the heart on a closed lot unless asked to always show it", () => {
+    const { rerender } = render(
+      <LotCard
+        lot={LOT}
+        state="sold"
+        price={1}
+        watching
+        onToggleWatch={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole("button", { name: /watch/i })).toBeNull();
+    rerender(
+      <LotCard
+        lot={LOT}
+        state="sold"
+        price={1}
+        watching
+        alwaysShowWatch
+        onToggleWatch={vi.fn()}
+      />
+    );
+    expect(
+      screen.getByRole("button", { name: /watching/i })
+    ).toBeInTheDocument();
+  });
 });

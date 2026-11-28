@@ -835,9 +835,9 @@ const MyBidsOverviewValidator = v.object({
  *   consideration is unsold), newest bid first, at most {@link OVERVIEW_LOST_CAP}.
  * - `counts.bidding` / `counts.lost`: the buckets within the caps above (lost is
  *   counted before its row cap). `counts.won` is the caller's payment rows
- *   plus lots they won that have no payment row (sold before payments existed;
- *   found among the lots above, as there is no winner index). `counts.watching`
- *   is capped at {@link WATCHING_COUNT_CAP}.
+ *   only (the Won tab lists exactly those; wins sold before payments existed
+ *   have no row and are not counted). `counts.watching` is capped at
+ *   {@link WATCHING_COUNT_CAP}.
  *
  * @param ctx - Convex Query context
  * @returns The overview, empty when signed out
@@ -888,21 +888,12 @@ export const getMyBidsOverviewHandler = async (ctx: QueryCtx) => {
   const live: Doc<"lots">[] = [];
   const considering: Doc<"lots">[] = [];
   const lostLots: Doc<"lots">[] = [];
-  let legacyWon = 0;
   for (const lot of lots) {
     if (lot.status === "assigned") live.push(lot);
     else if (lot.status === "under_consideration") considering.push(lot);
     else if (lot.status === "unsold") lostLots.push(lot);
-    else if (lot.status === "sold") {
-      if (lot.winnerId !== userId) {
-        lostLots.push(lot);
-      } else {
-        const payment = await ctx.db
-          .query("lotPayments")
-          .withIndex("by_lotId", (q) => q.eq("lotId", lot._id))
-          .first();
-        if (!payment) legacyWon += 1;
-      }
+    else if (lot.status === "sold" && lot.winnerId !== userId) {
+      lostLots.push(lot);
     }
   }
 
@@ -986,7 +977,7 @@ export const getMyBidsOverviewHandler = async (ctx: QueryCtx) => {
     lost,
     counts: {
       bidding: bidding.length,
-      won: payments.length + legacyWon,
+      won: payments.length,
       lost: lostLots.length,
       watching: watching.length,
     },

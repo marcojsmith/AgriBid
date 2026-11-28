@@ -49,6 +49,8 @@ interface LotCardProps {
   closesIn?: string;
   /** Whether the viewer watches this lot (open and current-bid lots only). */
   watching?: boolean;
+  /** Show the heart on closed lots too (a watchlist needs to drop them). */
+  alwaysShowWatch?: boolean;
   /** Toggles the watch heart. The heart is hidden without it. */
   onToggleWatch?: () => void;
   className?: string;
@@ -90,6 +92,7 @@ function groupDigits(n: number): string {
  * @param props.reserve - Reserve state for open and current-bid lots
  * @param props.closesIn - Relative close text, e.g. "2d 3h"
  * @param props.watching - Whether the viewer watches the lot
+ * @param props.alwaysShowWatch - Show the heart on closed lots too
  * @param props.onToggleWatch - Toggles the heart
  * @param props.className - Extra classes merged onto the root element
  * @returns The lot card
@@ -102,6 +105,7 @@ export function LotCard({
   reserve,
   closesIn,
   watching = false,
+  alwaysShowWatch = false,
   onToggleWatch,
   className,
 }: LotCardProps) {
@@ -133,7 +137,7 @@ export function LotCard({
         overPhoto
         className="lg:top-2.5 lg:left-2.5"
       />
-      {isOpen && onToggleWatch ? (
+      {(isOpen || alwaysShowWatch) && onToggleWatch ? (
         <WatchButton
           watching={watching}
           onToggle={onToggleWatch}
