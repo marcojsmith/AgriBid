@@ -1,11 +1,19 @@
 import type { LucideIcon } from "lucide-react";
 
+/** Reasons a buyer can pick when reporting a seller. */
 export type ReportReason =
+  "misleading_listing" | "suspected_fraud" | "offensive_content" | "other";
+
+/**
+ * Every reason a stored report can carry: the current ones plus the retired
+ * ones that older reports still hold.
+ */
+export type ProfileFlagReason =
+  | ReportReason
   | "fake_account"
   | "fraudulent_listings"
   | "abusive_behaviour"
-  | "identity_misrepresentation"
-  | "other";
+  | "identity_misrepresentation";
 
 export type ActivityType =
   | "account_created"

@@ -2,6 +2,7 @@ import { v, ConvexError } from "convex/values";
 
 import { mutation } from "../../_generated/server";
 import { getAuthenticatedUserId, requireAdmin } from "../../lib/auth";
+import { ensureSellerSlug } from "../../lib/sellerSlugs";
 import { logActivity } from "../../userActivity";
 import {
   adjustLotStatusCounters,
@@ -53,6 +54,8 @@ export const submitLotForReviewHandler = async (
     description: `Listing created: ${lot.title}`,
     relatedId: args.lotId,
   });
+  // First submitted lot: give the seller their public page slug.
+  await ensureSellerSlug(ctx, userId);
 
   return { success: true };
 };

@@ -2,7 +2,7 @@
 
 **This is the live source of truth for what is done, in progress, and next.** Read it at the start of every session (human or agent) and update it in the same PR as the work it describes. Full history is in [`CHANGELOG.md`](./CHANGELOG.md), lessons in [`LESSONS.md`](./LESSONS.md), decisions in [`decisions/`](./decisions/), detailed plans in `conductor/tracks/`.
 
-Last updated: 2026-11-25
+Last updated: 2026-11-28
 
 ## How to keep this file useful
 
@@ -14,6 +14,7 @@ Last updated: 2026-11-25
 
 ## In progress
 
+- Branch `feature/seller-page-backend` (track `improve-screen-mockups`, My bids build M3, 0.44.0): seller slugs and public name, private-safe public seller page queries (`convex/sellers.ts`), 3-review gate, trimmed `getSellerInfo` / `getSellerActivity` / `getSellerReviews`, new report reasons (`reportSellerBySlug`), About text moderation (`convex/admin/sellerBios.ts`, `getMyBio`). Backend only; the UI follows in M6 and M7. **Owed ops, in order:** (1) `bunx convex deploy` with the Vercel build (schema: new `profiles` fields, indexes `by_slug` and `by_bioStatus_and_bioSubmittedAt`, new table `sellerSlugRedirects`); (2) `bunx convex run migrations:backfillSellerSlugs` once (idempotent; follows its own batches). Until step 2 runs, existing sellers have no slug.
 - Branch `feature/bidding-extras-backend` (track `improve-screen-mockups`, My bids build M2, 0.43.0): bid auto-watches the lot, deposit refund request (`refund_requested`), `getMyBidsOverview`, three push switches, "lots you win" pushes and the pay-by reminder cron. Backend only; the UI follows in M4 and M5. **Owed ops:** `bunx convex deploy` with the Vercel build (schema: new status, fields, index; new cron `send_payment_reminders`, on by default); no migration. Push still needs the VAPID env vars (see D9a).
 - Branch `feature/won-lot-payments` (track `improve-screen-mockups`, My bids build M1, 0.42.0): won-lot payment records (`lotPayments`), once-only deposit credit, pay-by in business days, buyer, seller and admin APIs, collection details gated on admin confirmation. Backend only; the UI follows in M4 to M7. **Owed ops:** `bunx convex deploy` with the Vercel build; no migration. Lots sold before this ships have no payment row (no backfill).
 - Branch `feat/register-lot-states` (track `improve-screen-mockups`, Register build R5, 0.41.0): lot page bid panel and sticky bar driven by `getMyBidEligibility` (BidPanel `registrationHref` / `registrationStatusHref`), header avatar initials, `/login` rewrite, new `/sign-up`, Clerk `appearance` and `localization`. Frontend only; nothing to deploy. Last of the five Register packages: once R4 and R5 are live, switch the registration deposit back on with the owner.

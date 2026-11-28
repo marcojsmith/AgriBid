@@ -9,6 +9,8 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { getAuthenticatedUserId } from "./lib/auth";
+import { firstWordOf } from "./lib/sellerSlug";
+import { canSeeSellerPrivate } from "./lib/viewer";
 import {
   MAX_REVIEW_COMMENT_LENGTH,
   REVIEW_RATE_LIMIT_WINDOW_MS,
@@ -20,7 +22,39 @@ import type { Id } from "./_generated/dataModel";
 const REVIEW_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * Computes the average rating and review count for a seller.
+ * Most reviews read to summarise a seller. Past this the count stops at the cap
+ * and the average covers the newest reviews only.
+ */
+export const REVIEW_SUMMARY_CAP = 1000;
+
+/**
+ * Fewest reviews a seller needs before any review (or the rating) is shown
+ * publicly. Enforced server-side.
+ */
+export const MIN_PUBLIC_REVIEWS = 3;
+
+/**
+ * Whether a seller has enough reviews to show them publicly. Reads at most
+ * {@link MIN_PUBLIC_REVIEWS} rows.
+ *
+ * @param ctx - Convex Query context
+ * @param sellerId - The seller user ID
+ * @returns True once the seller has at least {@link MIN_PUBLIC_REVIEWS} reviews
+ */
+export async function hasEnoughReviews(
+  ctx: QueryCtx,
+  sellerId: string
+): Promise<boolean> {
+  const rows = await ctx.db
+    .query("reviews")
+    .withIndex("by_reviewee", (q) => q.eq("revieweeId", sellerId))
+    .take(MIN_PUBLIC_REVIEWS);
+  return rows.length >= MIN_PUBLIC_REVIEWS;
+}
+
+/**
+ * Computes the average rating and review count for a seller, reading at most
+ * {@link REVIEW_SUMMARY_CAP} of their newest reviews.
  *
  * Plain helper (not a registered function) so it can run inside the same
  * query transaction as other handlers without an extra round trip.
@@ -36,7 +70,8 @@ export async function getSellerRatingSummary(
   const reviews = await ctx.db
     .query("reviews")
     .withIndex("by_reviewee", (q) => q.eq("revieweeId", sellerId))
-    .collect();
+    .order("desc")
+    .take(REVIEW_SUMMARY_CAP);
   const reviewCount = reviews.length;
   const avgRating =
     reviewCount > 0
@@ -229,6 +264,15 @@ export const getSellerReviewsHandler = async (
   ctx: QueryCtx,
   args: { sellerId: string; paginationOpts: PaginationOptions }
 ) => {
+  // Below the threshold nobody but the seller (who answers reviews) and admins
+  // sees any review.
+  if (
+    !(await hasEnoughReviews(ctx, args.sellerId)) &&
+    !(await canSeeSellerPrivate(ctx, args.sellerId))
+  ) {
+    return { page: [], isDone: true, continueCursor: "" };
+  }
+
   const results = await ctx.db
     .query("reviews")
     .withIndex("by_reviewee_createdAt", (q) =>
@@ -252,7 +296,10 @@ export const getSellerReviewsHandler = async (
         comment: review.comment,
         response: review.response,
         createdAt: review.createdAt,
-        reviewerName: reviewerProfile?.name,
+        // First name only: reviewers are never identified by full name.
+        reviewerName: firstWordOf(
+          reviewerProfile?.publicName ?? reviewerProfile?.name
+        ),
       };
     })
   );

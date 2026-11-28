@@ -1,14 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 import { getSellerActivityHandler, logActivity } from "./userActivity";
-import * as auth from "./lib/auth";
-import type { AuthUser } from "./lib/auth";
+import * as viewerLib from "./lib/viewer";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 
-vi.mock("./lib/auth", () => ({
-  getAuthUser: vi.fn(),
-  resolveUserId: vi.fn(),
+vi.mock("./lib/viewer", () => ({
+  getViewer: vi.fn(),
 }));
+
+/**
+ * Sets who the mocked caller is.
+ *
+ * @param userId - The caller's id, or null for a guest
+ * @param isAdmin - Whether the caller is an admin
+ */
+function asViewer(userId: string | null, isAdmin = false): void {
+  vi.mocked(viewerLib.getViewer).mockResolvedValue({ userId, isAdmin });
+}
 
 interface ActivityRow {
   _id: string;
@@ -76,8 +84,7 @@ describe("userActivity", () => {
       },
     };
 
-    vi.mocked(auth.getAuthUser).mockResolvedValue(null);
-    vi.mocked(auth.resolveUserId).mockReturnValue(null);
+    asViewer(null);
   });
 
   describe("logActivity", () => {
@@ -115,7 +122,9 @@ describe("userActivity", () => {
   });
 
   describe("getSellerActivityHandler", () => {
-    it("returns an empty array for a user with no activity", async () => {
+    it("returns an empty array for the owner with no activity", async () => {
+      asViewer("user1");
+
       const result = await getSellerActivityHandler(
         mockCtx as unknown as QueryCtx,
         { userId: "user1" }
@@ -123,14 +132,11 @@ describe("userActivity", () => {
 
       expect(result).toEqual([]);
       expect(mockCtx.db.query).toHaveBeenCalledWith("userActivity");
-      // Unauthenticated viewer is a non-owner, so the scan cap is used.
-      expect(queryMock.take).toHaveBeenCalledWith(250);
+      expect(queryMock.take).toHaveBeenCalledWith(10);
     });
 
     it("returns all activity types for the profile owner", async () => {
-      const authUser: AuthUser = { _id: "user1", userId: "user1" };
-      vi.mocked(auth.getAuthUser).mockResolvedValue(authUser);
-      vi.mocked(auth.resolveUserId).mockReturnValue("user1");
+      asViewer("user1");
 
       takenRows = [
         makeRow({
@@ -158,7 +164,6 @@ describe("userActivity", () => {
         { userId: "user1" }
       );
 
-      expect(result).toHaveLength(3);
       expect(result.map((r) => r.type)).toEqual([
         "verification_rejected",
         "role_changed",
@@ -166,51 +171,23 @@ describe("userActivity", () => {
       ]);
     });
 
-    it("filters private KYC/role types for an authenticated non-owner", async () => {
-      vi.mocked(auth.getAuthUser).mockResolvedValue({
-        _id: "viewer",
-        userId: "viewer",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("viewer");
-
-      takenRows = [
-        makeRow({ _id: "a1", type: "role_changed", createdAt: 5000 }),
-        makeRow({
-          _id: "a2",
-          type: "verification_requested",
-          createdAt: 4000,
-        }),
-        makeRow({
-          _id: "a3",
-          type: "bid_won",
-          description: "Won auction for R10 000",
-          createdAt: 3000,
-        }),
-        makeRow({
-          _id: "a4",
-          type: "account_created",
-          description: "Account created",
-          createdAt: 2000,
-        }),
-        makeRow({
-          _id: "a5",
-          type: "verification_rejected",
-          createdAt: 1000,
-        }),
-      ];
+    it("returns the feed of another user to an admin", async () => {
+      asViewer("admin1", true);
+      takenRows = [makeRow({ _id: "a1", type: "bid_won" })];
 
       const result = await getSellerActivityHandler(
         mockCtx as unknown as QueryCtx,
         { userId: "user1" }
       );
 
-      expect(result.map((r) => r.type)).toEqual(["bid_won", "account_created"]);
+      expect(result.map((r) => r._id)).toEqual(["a1"]);
     });
 
-    it("filters private types for an unauthenticated viewer", async () => {
+    it("returns nothing to another signed-in user, without reading the feed", async () => {
+      asViewer("viewer");
       takenRows = [
-        makeRow({ _id: "a1", type: "verification_approved", createdAt: 2000 }),
-        makeRow({ _id: "a2", type: "listing_sold", createdAt: 1000 }),
+        makeRow({ _id: "a1", type: "bid_won" }),
+        makeRow({ _id: "a2", type: "bid_placed" }),
       ];
 
       const result = await getSellerActivityHandler(
@@ -218,15 +195,24 @@ describe("userActivity", () => {
         { userId: "user1" }
       );
 
-      expect(result.map((r) => r.type)).toEqual(["listing_sold"]);
+      expect(result).toEqual([]);
+      expect(mockCtx.db.query).not.toHaveBeenCalled();
+    });
+
+    it("returns nothing to a guest, without reading the feed", async () => {
+      takenRows = [makeRow({ _id: "a1", type: "listing_sold" })];
+
+      const result = await getSellerActivityHandler(
+        mockCtx as unknown as QueryCtx,
+        { userId: "user1" }
+      );
+
+      expect(result).toEqual([]);
+      expect(mockCtx.db.query).not.toHaveBeenCalled();
     });
 
     it("respects the limit", async () => {
-      vi.mocked(auth.getAuthUser).mockResolvedValue({
-        _id: "user1",
-        userId: "user1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user1");
+      asViewer("user1");
 
       takenRows = [
         makeRow({ _id: "a1", createdAt: 5000 }),
@@ -242,17 +228,11 @@ describe("userActivity", () => {
       );
 
       expect(queryMock.take).toHaveBeenCalledWith(2);
-      expect(result).toHaveLength(2);
       expect(result.map((r) => r._id)).toEqual(["a1", "a2"]);
     });
 
-    it("only returns public entry shape (no userId field)", async () => {
-      vi.mocked(auth.getAuthUser).mockResolvedValue({
-        _id: "user1",
-        userId: "user1",
-      });
-      vi.mocked(auth.resolveUserId).mockReturnValue("user1");
-
+    it("does not return the userId field", async () => {
+      asViewer("user1");
       takenRows = [makeRow({ _id: "a1" })];
 
       const result = await getSellerActivityHandler(

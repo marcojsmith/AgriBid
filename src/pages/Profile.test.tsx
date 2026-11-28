@@ -38,7 +38,7 @@ interface SellerInfo {
   phoneVerified?: boolean;
   bankingVerified?: boolean;
   taxNumberVerified?: boolean;
-  bidsPlaced: number;
+  bidsPlaced?: number;
   avgSalePrice?: number;
   avgRating?: number;
   reviewCount: number;
@@ -494,7 +494,7 @@ describe("Profile Page", () => {
       openReportDialog();
 
       fireEvent.change(screen.getByTestId("mock-select"), {
-        target: { value: "fake_account" },
+        target: { value: "suspected_fraud" },
       });
       fireEvent.change(screen.getByPlaceholderText(/Provide more context/i), {
         target: { value: "Suspicious seller" },
@@ -504,7 +504,7 @@ describe("Profile Page", () => {
       await waitFor(() => {
         expect(mockReportProfile).toHaveBeenCalledWith({
           reportedUserId: "user1",
-          reason: "fake_account",
+          reason: "suspected_fraud",
           details: "Suspicious seller",
         });
         expect(toast.success).toHaveBeenCalledWith("Thank you for your report");
@@ -519,14 +519,14 @@ describe("Profile Page", () => {
       openReportDialog();
 
       fireEvent.change(screen.getByTestId("mock-select"), {
-        target: { value: "abusive_behaviour" },
+        target: { value: "offensive_content" },
       });
       fireEvent.click(screen.getByRole("button", { name: /submit report/i }));
 
       await waitFor(() => {
         expect(mockReportProfile).toHaveBeenCalledWith({
           reportedUserId: "user1",
-          reason: "abusive_behaviour",
+          reason: "offensive_content",
           details: undefined,
         });
       });
@@ -1385,6 +1385,27 @@ describe("Profile Page", () => {
     renderProfile("user1");
 
     expect(screen.getByText("Avg Sale")).toBeInTheDocument();
+  });
+
+  it("hides Avg Sale and Bids when the server withholds the private stats", () => {
+    const visitorSellerInfo = {
+      ...mockSellerInfo,
+      kycStatus: undefined,
+      bidsPlaced: undefined,
+      avgSalePrice: undefined,
+    };
+    (useQuery as Mock).mockImplementation((apiPath) => {
+      if (apiPath === mockApi.users.getMyProfile) return null;
+      if (apiPath === mockApi.auctions.getSellerInfo) return visitorSellerInfo;
+      if (apiPath === mockApi.watchlist.getWatchedLotIds) return [];
+      return null;
+    });
+
+    renderProfile("user1");
+
+    expect(screen.getByText("Sold")).toBeInTheDocument();
+    expect(screen.queryByText("Avg Sale")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bids")).not.toBeInTheDocument();
   });
 
   it("renders ?? initials when name is undefined", () => {

@@ -47,7 +47,9 @@ interface ProfileData {
   companyName?: string;
   location?: string;
   activeListings: number;
-  bidsPlaced: number;
+  /** Only sent to the profile owner and admins. */
+  bidsPlaced?: number;
+  /** Only sent to the profile owner and admins. */
   avgSalePrice?: number;
   avgRating?: number;
   reviewCount: number;
@@ -340,7 +342,11 @@ export function ProfileSidebar({
         </CardContent>
 
         <div className="h-px bg-border" />
-        <div className="grid grid-cols-4 divide-x divide-border">
+        <div
+          className={`grid divide-x divide-border ${
+            profileData.bidsPlaced === undefined ? "grid-cols-2" : "grid-cols-4"
+          }`}
+        >
           <div className="p-3 text-center">
             <p className="text-xl font-bold text-primary">
               {profileData.activeListings}
@@ -355,20 +361,26 @@ export function ProfileSidebar({
             </p>
             <p className="text-xs font-semibold text-muted-foreground">Sold</p>
           </div>
-          <div className="p-3 text-center">
-            <p className="text-xl font-bold text-primary">
-              {formatPrice(profileData.avgSalePrice)}
-            </p>
-            <p className="text-xs font-semibold text-muted-foreground">
-              Avg Sale
-            </p>
-          </div>
-          <div className="p-3 text-center">
-            <p className="text-xl font-bold text-primary">
-              {profileData.bidsPlaced}
-            </p>
-            <p className="text-xs font-semibold text-muted-foreground">Bids</p>
-          </div>
+          {profileData.bidsPlaced !== undefined && (
+            <>
+              <div className="p-3 text-center">
+                <p className="text-xl font-bold text-primary">
+                  {formatPrice(profileData.avgSalePrice)}
+                </p>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Avg Sale
+                </p>
+              </div>
+              <div className="p-3 text-center">
+                <p className="text-xl font-bold text-primary">
+                  {profileData.bidsPlaced}
+                </p>
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Bids
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="h-px bg-border" />

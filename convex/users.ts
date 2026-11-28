@@ -17,10 +17,18 @@ import {
 import type { Doc } from "./_generated/dataModel";
 import { logAudit, decryptPII, updateCounter, countQuery } from "./admin_utils";
 import { logActivity } from "./userActivity";
+import { syncSellerSlug } from "./lib/sellerSlugs";
 import { sellerResponseTimeValidator } from "./lib/provinces";
 import { getPresenceThresholdMs } from "./presence";
 import { sellerTypeValidator, type SellerType } from "./lib/lotSpecs";
 import { MAX_PROFILE_BIO_LENGTH, MAX_PROFILE_FIELD_LENGTH } from "./constants";
+
+/** Where an About-text edit stands in the admin review. */
+export const bioStatusValidator = v.union(
+  v.literal("pending"),
+  v.literal("approved"),
+  v.literal("rejected")
+);
 
 /**
  * Validator for a profile document from the database.
@@ -60,6 +68,12 @@ export const ProfileValidator = v.object({
   taxNumberVerified: v.optional(v.boolean()),
   vatRegistered: v.optional(v.boolean()),
   sellerType: v.optional(sellerTypeValidator),
+  publicName: v.optional(v.string()),
+  slug: v.optional(v.string()),
+  bioPending: v.optional(v.string()),
+  bioStatus: v.optional(bioStatusValidator),
+  bioRejectionReason: v.optional(v.string()),
+  bioSubmittedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });
@@ -633,16 +647,65 @@ export const updateMyProfileHandler = async (
     throw new ConvexError("Profile not found");
   }
 
+  const { bio, ...rest } = args;
+  const now = Date.now();
   await ctx.db.patch("profiles", profile._id, {
-    ...args,
-    updatedAt: Date.now(),
+    ...rest,
+    ...(bio !== undefined && bioPatch(profile, bio.trim(), now)),
+    updatedAt: now,
   });
+
+  // The public name follows the company name; refresh it (and the slug) when
+  // that changed. Sellers only: a buyer with no listings gets no slug.
+  if (
+    args.companyName !== undefined &&
+    args.companyName.trim() !== (profile.companyName ?? "").trim()
+  ) {
+    await syncSellerSlug(ctx, {
+      ...profile,
+      companyName: args.companyName,
+    });
+  }
 
   return null;
 };
 
 /**
+ * The profile fields to write for a bio edit. The live `bio` is never touched
+ * here: new text waits in `bioPending` for an admin. Empty text clears the live
+ * bio and any pending text at once (nothing to review), and text equal to the
+ * live bio just withdraws a pending edit.
+ *
+ * @param profile - The profile being edited
+ * @param bio - The trimmed bio the seller submitted
+ * @param now - Current time in epoch milliseconds
+ * @returns The patch to merge into the profile
+ */
+function bioPatch(
+  profile: Doc<"profiles">,
+  bio: string,
+  now: number
+): Partial<Doc<"profiles">> {
+  const cleared = {
+    bioPending: undefined,
+    bioStatus: undefined,
+    bioRejectionReason: undefined,
+    bioSubmittedAt: undefined,
+  };
+  if (bio === "") return { ...cleared, bio: undefined };
+  if (bio === (profile.bio ?? "")) return cleared;
+  if (bio === profile.bioPending && profile.bioStatus === "pending") return {};
+  return {
+    bioPending: bio,
+    bioStatus: "pending",
+    bioRejectionReason: undefined,
+    bioSubmittedAt: now,
+  };
+}
+
+/**
  * Update the authenticated user's profile fields (bio, location, companyName).
+ * A changed bio goes to admin review; the live bio stays until it is approved.
  * Throws ConvexError if no profile exists.
  */
 export const updateMyProfile = mutation({
@@ -710,4 +773,47 @@ export const adminSetSellerVatProfile = mutation({
   },
   returns: v.null(),
   handler: adminSetSellerVatProfileHandler,
+});
+
+/**
+ * Handler for the owner's view of their About text: the live text, any edit
+ * waiting for review and the outcome of the last review.
+ *
+ * @param ctx - Query context
+ * @returns The bio state, or null when the caller is signed out or has no profile
+ */
+export const getMyBioHandler = async (ctx: QueryCtx) => {
+  const authUser = await getAuthUser(ctx);
+  const userId = authUser ? resolveUserId(authUser) : null;
+  if (!userId) return null;
+
+  const profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .unique();
+  if (!profile) return null;
+
+  return {
+    bio: profile.bio,
+    bioPending: profile.bioPending,
+    bioStatus: profile.bioStatus,
+    bioRejectionReason: profile.bioRejectionReason,
+  };
+};
+
+/**
+ * Owner: the About text, its pending edit and the review outcome (Account page).
+ */
+export const getMyBio = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      bio: v.optional(v.string()),
+      bioPending: v.optional(v.string()),
+      bioStatus: v.optional(bioStatusValidator),
+      bioRejectionReason: v.optional(v.string()),
+    })
+  ),
+  handler: getMyBioHandler,
 });

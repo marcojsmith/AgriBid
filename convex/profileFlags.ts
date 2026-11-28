@@ -16,6 +16,11 @@ import {
   PROFILE_REPORT_RATE_LIMIT_WINDOW_MS,
   MAX_PROFILE_REPORTS_PER_WINDOW,
 } from "./constants";
+import {
+  profileFlagReasonValidator,
+  profileReportReasonValidator,
+  type ProfileReportReason,
+} from "./lib/reportReasons";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
@@ -41,12 +46,7 @@ export const reportProfileHandler = async (
   ctx: MutationCtx,
   args: {
     reportedUserId: string;
-    reason:
-      | "fake_account"
-      | "fraudulent_listings"
-      | "abusive_behaviour"
-      | "identity_misrepresentation"
-      | "other";
+    reason: ProfileReportReason;
     details?: string;
   }
 ) => {
@@ -121,17 +121,65 @@ export const reportProfileHandler = async (
 export const reportProfile = mutation({
   args: {
     reportedUserId: v.string(),
-    reason: v.union(
-      v.literal("fake_account"),
-      v.literal("fraudulent_listings"),
-      v.literal("abusive_behaviour"),
-      v.literal("identity_misrepresentation"),
-      v.literal("other")
-    ),
+    reason: profileReportReasonValidator,
     details: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean() }),
   handler: reportProfileHandler,
+});
+
+/**
+ * Handler for reporting a seller from their public page, addressed by slug.
+ * Resolves the slug (current or renamed) and applies the same rules as
+ * {@link reportProfileHandler}: no self-report, one pending report per reporter
+ * per 30 days, and the report rate limit.
+ *
+ * @param ctx - Mutation context
+ * @param args - Arguments for reporting a seller
+ * @param args.slug - The seller's page slug
+ * @param args.reason - The reason for reporting
+ * @param args.details - Optional additional details
+ * @returns Object with success boolean
+ */
+export const reportSellerBySlugHandler = async (
+  ctx: MutationCtx,
+  args: { slug: string; reason: ProfileReportReason; details?: string }
+) => {
+  let profile = await ctx.db
+    .query("profiles")
+    .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+    .first();
+  if (!profile) {
+    const redirect = await ctx.db
+      .query("sellerSlugRedirects")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+    if (redirect) {
+      profile = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", redirect.userId))
+        .unique();
+    }
+  }
+  if (!profile) {
+    throw new ConvexError("Seller not found");
+  }
+
+  return await reportProfileHandler(ctx, {
+    reportedUserId: profile.userId,
+    reason: args.reason,
+    details: args.details,
+  });
+};
+
+export const reportSellerBySlug = mutation({
+  args: {
+    slug: v.string(),
+    reason: profileReportReasonValidator,
+    details: v.optional(v.string()),
+  },
+  returns: v.object({ success: v.boolean() }),
+  handler: reportSellerBySlugHandler,
 });
 
 /**
@@ -183,13 +231,8 @@ export const getAllPendingProfileFlags = query({
       _creationTime: v.number(),
       reportedUserId: v.string(),
       reporterId: v.string(),
-      reason: v.union(
-        v.literal("fake_account"),
-        v.literal("fraudulent_listings"),
-        v.literal("abusive_behaviour"),
-        v.literal("identity_misrepresentation"),
-        v.literal("other")
-      ),
+      // Includes the retired reasons that old reports still carry.
+      reason: profileFlagReasonValidator,
       details: v.optional(v.string()),
       status: v.union(
         v.literal("pending"),

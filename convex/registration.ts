@@ -41,6 +41,7 @@ import {
   type IdType,
   type RegDocKind,
 } from "./lib/registration";
+import { syncSellerSlug } from "./lib/sellerSlugs";
 import { safeDelete } from "./lib/storage";
 import { logActivity } from "./userActivity";
 
@@ -421,6 +422,8 @@ export const saveMyDetails = mutation({
     }
 
     await ctx.db.patch("profiles", profile._id, patch);
+    // The public seller name can come from this name; refresh it (sellers only).
+    await syncSellerSlug(ctx, { ...profile, ...patch });
     return { success: true };
   },
 });

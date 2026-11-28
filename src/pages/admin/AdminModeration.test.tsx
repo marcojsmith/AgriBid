@@ -502,7 +502,8 @@ describe("AdminModeration Page", () => {
       expect(screen.getByText("Reported Profiles")).toBeInTheDocument();
       expect(screen.getByText("Barend Smit")).toBeInTheDocument();
       expect(screen.getAllByText(/Alice Reporter/).length).toBeGreaterThan(0);
-      expect(screen.getByText("fake_account")).toBeInTheDocument();
+      // Retired reasons keep a readable label.
+      expect(screen.getByText("Fake account (legacy)")).toBeInTheDocument();
       expect(
         screen.getByText("This account is impersonating a known dealer.")
       ).toBeInTheDocument();

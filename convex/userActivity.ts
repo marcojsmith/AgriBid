@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { getAuthUser, resolveUserId } from "./lib/auth";
+import { getViewer } from "./lib/viewer";
 
 /**
  * Activity types recorded in the `userActivity` table. Keep in sync with the
@@ -36,27 +36,9 @@ export const ActivityTypeValidator = v.union(
 );
 
 /**
- * Activity types that are only visible to the profile owner. KYC progress and
- * role changes are private; everyone else sees only public marketplace activity.
- */
-const PRIVATE_ACTIVITY_TYPES: ReadonlySet<ActivityType> = new Set([
-  "payment_claimed",
-  "verification_requested",
-  "verification_approved",
-  "verification_rejected",
-  "role_changed",
-]);
-
-/**
  * Default number of activity entries returned when no limit is provided.
  */
 const DEFAULT_ACTIVITY_LIMIT = 10;
-
-/**
- * Upper bound on rows scanned per query before filtering/slicing. Bounds the
- * read cost for prolific users without adding pagination (a future nice-to-have).
- */
-const MAX_ACTIVITY_SCAN = 250;
 
 /**
  * Insert a user activity feed entry. Must be called from within the same
@@ -86,16 +68,15 @@ export async function logActivity(
 /**
  * Handler for fetching a user's recent activity feed entries, most recent first.
  *
- * KYC and role-change entries are private: they are only returned when the
- * authenticated viewer is the profile owner. Unauthenticated viewers and other
- * logged-in users see only public activity (`account_created`, `listing_created`,
- * `listing_sold`, `bid_placed`, `bid_won`).
+ * The feed holds bids, wins, KYC progress and role changes, so it is private:
+ * only the user themselves and admins get entries. Everyone else, signed in or
+ * not, gets an empty list.
  *
  * @param ctx - The query context.
  * @param args - The query arguments.
  * @param args.userId - The profile owner's user ID.
  * @param args.limit - Maximum number of entries to return (default 10).
- * @returns The filtered, truncated list of activity entries.
+ * @returns The activity entries, or an empty list for anyone but the owner or an admin.
  */
 export const getSellerActivityHandler = async (
   ctx: QueryCtx,
@@ -103,21 +84,18 @@ export const getSellerActivityHandler = async (
 ) => {
   const limit = args.limit ?? DEFAULT_ACTIVITY_LIMIT;
 
-  const authUser = await getAuthUser(ctx);
-  const viewerId = authUser ? resolveUserId(authUser) : null;
-  const viewerIsOwner = viewerId !== null && viewerId === args.userId;
+  // Bid and win activity is private: only the user and admins see any of it.
+  const viewer = await getViewer(ctx);
+  const viewerIsOwner = viewer.userId !== null && viewer.userId === args.userId;
+  if (!viewerIsOwner && !viewer.isAdmin) return [];
 
   const rows = await ctx.db
     .query("userActivity")
     .withIndex("by_userId_createdAt", (q) => q.eq("userId", args.userId))
     .order("desc")
-    .take(viewerIsOwner ? limit : MAX_ACTIVITY_SCAN);
+    .take(limit);
 
-  const visible = viewerIsOwner
-    ? rows
-    : rows.filter((row) => !PRIVATE_ACTIVITY_TYPES.has(row.type));
-
-  return visible.slice(0, limit).map((row) => ({
+  return rows.map((row) => ({
     _id: row._id,
     _creationTime: row._creationTime,
     type: row.type,
@@ -128,9 +106,9 @@ export const getSellerActivityHandler = async (
 };
 
 /**
- * Fetch a user's recent activity feed entries, most recent first. Private
- * KYC/role entries are only included for the profile owner (computed
- * server-side from the authenticated caller).
+ * Fetch a user's recent activity feed entries, most recent first. Returns an
+ * empty list unless the caller is that user or an admin (computed server-side
+ * from the authenticated caller).
  */
 export const getSellerActivity = query({
   args: { userId: v.string(), limit: v.optional(v.number()) },

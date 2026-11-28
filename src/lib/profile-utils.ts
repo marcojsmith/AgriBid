@@ -17,10 +17,38 @@ import { formatCurrency } from "@/lib/currency";
 import type {
   ActivityMeta,
   ActivityType,
+  ProfileFlagReason,
+  ReportReason,
   TrustItem,
   VerificationStatus,
   SellerRating,
 } from "@/types/profile";
+
+/** The reasons offered when reporting a seller, in display order. */
+export const REPORT_REASON_OPTIONS: readonly {
+  value: ReportReason;
+  label: string;
+}[] = [
+  { value: "misleading_listing", label: "Misleading listing" },
+  { value: "suspected_fraud", label: "Suspected fraud" },
+  { value: "offensive_content", label: "Offensive content" },
+  { value: "other", label: "Other" },
+];
+
+/**
+ * Labels for every stored report reason, including the retired ones that old
+ * reports still carry (admin views).
+ */
+export const PROFILE_FLAG_REASON_LABELS: Record<ProfileFlagReason, string> = {
+  misleading_listing: "Misleading listing",
+  suspected_fraud: "Suspected fraud",
+  offensive_content: "Offensive content",
+  other: "Other",
+  fake_account: "Fake account (legacy)",
+  fraudulent_listings: "Fraudulent listings (legacy)",
+  abusive_behaviour: "Abusive behaviour (legacy)",
+  identity_misrepresentation: "Identity misrepresentation (legacy)",
+};
 
 export const ACTIVITY_META: Record<ActivityType, ActivityMeta> = {
   account_created: {
