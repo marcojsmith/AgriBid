@@ -21,6 +21,7 @@ import {
   profileReportReasonValidator,
   type ProfileReportReason,
 } from "./lib/reportReasons";
+import { resolvePublicSeller } from "./lib/sellerLookup";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
@@ -145,25 +146,15 @@ export const reportSellerBySlugHandler = async (
   ctx: MutationCtx,
   args: { slug: string; reason: ProfileReportReason; details?: string }
 ) => {
-  let profile = await ctx.db
-    .query("profiles")
-    .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-    .first();
-  if (!profile) {
-    const redirect = await ctx.db
-      .query("sellerSlugRedirects")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .first();
-    if (redirect) {
-      profile = await ctx.db
-        .query("profiles")
-        .withIndex("by_userId", (q) => q.eq("userId", redirect.userId))
-        .unique();
-    }
-  }
-  if (!profile) {
+  // Sign-in first, so a signed-out caller learns nothing about which slugs exist.
+  await getAuthenticatedUserId(ctx);
+
+  // Same lookup as the public page: a slug whose page is "not found" cannot be reported.
+  const resolved = await resolvePublicSeller(ctx, args.slug);
+  if (!resolved) {
     throw new ConvexError("Seller not found");
   }
+  const { profile } = resolved;
 
   return await reportProfileHandler(ctx, {
     reportedUserId: profile.userId,

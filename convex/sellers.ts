@@ -10,7 +10,7 @@
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 
-import { query, type QueryCtx } from "./_generated/server";
+import { query } from "./_generated/server";
 import { countQuery } from "./admin_utils";
 import {
   LotSummaryValidator,
@@ -24,17 +24,19 @@ import {
 } from "./reviews";
 import { provinceValidator, type Province } from "./lib/provinces";
 import { firstWordOf } from "./lib/sellerSlug";
+import {
+  currentLots,
+  resolvePublicSeller,
+  resolveSlug,
+  recentPublicLots,
+} from "./lib/sellerLookup";
 import { getViewer } from "./lib/viewer";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 
 /** Sold count shown on the page stops here. */
 export const SOLD_COUNT_CAP = 1000;
 /** Most recent public lots read to find a seller's province. */
 const PROVINCE_SAMPLE = 20;
-/** Lots in the current sale shown on the page. */
-const CURRENT_LOTS_CAP = 24;
-/** Assigned lots read before filtering to published sales. */
-const ASSIGNED_READ_CAP = 100;
 /** Sold lots listed on the page. */
 const SOLD_LIST_CAP = 50;
 
@@ -48,66 +50,6 @@ function nonEmpty(value: string | undefined): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
   return trimmed;
-}
-
-/**
- * Finds the profile behind a slug, following a rename redirect.
- *
- * @param ctx - Query context
- * @param slug - A seller slug, current or old
- * @returns The profile and whether the slug was an old one, or null
- */
-async function resolveSlug(
-  ctx: QueryCtx,
-  slug: string
-): Promise<{ profile: Doc<"profiles">; redirected: boolean } | null> {
-  const current = await ctx.db
-    .query("profiles")
-    .withIndex("by_slug", (q) => q.eq("slug", slug))
-    .first();
-  if (current) return { profile: current, redirected: false };
-
-  const redirect = await ctx.db
-    .query("sellerSlugRedirects")
-    .withIndex("by_slug", (q) => q.eq("slug", slug))
-    .first();
-  if (!redirect) return null;
-
-  const owner = await ctx.db
-    .query("profiles")
-    .withIndex("by_userId", (q) => q.eq("userId", redirect.userId))
-    .unique();
-  if (!owner?.slug) return null;
-  return { profile: owner, redirected: true };
-}
-
-/**
- * A seller's newest public lots, newest first: sold lots and lots in a
- * published sale. A lot in a draft sale is not public yet.
- *
- * @param ctx - Query context
- * @param sellerId - The seller's user id
- * @param take - How many to return
- * @returns Up to `take` lots
- */
-async function recentPublicLots(
-  ctx: QueryCtx,
-  sellerId: string,
-  take: number
-): Promise<Doc<"lots">[]> {
-  const [sold, current] = await Promise.all([
-    ctx.db
-      .query("lots")
-      .withIndex("by_seller_status", (q) =>
-        q.eq("sellerId", sellerId).eq("status", "sold")
-      )
-      .order("desc")
-      .take(take),
-    currentLots(ctx, sellerId),
-  ]);
-  return [...sold, ...current.lots]
-    .sort((a, b) => b._creationTime - a._creationTime)
-    .slice(0, take);
 }
 
 /**
@@ -169,18 +111,11 @@ export const getSellerPage = query({
   args: { slug: v.string() },
   returns: sellerPageValidator,
   handler: async (ctx, args) => {
-    const resolved = await resolveSlug(ctx, args.slug);
+    const resolved = await resolvePublicSeller(ctx, args.slug, PROVINCE_SAMPLE);
     if (!resolved) return { kind: "not_found" as const };
-    const { profile, redirected } = resolved;
+    const { profile, redirected, publicLots } = resolved;
     const slug = profile.slug;
     if (!slug) return { kind: "not_found" as const };
-
-    const publicLots = await recentPublicLots(
-      ctx,
-      profile.userId,
-      PROVINCE_SAMPLE
-    );
-    if (publicLots.length === 0) return { kind: "not_found" as const };
     if (redirected) return { kind: "redirect" as const, slug };
 
     const [soldCount, rating, viewer] = await Promise.all([
@@ -219,65 +154,6 @@ export const getSellerPage = query({
     };
   },
 });
-
-/**
- * The seller's lots in published sales, grouped by the sale holding most of them.
- *
- * @param ctx - Query context
- * @param sellerId - The seller's user id
- * @returns Up to {@link CURRENT_LOTS_CAP} lots by lot number, and the main sale
- */
-async function currentLots(ctx: QueryCtx, sellerId: string) {
-  const assigned = await ctx.db
-    .query("lots")
-    .withIndex("by_seller_status", (q) =>
-      q.eq("sellerId", sellerId).eq("status", "assigned")
-    )
-    .take(ASSIGNED_READ_CAP);
-
-  const auctionIds = [
-    ...new Set(
-      assigned.flatMap((lot) => (lot.auctionId ? [lot.auctionId] : []))
-    ),
-  ];
-  const auctions = new Map<Id<"auctions">, Doc<"auctions">>();
-  for (const auction of await Promise.all(
-    auctionIds.map((id) => ctx.db.get("auctions", id))
-  )) {
-    if (auction?.status === "published") auctions.set(auction._id, auction);
-  }
-
-  const visible = assigned
-    .filter(
-      (lot) =>
-        lot.hiddenByFlags !== true &&
-        lot.auctionId !== undefined &&
-        auctions.has(lot.auctionId)
-    )
-    .sort(
-      (a, b) =>
-        (a.lotNumber ?? Number.MAX_SAFE_INTEGER) -
-        (b.lotNumber ?? Number.MAX_SAFE_INTEGER)
-    );
-
-  const perSale = new Map<Id<"auctions">, number>();
-  for (const lot of visible) {
-    if (lot.auctionId) {
-      perSale.set(lot.auctionId, (perSale.get(lot.auctionId) ?? 0) + 1);
-    }
-  }
-  let mainSale: Doc<"auctions"> | null = null;
-  let mainCount = 0;
-  for (const [auctionId, count] of perSale) {
-    const auction = auctions.get(auctionId);
-    if (auction && count > mainCount) {
-      mainSale = auction;
-      mainCount = count;
-    }
-  }
-
-  return { lots: visible.slice(0, CURRENT_LOTS_CAP), mainSale };
-}
 
 /**
  * The lots on a seller's page: the current sale and the sold history. A slug
@@ -395,7 +271,7 @@ export const getSellerPageReviews = query({
   }),
   handler: async (ctx, args) => {
     const empty = { page: [], isDone: true, continueCursor: "" };
-    const resolved = await resolveSlug(ctx, args.slug);
+    const resolved = await resolvePublicSeller(ctx, args.slug);
     if (!resolved) return empty;
     const sellerId = resolved.profile.userId;
     if (!(await hasEnoughReviews(ctx, sellerId))) return empty;

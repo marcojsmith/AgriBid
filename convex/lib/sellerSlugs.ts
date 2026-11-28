@@ -8,30 +8,88 @@ import {
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
+/** Every lot status except `draft`: a lot in any of them has been submitted. */
+const SUBMITTED_STATUSES = [
+  "pending_review",
+  "approved",
+  "assigned",
+  "under_consideration",
+  "sold",
+  "unsold",
+  "rejected",
+] as const;
+
 /** Numbered suffixes (`-2` to `-N`) tried before switching to random ones. */
 const MAX_NUMBERED_ATTEMPTS = 50;
 /** Random suffixes tried after the numbered ones, before giving up. */
 const MAX_RANDOM_ATTEMPTS = 20;
 
+/** A stored name field after reading: empty, readable, or unreadable. */
+type NameRead =
+  { state: "empty" } | { state: "ok"; text: string } | { state: "failed" };
+
 /**
- * Decrypts a stored name, treating an unreadable value as missing so a bad
- * ciphertext never blocks a lot submission or a profile save.
+ * Reads a stored (encrypted or legacy plain) name field. An unreadable value is
+ * reported as `failed`, not as empty, so a misconfigured key cannot look like a
+ * name change.
  *
- * @param value - A stored (encrypted or legacy plain) name
- * @returns The plain name, or undefined
+ * @param value - The stored name
+ * @returns Whether it is empty, its plain text, or that decryption failed
  */
-async function safeDecrypt(
-  value: string | undefined
-): Promise<string | undefined> {
+async function readName(value: string | undefined): Promise<NameRead> {
+  if (value === undefined) return { state: "empty" };
   try {
-    return await decryptPII(value);
+    const text = (await decryptPII(value))?.trim();
+    return text ? { state: "ok", text } : { state: "empty" };
   } catch {
-    return undefined;
+    return { state: "failed" };
   }
 }
 
 /**
- * The public name for a profile, reading its encrypted names.
+ * Works out the public name for a profile and whether a stored name could not
+ * be read.
+ *
+ * Order: company name; else the registration `fullName` (first word + initial
+ * of the last word); else the legacy `firstName` / `lastName`; else the
+ * account `name`.
+ *
+ * @param profile - The seller's profile
+ * @returns The name (null when nothing is usable) and whether a stored name field failed to decrypt
+ */
+async function resolvePublicName(
+  profile: Doc<"profiles">
+): Promise<{ name: string | null; decryptFailed: boolean }> {
+  const company = profile.companyName?.trim();
+  if (company) {
+    return {
+      name: publicNameFor({ companyName: company }),
+      decryptFailed: false,
+    };
+  }
+  const [full, first, last] = await Promise.all([
+    readName(profile.fullName),
+    readName(profile.firstName),
+    readName(profile.lastName),
+  ]);
+  const decryptFailed = [full, first, last].some((r) => r.state === "failed");
+  const text = (r: NameRead) => (r.state === "ok" ? r.text : undefined);
+
+  if (full.state === "ok") {
+    return { name: publicNameFor({ name: full.text }), decryptFailed };
+  }
+  if (first.state === "ok") {
+    return {
+      name: publicNameFor({ firstName: first.text, lastName: text(last) }),
+      decryptFailed,
+    };
+  }
+  return { name: publicNameFor({ name: profile.name }), decryptFailed };
+}
+
+/**
+ * The public name for a profile, reading its encrypted names. Shared by the
+ * seller slug and the seller name shown to winners.
  *
  * @param profile - The seller's profile
  * @returns The public name, or null when the profile has no usable name
@@ -39,18 +97,7 @@ async function safeDecrypt(
 export async function publicNameForProfile(
   profile: Doc<"profiles">
 ): Promise<string | null> {
-  const company = profile.companyName?.trim();
-  if (company) return publicNameFor({ companyName: company });
-  const [firstName, lastName, fullName] = await Promise.all([
-    safeDecrypt(profile.firstName),
-    safeDecrypt(profile.lastName),
-    safeDecrypt(profile.fullName),
-  ]);
-  return publicNameFor({
-    firstName,
-    lastName,
-    name: fullName ?? profile.name,
-  });
+  return (await resolvePublicName(profile)).name;
 }
 
 /**
@@ -128,7 +175,15 @@ export async function assignSellerSlug(
   ctx: MutationCtx,
   profile: Doc<"profiles">
 ): Promise<string | null> {
-  const publicName = await publicNameForProfile(profile);
+  const { name: publicName, decryptFailed } = await resolvePublicName(profile);
+  if (decryptFailed) {
+    // A stored name could not be read (wrong or missing key): changing the
+    // seller's public name from a fallback would rename them wrongly.
+    console.warn(
+      "assignSellerSlug: a stored name could not be decrypted; slug and public name left unchanged"
+    );
+    return profile.slug ?? null;
+  }
   if (publicName === null) return profile.slug ?? null;
 
   const base = slugBaseFor(publicName);
@@ -182,12 +237,16 @@ export async function hasSubmittedLot(
   ctx: QueryCtx,
   userId: string
 ): Promise<boolean> {
-  const lot = await ctx.db
-    .query("lots")
-    .withIndex("by_seller", (q) => q.eq("sellerId", userId))
-    .filter((q) => q.neq(q.field("status"), "draft"))
-    .first();
-  return lot !== null;
+  for (const status of SUBMITTED_STATUSES) {
+    const lot = await ctx.db
+      .query("lots")
+      .withIndex("by_seller_status", (q) =>
+        q.eq("sellerId", userId).eq("status", status)
+      )
+      .first();
+    if (lot) return true;
+  }
+  return false;
 }
 
 /**

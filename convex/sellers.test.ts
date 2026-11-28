@@ -714,6 +714,23 @@ describe("getSellerInfo privacy", () => {
     }
   });
 
+  it("gives the public the public name and no verification flag", async () => {
+    const t = makeContext();
+    await seed(t);
+    const anon = await t.query(api.auctions.getSellerInfo, {
+      sellerId: SELLER,
+    });
+    expect(anon?.name).toBe("Nkosi Boerdery");
+    expect(anon?.isVerified).toBeUndefined();
+    expect(JSON.stringify(anon)).not.toContain("Thandi Nkosi");
+
+    const owner = await t
+      .withIdentity({ subject: SELLER })
+      .query(api.auctions.getSellerInfo, { sellerId: SELLER });
+    expect(owner?.name).toBe("Thandi Nkosi");
+    expect(owner?.isVerified).toBe(true);
+  });
+
   it("gives another signed-in user none of the private fields", async () => {
     const t = makeContext();
     await seed(t);
@@ -933,6 +950,35 @@ describe("reporting a seller", () => {
         reason: "other",
       })
     ).rejects.toThrow("Seller not found");
+  });
+
+  it("rejects a seller whose page does not exist yet", async () => {
+    const t = makeContext();
+    const slug = await addSeller(t);
+    await addLot(t, { status: "pending_review" });
+    await addProfile(t, OTHER);
+    await expect(
+      asReporter(t).mutation(api.profileFlags.reportSellerBySlug, {
+        slug,
+        reason: "other",
+      })
+    ).rejects.toThrow("Seller not found");
+  });
+
+  it("asks a signed-out caller to sign in before saying anything about the slug", async () => {
+    const t = makeContext();
+    await seed(t);
+    const error: unknown = await t
+      .mutation(api.profileFlags.reportSellerBySlug, {
+        slug: "nobody",
+        reason: "other",
+      })
+      .then(
+        () => null,
+        (e: unknown) => e
+      );
+    expect(error).toBeInstanceOf(Error);
+    expect(String(error)).not.toContain("Seller not found");
   });
 
   it("applies the self-report and duplicate rules", async () => {

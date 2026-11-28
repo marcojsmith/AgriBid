@@ -142,7 +142,7 @@ describe("updateMyProfile bio moderation", () => {
     expect(profile.bioRejectionReason).toBeUndefined();
   });
 
-  it("withdraws a pending edit when the seller goes back to the live text", async () => {
+  it("keeps a pending edit when a save sends the live text back", async () => {
     const t = makeContext();
     await addProfile(t, SELLER, {
       bio: "Live text",
@@ -152,6 +152,44 @@ describe("updateMyProfile bio moderation", () => {
     });
     await asSeller(t).mutation(api.users.updateMyProfile, {
       bio: "Live text",
+      location: "Bloemfontein",
+    });
+    const profile = await load(t, SELLER);
+    expect(profile.bio).toBe("Live text");
+    expect(profile.bioPending).toBe("Edit");
+    expect(profile.bioStatus).toBe("pending");
+    expect(profile.bioSubmittedAt).toBe(5);
+    expect(profile.location).toBe("Bloemfontein");
+  });
+
+  it("keeps a pending edit on a location-only save", async () => {
+    const t = makeContext();
+    await addProfile(t, SELLER, {
+      bio: "Live text",
+      bioPending: "Edit",
+      bioStatus: "pending",
+      bioSubmittedAt: 5,
+    });
+    await asSeller(t).mutation(api.users.updateMyProfile, {
+      location: "Bloemfontein",
+    });
+    const profile = await load(t, SELLER);
+    expect(profile.bioPending).toBe("Edit");
+    expect(profile.bioStatus).toBe("pending");
+    expect(profile.location).toBe("Bloemfontein");
+  });
+
+  it("withdraws a pending edit only when asked to", async () => {
+    const t = makeContext();
+    await addProfile(t, SELLER, {
+      bio: "Live text",
+      bioPending: "Edit",
+      bioStatus: "pending",
+      bioSubmittedAt: 5,
+    });
+    await asSeller(t).mutation(api.users.updateMyProfile, {
+      bio: "Live text",
+      withdrawPendingBio: true,
     });
     const profile = await load(t, SELLER);
     expect(profile.bio).toBe("Live text");

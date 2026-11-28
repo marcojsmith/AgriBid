@@ -77,7 +77,7 @@ export default function Profile() {
     );
     const sold = listings.filter((l) => l.status === "sold");
     const items = getTrustItems(
-      sellerInfo.isVerified,
+      sellerInfo.isVerified ?? false,
       sellerInfo.kycStatus,
       {
         emailVerified: sellerInfo.emailVerified,

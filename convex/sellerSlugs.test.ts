@@ -127,6 +127,16 @@ describe("publicNameForProfile", () => {
     expect(await publicNameForProfile(withName)).toBe("Sipho D.");
   });
 
+  it("prefers the registration full name over legacy first and last names", async () => {
+    const t = makeContext();
+    const profile = await addProfile(t, "u1", {
+      firstName: await encryptPII("Old"),
+      lastName: await encryptPII("Surname"),
+      fullName: await encryptPII("Thandi Nkosi"),
+    });
+    expect(await publicNameForProfile(profile)).toBe("Thandi N.");
+  });
+
   it("treats an undecryptable name as missing", async () => {
     const errorSpy = vi
       .spyOn(console, "error")
@@ -148,6 +158,30 @@ describe("publicNameForProfile", () => {
 });
 
 describe("assignSellerSlug", () => {
+  it("keeps the slug and name when a stored name cannot be decrypted", async () => {
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    const t = makeContext();
+    await addProfile(t, "u1", {
+      firstName: "AAAAAAAAAAAAAAAA.AAAAAAAAAAAAAAAAAAAAAAAA",
+      name: "Clerk Name",
+      publicName: "Thandi N.",
+      slug: "thandi-n",
+    });
+    expect(await assign(t, "u1")).toBe("thandi-n");
+    const after = await load(t, "u1");
+    expect(after.slug).toBe("thandi-n");
+    expect(after.publicName).toBe("Thandi N.");
+    expect(await redirects(t)).toEqual([]);
+    expect(warnSpy).toHaveBeenCalled();
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
   it("assigns the public name and a slug", async () => {
     const t = makeContext();
     await addProfile(t, "u1", { companyName: "Wolmaransstad Boerdery" });

@@ -1166,6 +1166,26 @@ describe("Profile Page", () => {
     expect(screen.queryByLabelText(/bio/i)).not.toBeInTheDocument();
   });
 
+  it("does not send the bio when only another field changed", async () => {
+    const mockMutate = vi.fn().mockResolvedValue(undefined);
+    (useMutation as Mock).mockReturnValue(mockMutate);
+
+    renderProfile("user1");
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    fireEvent.change(screen.getByLabelText(/location/i), {
+      target: { value: "Bloemfontein" },
+    });
+
+    await act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+      return Promise.resolve();
+    });
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ location: "Bloemfontein", bio: undefined })
+    );
+  });
+
   it("shows Saving... while mutation is in-flight", async () => {
     let resolvePromise: (() => void) | undefined;
     const pendingPromise = new Promise<void>((resolve) => {

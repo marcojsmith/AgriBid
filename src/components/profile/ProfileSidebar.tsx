@@ -37,7 +37,7 @@ import { ReportDialog } from "./ReportDialog";
 
 interface ProfileData {
   name?: string;
-  isVerified: boolean;
+  isVerified?: boolean;
   kycStatus?: "pending" | "verified" | "rejected";
   role: string;
   createdAt?: number;
@@ -106,7 +106,12 @@ export function ProfileSidebar({
     setSaveError(null);
     try {
       await updateMyProfile({
-        bio: editForm.bio || undefined,
+        // Only send the bio when it changed: the live text is sent back on
+        // every save otherwise, and edits are reviewed by an admin.
+        bio:
+          editForm.bio === (initialEditData?.bio ?? "")
+            ? undefined
+            : editForm.bio,
         location: editForm.location || undefined,
         companyName: editForm.companyName || undefined,
         vatRegistered: editForm.vatRegistered,

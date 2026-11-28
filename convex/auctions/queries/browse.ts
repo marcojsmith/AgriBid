@@ -501,8 +501,9 @@ export const getSellerInfoHandler = async (
   const showRating = canSeePrivate || rating.reviewCount >= MIN_PUBLIC_REVIEWS;
 
   const base = {
-    name: profile.name,
-    isVerified: profile.isVerified,
+    // Never the account's full name for the public: that is the seller's
+    // public name ("Thandi N." or the business name).
+    name: canSeePrivate ? profile.name : profile.publicName,
     role: profile.role,
     createdAt: profile.createdAt,
     itemsSold: soldCount,
@@ -520,6 +521,7 @@ export const getSellerInfoHandler = async (
     // Same shape for everyone; the private fields are simply absent.
     return {
       ...base,
+      isVerified: undefined,
       kycStatus: undefined,
       emailVerified: undefined,
       phoneVerified: undefined,
@@ -551,6 +553,7 @@ export const getSellerInfoHandler = async (
 
   return {
     ...base,
+    isVerified: profile.isVerified,
     kycStatus: profile.kycStatus,
     emailVerified: profile.emailVerified,
     phoneVerified: profile.phoneVerified,
@@ -579,7 +582,6 @@ export const getSellerInfo = query({
     v.null(),
     v.object({
       name: v.optional(v.string()),
-      isVerified: v.boolean(),
       role: v.string(),
       createdAt: v.optional(v.number()),
       itemsSold: v.number(),
@@ -592,6 +594,7 @@ export const getSellerInfo = query({
       avgRating: v.optional(v.number()),
       reviewCount: v.number(),
       // Owner and admin only:
+      isVerified: v.optional(v.boolean()),
       kycStatus: v.optional(
         v.union(
           v.literal("pending"),

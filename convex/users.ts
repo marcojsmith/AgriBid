@@ -605,6 +605,7 @@ export const getMyKYCDetails = query({
  * @param args.companyName - Optional company name of the user.
  * @param args.vatRegistered - Optional VAT registration status of the seller.
  * @param args.sellerType - Optional seller type.
+ * @param args.withdrawPendingBio - Set (with the live bio text) to drop a pending bio edit.
  * @returns null on success.
  */
 export const updateMyProfileHandler = async (
@@ -615,6 +616,7 @@ export const updateMyProfileHandler = async (
     companyName?: string;
     vatRegistered?: boolean;
     sellerType?: SellerType;
+    withdrawPendingBio?: boolean;
   }
 ): Promise<null> => {
   const userId = await getAuthenticatedUserId(ctx);
@@ -655,11 +657,12 @@ export const updateMyProfileHandler = async (
     throw new ConvexError("Profile not found");
   }
 
-  const { bio, ...rest } = args;
+  const { bio, withdrawPendingBio, ...rest } = args;
   const now = Date.now();
   await ctx.db.patch("profiles", profile._id, {
     ...rest,
-    ...(bio !== undefined && bioPatch(profile, bio.trim(), now)),
+    ...(bio !== undefined &&
+      bioPatch(profile, bio.trim(), now, withdrawPendingBio === true)),
     updatedAt: now,
   });
 
@@ -681,18 +684,21 @@ export const updateMyProfileHandler = async (
 /**
  * The profile fields to write for a bio edit. The live `bio` is never touched
  * here: new text waits in `bioPending` for an admin. Empty text clears the live
- * bio and any pending text at once (nothing to review), and text equal to the
- * live bio just withdraws a pending edit.
+ * bio and any pending text at once (nothing to review). Text equal to the live
+ * bio changes nothing, because forms send the live bio back on every save; a
+ * pending edit is only withdrawn when the seller asks for it explicitly.
  *
  * @param profile - The profile being edited
  * @param bio - The trimmed bio the seller submitted
  * @param now - Current time in epoch milliseconds
+ * @param withdraw - Whether the seller explicitly withdraws the pending edit
  * @returns The patch to merge into the profile
  */
 function bioPatch(
   profile: Doc<"profiles">,
   bio: string,
-  now: number
+  now: number,
+  withdraw: boolean
 ): Partial<Doc<"profiles">> {
   const cleared = {
     bioPending: undefined,
@@ -701,7 +707,7 @@ function bioPatch(
     bioSubmittedAt: undefined,
   };
   if (bio === "") return { ...cleared, bio: undefined };
-  if (bio === (profile.bio ?? "")) return cleared;
+  if (bio === (profile.bio ?? "")) return withdraw ? cleared : {};
   if (bio === profile.bioPending && profile.bioStatus === "pending") return {};
   return {
     bioPending: bio,
@@ -723,6 +729,8 @@ export const updateMyProfile = mutation({
     companyName: v.optional(v.string()),
     vatRegistered: v.optional(v.boolean()),
     sellerType: v.optional(sellerTypeValidator),
+    // Set with the live bio's text to drop a pending edit.
+    withdrawPendingBio: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: updateMyProfileHandler,
