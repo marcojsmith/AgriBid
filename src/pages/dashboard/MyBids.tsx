@@ -103,7 +103,7 @@ function liveNote(rows: readonly MyBidRow[], now: number): string | undefined {
  * @returns The note
  */
 function sellerNote(rows: readonly MyBidRow[]): string | undefined {
-  const ends = new Set(rows.map((row) => row.auctionEndTime));
+  const ends = new Set(rows.map(rowClosesAt));
   const [only] = ends;
   return ends.size === 1 && only !== undefined
     ? `Closed ${formatShortDay(only)}`

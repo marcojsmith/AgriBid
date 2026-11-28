@@ -186,4 +186,37 @@ describe("BidRow", () => {
       )
     ).toBeVisible();
   });
+
+  it("keeps the confirm sheet open when the row turns winning underneath it", () => {
+    const row = makeBidRow(NOW);
+    const view = render(
+      <MemoryRouter>
+        <BidRow row={row} canBid vatRatePct={15} />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Bid R.421.000/ }));
+    expect(screen.getByText("Confirm your bid")).toBeVisible();
+    view.rerender(
+      <MemoryRouter>
+        <BidRow row={{ ...row, isWinning: true }} canBid vatRatePct={15} />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Confirm your bid")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^Bid R/ })).toBeNull();
+  });
+
+  it("keeps the sheet open once the closing time has passed, and says closed on confirm", async () => {
+    renderRow(makeBidRow(NOW, { auctionEndTime: NOW + 2000 }));
+    fireEvent.click(screen.getByRole("button", { name: /Bid R.421.000/ }));
+    vi.setSystemTime(NOW + 10_000);
+    fireEvent.click(screen.getByRole("button", { name: /Confirm bid/ }));
+    expect(await screen.findByText(/closed/i)).toBeVisible();
+  });
+
+  it("tells a screen reader an extended row is outbid", () => {
+    renderRow(
+      makeBidRow(NOW, { isExtended: true, extendedEndTime: NOW + 60_000 })
+    );
+    expect(screen.getByText(", you're outbid")).toBeInTheDocument();
+  });
 });

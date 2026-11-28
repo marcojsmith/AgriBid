@@ -5,6 +5,7 @@ import { Check, ChevronRight, Truck } from "lucide-react";
 import { PhotoFrame } from "@/components/ds/PhotoFrame";
 import { TransportQuoteSheet } from "@/components/ds/TransportQuoteSheet";
 import { Button } from "@/components/ui/button";
+import { useVatRate } from "@/hooks/useVatRate";
 import { useTransportQuote } from "@/hooks/useTransportQuote";
 import { formatRand } from "@/lib/currency";
 import { formatSastDate } from "@/lib/dates";
@@ -100,13 +101,26 @@ function PaySteps({ row }: { row: WonLotRow }) {
  *
  * @param props - Component props
  * @param props.row - The won lot
+ * @param props.vatRatePct - The VAT rate in percent, when known
  * @returns The definition list
  */
-function PaySummary({ row }: { row: WonLotRow }) {
+function PaySummary({
+  row,
+  vatRatePct,
+}: {
+  row: WonLotRow;
+  vatRatePct: number | undefined;
+}) {
+  const vatLabel =
+    vatRatePct === undefined
+      ? "VAT"
+      : row.vatKind === "private"
+        ? `VAT ${String(vatRatePct)}% on the premium`
+        : `VAT ${String(vatRatePct)}%`;
   const lines = [
     { label: "Your bid", amount: formatRand(row.bid) },
     { label: "Buyer's premium", amount: formatRand(row.premium) },
-    { label: "VAT", amount: formatRand(row.vat) },
+    { label: vatLabel, amount: formatRand(row.vat) },
     { label: "Total", amount: formatRand(row.total) },
     ...(row.depositCredit > 0
       ? [
@@ -149,6 +163,7 @@ function PaySummary({ row }: { row: WonLotRow }) {
 export function WonRow({ row }: { row: WonLotRow }) {
   const [payOpen, setPayOpen] = useState(false);
   const transport = useTransportQuote(row.lotId);
+  const vatRatePct = useVatRate();
   const paid = row.status === "confirmed";
   const meta = lotMeta({
     _id: row.lotId,
@@ -200,7 +215,7 @@ export function WonRow({ row }: { row: WonLotRow }) {
         ) : null}
       </div>
 
-      <div className="col-span-2 space-y-4 md:col-span-2 md:col-start-2 md:row-start-2">
+      <div className="col-span-2 space-y-4 md:col-span-1 md:col-start-2 md:row-start-2">
         {paid ? (
           <>
             <div className="grid grid-cols-2 gap-x-3">
@@ -214,7 +229,7 @@ export function WonRow({ row }: { row: WonLotRow }) {
             )}
           </>
         ) : (
-          <PaySummary row={row} />
+          <PaySummary row={row} vatRatePct={vatRatePct} />
         )}
         <PaySteps row={row} />
         {paid ? (
@@ -227,7 +242,7 @@ export function WonRow({ row }: { row: WonLotRow }) {
       </div>
 
       {row.status !== "confirmed" ? (
-        <div className="col-span-2 md:col-span-1 md:col-start-3 md:row-start-1">
+        <div className="col-span-2 md:col-span-1 md:col-start-3 md:row-start-1 md:self-end">
           <Button
             type="button"
             variant={row.status === "awaiting" ? "default" : "outline"}
@@ -241,7 +256,7 @@ export function WonRow({ row }: { row: WonLotRow }) {
         </div>
       ) : null}
 
-      <div className="col-span-2 md:col-span-2 md:col-start-2">
+      <div className="col-span-2 md:col-span-1 md:col-start-3 md:row-start-2 md:self-end">
         <button
           type="button"
           onClick={() => {
@@ -256,10 +271,10 @@ export function WonRow({ row }: { row: WonLotRow }) {
       </div>
 
       <PaySheet
-        open={payOpen}
+        open={payOpen && row.status !== "confirmed"}
         onOpenChange={setPayOpen}
         row={row}
-        claimed={row.status === "paid_claimed"}
+        claimed={row.status !== "awaiting"}
       />
       <TransportQuoteSheet
         {...transport.sheetProps}

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { usePaginatedQuery, useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 
@@ -44,13 +45,22 @@ export function WatchingPanel() {
   const toggle = useMutation(api.watchlist.toggleWatchlist);
   const now = useNow();
 
+  // The toggle flips the watch, so a second tap while the first is in flight
+  // would watch the lot again. Taps on a lot already being updated are ignored.
+  const pending = useRef(new Set<WatchedLot["_id"]>());
   const unwatch = (lotId: WatchedLot["_id"]) => {
-    toggle({ lotId }).catch((err: unknown) => {
-      showToast(
-        getErrorMessage(err, "Couldn't update your watchlist."),
-        "error"
-      );
-    });
+    if (pending.current.has(lotId)) return;
+    pending.current.add(lotId);
+    toggle({ lotId })
+      .catch((err: unknown) => {
+        showToast(
+          getErrorMessage(err, "Couldn't update your watchlist."),
+          "error"
+        );
+      })
+      .finally(() => {
+        pending.current.delete(lotId);
+      });
   };
 
   if (status === "LoadingFirstPage") {
@@ -103,6 +113,7 @@ export function WatchingPanel() {
                       : undefined
                   }
                   watching
+                  alwaysShowWatch
                   onToggleWatch={() => {
                     unwatch(lot._id);
                   }}

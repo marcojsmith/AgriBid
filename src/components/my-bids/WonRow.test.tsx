@@ -230,4 +230,34 @@ describe("WonRow", () => {
     );
     expect(screen.getByText("JCB 3CX 4x4 TLB · Lot 1")).toBeVisible();
   });
+
+  it("shows the VAT rate in the breakdown when it is known", () => {
+    setQuery(api.admin.getVatRate, { vatRatePct: 15 });
+    renderRow(makeWonRow(NOW));
+    expect(screen.getByText("VAT 15%")).toBeVisible();
+    expect(screen.getByText("Buyer's premium")).toBeVisible();
+  });
+
+  it("says the VAT is on the premium for a private seller", () => {
+    setQuery(api.admin.getVatRate, { vatRatePct: 15 });
+    renderRow(makeWonRow(NOW, { vatKind: "private" }));
+    expect(screen.getByText("VAT 15% on the premium")).toBeVisible();
+  });
+
+  it("closes the pay sheet when the payment gets confirmed underneath it", () => {
+    const row = makeWonRow(NOW);
+    const view = render(
+      <MemoryRouter>
+        <WonRow row={row} />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Pay by EFT" }));
+    expect(screen.getByRole("button", { name: "I've paid" })).toBeVisible();
+    view.rerender(
+      <MemoryRouter>
+        <WonRow row={{ ...row, status: "confirmed", confirmedAt: NOW }} />
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole("button", { name: "I've paid" })).toBeNull();
+  });
 });

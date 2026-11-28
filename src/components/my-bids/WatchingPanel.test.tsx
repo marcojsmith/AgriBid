@@ -96,7 +96,7 @@ describe("WatchingPanel", () => {
     expect(screen.getByText("Opening bid")).toBeVisible();
     expect(screen.getByText("Current bid")).toBeVisible();
     expect(screen.getByText("Sold for")).toBeVisible();
-    expect(screen.getAllByRole("button", { name: /Watching/ })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /Watching/ })).toHaveLength(3);
   });
 
   it("stops watching with the heart and reports a failure", async () => {
@@ -137,5 +137,52 @@ describe("WatchingPanel", () => {
     };
     renderPanel();
     expect(screen.getByRole("button", { name: "Loading…" })).toBeDisabled();
+  });
+
+  it("lets a sold or unsold lot be removed from Watching", async () => {
+    const toggle = mutationMock(api.watchlist.toggleWatchlist);
+    toggle.mockResolvedValue(false);
+    paginated.value = {
+      results: [
+        makeWatchedLot(NOW, { _id: fixtureLotId("sold"), status: "sold" }),
+        makeWatchedLot(NOW, { _id: fixtureLotId("unsold"), status: "unsold" }),
+      ],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    };
+    renderPanel();
+    const hearts = screen.getAllByRole("button", { name: /Watching/ });
+    expect(hearts).toHaveLength(2);
+    fireEvent.click(hearts[0]);
+    await waitFor(() => {
+      expect(toggle).toHaveBeenCalledWith({ lotId: fixtureLotId("sold") });
+    });
+  });
+
+  it("ignores a second tap while the first is in flight", async () => {
+    const toggle = mutationMock(api.watchlist.toggleWatchlist);
+    let finish: (value: boolean) => void = () => undefined;
+    toggle.mockReset();
+    toggle.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        })
+    );
+    paginated.value = {
+      results: [makeWatchedLot(NOW)],
+      status: "Exhausted",
+      loadMore: vi.fn(),
+    };
+    renderPanel();
+    const heart = screen.getByRole("button", { name: /Watching/ });
+    fireEvent.click(heart);
+    fireEvent.click(heart);
+    expect(toggle).toHaveBeenCalledTimes(1);
+    finish(false);
+    await waitFor(() => {
+      fireEvent.click(heart);
+      expect(toggle).toHaveBeenCalledTimes(2);
+    });
   });
 });

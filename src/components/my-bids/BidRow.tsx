@@ -1,3 +1,5 @@
+import { useEffect, useRef, type RefObject } from "react";
+
 import { ConfirmBidSheet } from "@/components/ds/ConfirmBidSheet";
 import { Button } from "@/components/ui/button";
 import { useLotBid } from "@/hooks/useLotBid";
@@ -28,14 +30,22 @@ interface BidRowProps {
  * @param props - Component props
  * @param props.row - The outbid row
  * @param props.vatRatePct - VAT rate in percent
+ * @param props.showButton - Whether the "Bid R x" button shows (the sheet stays either way)
+ * @param props.focusTarget - Where focus goes when the sheet closes
  * @returns The button and sheet
  */
 function BidAction({
   row,
   vatRatePct,
+  showButton,
+  focusTarget,
 }: {
   row: MyBidRow;
   vatRatePct: number | undefined;
+  /** False once the buyer leads or the lot has closed; the sheet stays. */
+  showButton: boolean;
+  /** Where focus goes when the sheet closes and its button is gone. */
+  focusTarget: RefObject<HTMLElement | null>;
 }) {
   const bid = useLotBid({
     lotId: row._id,
@@ -49,19 +59,39 @@ function BidAction({
     vatRatePct: vatRatePct ?? 0,
     seller: row.sellerVatKind,
   });
+  // The sheet's owner stays mounted while it is open, even if the row turns
+  // winning or closes underneath it. When it closes and the button that
+  // opened it is gone, focus moves to the row's title instead of <body>.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !bid.confirmOpen) {
+      const frame = requestAnimationFrame(() => {
+        if (document.activeElement === document.body) {
+          focusTarget.current?.focus();
+        }
+      });
+      wasOpen.current = false;
+      return () => {
+        cancelAnimationFrame(frame);
+      };
+    }
+    wasOpen.current = bid.confirmOpen;
+  }, [bid.confirmOpen, focusTarget]);
   const lotLabel = `${row.title}${row.lotNumber === undefined ? "" : ` · Lot ${String(row.lotNumber)}`}`;
   return (
     <>
-      <Button
-        type="button"
-        className="w-full"
-        disabled={vatRatePct === undefined}
-        onClick={() => {
-          bid.startBid(row.nextMinBid);
-        }}
-      >
-        Bid {formatRand(row.nextMinBid)}
-      </Button>
+      {showButton ? (
+        <Button
+          type="button"
+          className="w-full"
+          disabled={vatRatePct === undefined}
+          onClick={() => {
+            bid.startBid(row.nextMinBid);
+          }}
+        >
+          Bid {formatRand(row.nextMinBid)}
+        </Button>
+      ) : null}
       <ConfirmBidSheet
         open={bid.confirmOpen}
         onOpenChange={(open) => {
@@ -94,6 +124,7 @@ function BidAction({
  */
 export function BidRow({ row, vatRatePct, canBid }: BidRowProps) {
   const now = useNow(5000);
+  const titleRef = useRef<HTMLAnchorElement>(null);
   const badge = bidRowBadge(row, now);
   const lot = {
     ...row,
@@ -136,7 +167,12 @@ export function BidRow({ row, vatRatePct, canBid }: BidRowProps) {
       lot={lot}
       badge={
         badge === "extended" ? (
-          <RowBadge kind="extended">Extended +2 min</RowBadge>
+          <RowBadge kind="extended">
+            Extended +2 min
+            {row.isWinning ? null : (
+              <span className="sr-only">, you&apos;re outbid</span>
+            )}
+          </RowBadge>
         ) : badge === "leading" ? (
           <RowBadge kind="leading">Leading</RowBadge>
         ) : (
@@ -159,11 +195,17 @@ export function BidRow({ row, vatRatePct, canBid }: BidRowProps) {
           ) : null}
         </>
       }
+      titleRef={titleRef}
       action={
-        canBid &&
-        !row.isWinning &&
-        (closesAt === undefined || closesAt > now) ? (
-          <BidAction row={row} vatRatePct={vatRatePct} />
+        canBid && row.status === "assigned" ? (
+          <BidAction
+            row={row}
+            vatRatePct={vatRatePct}
+            showButton={
+              !row.isWinning && (closesAt === undefined || closesAt > now)
+            }
+            focusTarget={titleRef}
+          />
         ) : null
       }
     />

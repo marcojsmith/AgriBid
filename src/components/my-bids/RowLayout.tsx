@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Link } from "react-router-dom";
 
 import { PhotoFrame } from "@/components/ds/PhotoFrame";
@@ -16,6 +16,8 @@ interface RowLayoutProps {
   action?: ReactNode;
   /** The accessible name of the row. */
   label: string;
+  /** Ref to the title link, so focus can return to the row. */
+  titleRef?: Ref<HTMLAnchorElement>;
 }
 
 /**
@@ -31,6 +33,7 @@ interface RowLayoutProps {
  * @param props.footer - Text under the figures
  * @param props.action - The button at the bottom
  * @param props.label - Accessible name of the row
+ * @param props.titleRef - Ref to the title link
  * @returns The row
  */
 export function RowLayout({
@@ -40,6 +43,7 @@ export function RowLayout({
   footer,
   action,
   label,
+  titleRef,
 }: RowLayoutProps) {
   const meta = lotMeta(lot);
   return (
@@ -67,6 +71,7 @@ export function RowLayout({
         </div>
         <h3 className="mt-1 font-display text-base leading-tight font-semibold md:text-lg">
           <Link
+            ref={titleRef}
             to={`/auction/${lot._id}`}
             className="inline-flex min-h-11 items-center hover:underline"
           >

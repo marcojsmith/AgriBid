@@ -1034,7 +1034,7 @@ describe("getMyBidsOverview", () => {
     expect(result.lost[0].title).toBe("Lot 204");
   });
 
-  it("counts won (payments plus legacy sold lots) and watching", async () => {
+  it("counts won (payment rows only) and watching", async () => {
     const t = makeContext();
     const auctionId = await seedWorld(t);
     const paid = await insertLot(t, auctionId, {
@@ -1077,13 +1077,12 @@ describe("getMyBidsOverview", () => {
 
     const { counts } = await overview(t);
 
-    // One payment row, plus the sold lot that has none for Alice... but the
-    // second lot already has someone's payment row, so it is not "legacy".
+    // Only Alice's own payment row counts.
     expect(counts.won).toBe(1);
     expect(counts.watching).toBe(1);
   });
 
-  it("counts a sold lot without any payment row as won", async () => {
+  it("does not count a sold lot without a payment row as won", async () => {
     const t = makeContext();
     const auctionId = await seedWorld(t);
     const legacy = await insertLot(t, auctionId, {
@@ -1091,7 +1090,7 @@ describe("getMyBidsOverview", () => {
       winnerId: ALICE,
     });
     await insertBid(t, legacy, ALICE, 1100);
-    expect((await overview(t)).counts.won).toBe(1);
+    expect((await overview(t)).counts.won).toBe(0);
   });
 });
 
