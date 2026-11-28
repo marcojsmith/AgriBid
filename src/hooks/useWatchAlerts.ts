@@ -7,6 +7,7 @@ import { showToast } from "@/components/ds/showToast";
 import { WATCHING_MESSAGE, WATCHING_SAVED_MESSAGE } from "@/lib/auctionRules";
 import { ensurePushSubscription } from "@/lib/ensurePushSubscription";
 import { browserNeedsHomeScreenInstall } from "@/lib/homeScreen";
+import { watchedAlertsAny } from "@/lib/account";
 import { pushSupported } from "@/lib/push";
 import { requestReminderPermission } from "@/lib/reminders";
 
@@ -82,14 +83,11 @@ export function useWatchAlerts(): WatchAlerts {
   const saveSubscription = useMutation(api.push.saveSubscription);
   const [promptOpen, setPromptOpen] = useState(false);
   const enabled = settings?.watchAlertsEnabled === true;
-  // The user's own Settings -> Notifications: outbid alerts are on unless
-  // switched off, the 1-hour alert only when the ending setting is unset or 1h.
-  // No saved row means the defaults (both on). Promise alerts if either is on.
-  const ending = prefs?.notificationsWatchlistEnding;
-  const wantsAlerts =
-    prefs?.notificationsBidOutbid !== false ||
-    ending === undefined ||
-    ending === "1h";
+  // The user's Account -> Notifications "Watched lots" switch turns both off;
+  // otherwise outbid alerts are on unless switched off, the 1-hour alert only
+  // when the ending setting is unset or 1h. No saved row means the defaults
+  // (both on). Promise alerts if either is on.
+  const wantsAlerts = watchedAlertsAny(prefs);
   const promise = wantsAlerts ? WATCHING_MESSAGE : WATCHING_SAVED_MESSAGE;
 
   /** Subscribes and saves; false when the browser or server refused. */

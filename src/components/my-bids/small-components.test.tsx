@@ -169,7 +169,7 @@ describe("AlertsSummary", () => {
     expect(screen.getByText("Alerts on")).toBeVisible();
     expect(screen.getByRole("link", { name: "Change" })).toHaveAttribute(
       "href",
-      "/settings"
+      "/account/notifications"
     );
   });
 

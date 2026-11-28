@@ -4,6 +4,7 @@ import {
   currentSubscription,
   pushSupported,
   subscribeToPush,
+  unsubscribeFromPush,
   urlBase64ToUint8Array,
 } from "./push";
 
@@ -117,5 +118,26 @@ describe("currentSubscription", () => {
     expect(await currentSubscription()).toBeNull();
     Reflect.deleteProperty(navigator, "serviceWorker");
     expect(await currentSubscription()).toBeNull();
+  });
+});
+
+describe("unsubscribeFromPush", () => {
+  it("unsubscribes and returns the endpoint", async () => {
+    const unsubscribe = vi.fn().mockResolvedValue(true);
+    pushManager.getSubscription.mockResolvedValue({
+      endpoint: "https://push/x",
+      unsubscribe,
+    });
+    expect(await unsubscribeFromPush()).toBe("https://push/x");
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("is null without push support, a registration or a subscription", async () => {
+    pushManager.getSubscription.mockResolvedValue(null);
+    expect(await unsubscribeFromPush()).toBeNull();
+    getRegistration.mockResolvedValue(undefined);
+    expect(await unsubscribeFromPush()).toBeNull();
+    Reflect.deleteProperty(navigator, "serviceWorker");
+    expect(await unsubscribeFromPush()).toBeNull();
   });
 });

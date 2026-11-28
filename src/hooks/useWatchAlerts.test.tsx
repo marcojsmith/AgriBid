@@ -248,6 +248,13 @@ describe("useWatchAlerts", () => {
     expect(await outbid.result.current.afterWatch()).toBe(WATCHING_MESSAGE);
   });
 
+  it("keeps the saved copy when the Watched lots switch is off", async () => {
+    m.hasSubscription = true;
+    m.prefs = { notificationsWatchedLots: false };
+    const { result } = renderHook(() => useWatchAlerts());
+    expect(await result.current.afterWatch()).toBe(WATCHING_SAVED_MESSAGE);
+  });
+
   it("does not promise after Allow when both alerts are off", async () => {
     m.prefs = {
       notificationsBidOutbid: false,

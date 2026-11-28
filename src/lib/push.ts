@@ -86,3 +86,19 @@ export async function currentSubscription(): Promise<PushSubscriptionKeys | null
   const subscription = await registration.pushManager.getSubscription();
   return subscription ? toKeys(subscription) : null;
 }
+
+/**
+ * Drops this browser's push subscription (the browser side of "Turn off on
+ * this phone"). Safe to call when there is none.
+ *
+ * @returns The endpoint that was removed, or null when there was no subscription
+ */
+export async function unsubscribeFromPush(): Promise<string | null> {
+  if (!pushSupported()) return null;
+  const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+  const subscription = await registration?.pushManager.getSubscription();
+  if (!subscription) return null;
+  const { endpoint } = subscription;
+  await subscription.unsubscribe();
+  return endpoint;
+}

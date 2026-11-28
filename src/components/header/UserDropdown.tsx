@@ -1,23 +1,26 @@
 // app/src/components/header/UserDropdown.tsx
+import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "convex/_generated/api";
 import { toast } from "sonner";
 import {
-  User,
-  LogOut,
-  LayoutDashboard,
-  Heart,
-  Mail,
+  CheckCircle2,
   ChevronDown,
-  Settings,
+  Clock,
+  FileText,
+  Heart,
+  Info,
+  LogOut,
+  MessageCircle,
+  Search,
   ShieldAlert,
-  MessageSquare,
-  ShoppingBasket,
-  Tag,
-  ClipboardList,
+  User,
+  UserRound,
+  type LucideIcon,
 } from "lucide-react";
 
+import { BottomSheet } from "@/components/ds/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,281 +31,395 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LoadingIndicator } from "@/components/LoadingIndicator";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { initialsOf } from "@/lib/initials";
+import { cn } from "@/lib/utils";
 import type { UserDataWithProfile } from "@/types/auth";
-
-const navLinks = [
-  { name: "Auctions", href: "/auctions", icon: ShoppingBasket },
-  { name: "Sell equipment", href: "/sell", icon: Tag },
-] as const;
 
 interface UserDropdownProps {
   userData: UserDataWithProfile | null | undefined;
   isLoadingProfile: boolean;
   isVerified: boolean;
   kycStatus: string | undefined;
-  profileId: string | undefined;
   role: string | undefined;
   onSignOut: () => Promise<void>;
 }
 
+/** One link in the account menu. */
+interface MenuLink {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+  /** A count shown at the right edge. */
+  badge?: { text: string; label: string; urgent: boolean };
+}
+
 /**
- * Render a user account dropdown with profile status, navigation links and a sign-out action.
+ * Builds the menu links in the order of the `menu` frame: Auctions, My bids,
+ * Watching, My listings (sellers), Messages, Account, Support, and Admin for
+ * admins.
  *
- * Renders a trigger button that reflects loading and verification states and a content menu that conditionally includes a KYC prompt, public profile link (or syncing state), an admin dashboard link for admins, common navigation items (My Bids, Watchlist, My Listings, Messages, Support Tickets) and a Sign Out item. The Messages item carries a badge with the number of the user's conversations that contain unread messages.
+ * @param input - What decides the list
+ * @param input.role - The user's role
+ * @param input.unreadMessages - Conversations with unread messages
+ * @param input.unpaidLots - Won lots awaiting payment
+ * @returns The links
+ */
+function buildLinks(input: {
+  role: string | undefined;
+  unreadMessages: number;
+  unpaidLots: number;
+}): MenuLink[] {
+  const { role, unreadMessages, unpaidLots } = input;
+  const links: MenuLink[] = [
+    { name: "Auctions", href: "/auctions", icon: Search },
+    {
+      name: "My bids",
+      href: "/dashboard/bids",
+      icon: Clock,
+      badge:
+        unpaidLots > 0
+          ? {
+              text: String(unpaidLots),
+              label: `${String(unpaidLots)} to pay`,
+              urgent: true,
+            }
+          : undefined,
+    },
+    { name: "Watching", href: "/dashboard/bids?tab=watching", icon: Heart },
+  ];
+  if (role === "seller" || role === "admin") {
+    links.push({
+      name: "My listings",
+      href: "/dashboard/listings",
+      icon: FileText,
+    });
+  }
+  links.push(
+    {
+      name: "Messages",
+      href: "/messages",
+      icon: MessageCircle,
+      badge:
+        unreadMessages > 0
+          ? {
+              text: String(unreadMessages),
+              label: `${String(unreadMessages)} unread`,
+              urgent: true,
+            }
+          : undefined,
+    },
+    { name: "Account", href: "/account", icon: UserRound },
+    { name: "Support", href: "/support", icon: Info }
+  );
+  if (role === "admin") {
+    links.push({ name: "Admin", href: "/admin", icon: ShieldAlert });
+  }
+  return links;
+}
+
+/**
+ * Whether a menu link is the one for the page being shown. A link matches on
+ * path and on every query parameter it names; one without a query ("My bids")
+ * gives way to a sibling that names the current query ("Watching" on
+ * `?tab=watching`).
+ *
+ * @param link - The link to test
+ * @param links - All the menu links
+ * @param pathname - The current path
+ * @param search - The current query string
+ * @returns True when the link is for the current page
+ */
+function isLinkActive(
+  link: MenuLink,
+  links: MenuLink[],
+  pathname: string,
+  search: string
+): boolean {
+  const current = new URLSearchParams(search);
+  const matches = (href: string): boolean => {
+    const target = new URL(href, "https://agribid.local");
+    return (
+      target.pathname === pathname &&
+      [...target.searchParams].every(([k, v]) => current.get(k) === v)
+    );
+  };
+  if (!matches(link.href)) return false;
+  const named = (href: string) =>
+    [...new URL(href, "https://agribid.local").searchParams].length;
+  return !links.some(
+    (other) =>
+      other !== link &&
+      named(other.href) > named(link.href) &&
+      matches(other.href)
+  );
+}
+
+/**
+ * The count at the right edge of a menu row. The row's link carries the spoken
+ * label, so the number itself is hidden from screen readers.
+ *
+ * @param props - Component props
+ * @param props.badge - The badge
+ * @returns The badge
+ */
+function Count({ badge }: { badge: NonNullable<MenuLink["badge"]> }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "ml-auto flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1.5 text-xs font-bold",
+        badge.urgent
+          ? "bg-destructive text-primary-foreground"
+          : "text-muted-foreground"
+      )}
+    >
+      {badge.text}
+    </span>
+  );
+}
+
+/**
+ * The account menu: the avatar opens a bottom sheet on a phone (the `menu`
+ * frame) and a dropdown from `md`. Both hold the same links, "Finish
+ * registration" until the user is verified, and Sign out. "My bids" shows how
+ * many won lots wait for payment and "Messages" how many conversations have
+ * unread messages. The seller's public page link lives in Account.
  *
  * @param props - Component props
  * @param props.userData - Optional user object; used to display the user's name when available
  * @param props.isLoadingProfile - When true, disables interaction and shows loading placeholders in the trigger
- * @param props.isVerified - Whether the user's identity/KYC is verified; controls badge and KYC prompt visibility
- * @param props.kycStatus - KYC status string (for example `"pending"`); used to determine KYC-related UI states and labels
- * @param props.profileId - Public profile identifier; when present enables the Public Profile link, otherwise shows a syncing state
- * @param props.role - User role (for example `"admin"`); when `"admin"` shows the Admin Dashboard link
- * @param props.onSignOut - Callback invoked when the user selects "Sign Out"; errors from this callback are caught and surfaced to the user
- * @returns The dropdown menu JSX containing the trigger and account-related menu items
+ * @param props.isVerified - Whether the user's identity is verified; controls the badge and the registration prompt
+ * @param props.kycStatus - Verification status string (for example `"pending"`); used for the badge label
+ * @param props.role - User role (for example `"admin"`); admins see the Admin link, sellers see My listings
+ * @param props.onSignOut - Callback invoked when the user selects "Sign out"; errors are caught and shown in a toast
+ * @returns The account menu JSX
  */
 export function UserDropdown({
   userData,
   isLoadingProfile,
   isVerified,
   kycStatus,
-  profileId,
   role,
   onSignOut,
 }: UserDropdownProps) {
   const location = useLocation();
+  const isPhone = useMediaQuery("(max-width: 767px)");
+  const [sheetPath, setSheetPath] = useState<string | null>(null);
+  // Open for the page it was opened on, so it closes when the route changes.
+  const sheetOpen = sheetPath === location.pathname + location.search;
   const unreadMessageCount = useQuery(api.messages.getUnreadConversationCount);
+  const summary = useQuery(api.lotPayments.getMyPaymentSummary);
+  const eligibility = useQuery(api.registration.getMyBidEligibility);
   const name = userData?.name?.trim() ?? "";
   const displayName = name.length > 0 ? name : "User";
   const initials = initialsOf(name, userData?.email ?? undefined);
+  const links = buildLinks({
+    role,
+    unreadMessages: unreadMessageCount ?? 0,
+    unpaidLots: summary?.awaitingCount ?? 0,
+  });
+
+  const signOut = () => {
+    onSignOut().catch((err: unknown) => {
+      console.error("Sign out failed:", err);
+      toast.error("Sign out failed. Please try again.");
+    });
+  };
+
+  const closeSheet = () => {
+    setSheetPath(null);
+  };
+
+  const trigger = (onClick?: () => void): ReactNode => (
+    <Button
+      variant="ghost"
+      className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-md group"
+      disabled={isLoadingProfile}
+      onClick={onClick}
+      aria-haspopup={onClick ? "dialog" : undefined}
+      aria-expanded={onClick ? sheetOpen : undefined}
+    >
+      <div className="flex-col items-end hidden sm:flex">
+        <div className="flex items-center gap-1.5">
+          {isLoadingProfile ? (
+            <div className="h-4 w-12 bg-muted animate-pulse rounded" />
+          ) : isVerified ? (
+            <Badge
+              variant="secondary"
+              className="h-4 px-1 text-[8px] font-semibold bg-success/10 text-success border-success/20"
+            >
+              Verified
+            </Badge>
+          ) : (
+            <Badge
+              variant="secondary"
+              className="h-4 px-1 text-[8px] font-semibold bg-warning/10 text-warning border-warning/20"
+            >
+              {kycStatus === "pending" ? "Pending Review" : "Unverified"}
+            </Badge>
+          )}
+        </div>
+        <span className="text-sm font-bold text-primary leading-none mt-1">
+          {isLoadingProfile ? "Loading..." : displayName}
+        </span>
+      </div>
+      <span className="sr-only sm:hidden">Account menu</span>
+      <div
+        data-slot="avatar"
+        className="size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold"
+      >
+        {isLoadingProfile ? (
+          <LoadingIndicator size="sm" />
+        ) : initials ? (
+          <span aria-hidden="true">{initials}</span>
+        ) : (
+          <User aria-hidden="true" className="h-4 w-4" />
+        )}
+      </div>
+      <ChevronDown
+        aria-hidden="true"
+        className="hidden sm:block h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform"
+      />
+    </Button>
+  );
+
+  const registrationPrompt = isVerified ? null : (
+    <Link
+      to="/register"
+      onClick={closeSheet}
+      className="flex min-h-11 items-center gap-3 rounded-md border border-warning/20 bg-warning/10 p-3 text-warning"
+    >
+      <ShieldAlert aria-hidden="true" className="size-5" />
+      <span className="flex flex-col">
+        <span className="text-sm leading-none font-semibold">
+          Finish registration
+        </span>
+        <span className="mt-0.5 text-xs font-medium opacity-80">
+          Needed to bid and to sell
+        </span>
+      </span>
+    </Link>
+  );
+
+  if (isPhone) {
+    return (
+      <>
+        {trigger(() => {
+          setSheetPath(location.pathname + location.search);
+        })}
+        <BottomSheet
+          open={sheetOpen}
+          onOpenChange={(open) => {
+            setSheetPath(open ? location.pathname + location.search : null);
+          }}
+          title={displayName}
+        >
+          <div className="mb-2 flex items-center gap-3">
+            <div
+              aria-hidden="true"
+              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-base font-bold text-primary-foreground"
+            >
+              {initials}
+            </div>
+            {eligibility?.kind === "ok" ? (
+              <p className="inline-flex items-center gap-1.5 rounded-sm bg-ok-soft px-2 py-0.5 text-sm font-semibold text-ok-fg">
+                <CheckCircle2 aria-hidden="true" className="size-4" />
+                You can bid
+              </p>
+            ) : null}
+          </div>
+          {registrationPrompt ? (
+            <div className="mb-2">{registrationPrompt}</div>
+          ) : null}
+          <nav aria-label="Account menu">
+            <ul className="m-0 list-none p-0">
+              {links.map((link) => {
+                const Icon = link.icon;
+                return (
+                  <li key={link.name} className="border-b border-border">
+                    <Link
+                      to={link.href}
+                      onClick={closeSheet}
+                      aria-label={
+                        link.badge
+                          ? `${link.name}, ${link.badge.label}`
+                          : undefined
+                      }
+                      className="flex min-h-[52px] items-center gap-4 text-[17px] font-medium"
+                    >
+                      <Icon aria-hidden="true" className="size-5" />
+                      {link.name}
+                      {link.badge ? <Count badge={link.badge} /> : null}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 w-full"
+            onClick={signOut}
+          >
+            Sign out
+          </Button>
+        </BottomSheet>
+      </>
+    );
+  }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="gap-2 px-2 hover:bg-primary/5 h-12 rounded-md group"
-          disabled={isLoadingProfile}
-        >
-          <div className="flex-col items-end hidden sm:flex">
-            <div className="flex items-center gap-1.5">
-              {isLoadingProfile ? (
-                <div className="h-4 w-12 bg-muted animate-pulse rounded" />
-              ) : isVerified ? (
-                <Badge
-                  variant="secondary"
-                  className="h-4 px-1 text-[8px] font-semibold bg-success/10 text-success border-success/20"
-                >
-                  Verified
-                </Badge>
-              ) : (
-                <Badge
-                  variant="secondary"
-                  className="h-4 px-1 text-[8px] font-semibold bg-warning/10 text-warning border-warning/20"
-                >
-                  {kycStatus === "pending" ? "Pending Review" : "Unverified"}
-                </Badge>
-              )}
-            </div>
-            <span className="text-sm font-bold text-primary leading-none mt-1">
-              {isLoadingProfile ? "Loading..." : displayName}
-            </span>
-          </div>
-          <span className="sr-only sm:hidden">Account menu</span>
-          <div
-            data-slot="avatar"
-            className="size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold"
-          >
-            {isLoadingProfile ? (
-              <LoadingIndicator size="sm" />
-            ) : initials ? (
-              <span aria-hidden="true">{initials}</span>
-            ) : (
-              <User aria-hidden="true" className="h-4 w-4" />
-            )}
-          </div>
-          <ChevronDown
-            aria-hidden="true"
-            className="hidden sm:block h-4 w-4 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform"
-          />
-        </Button>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger asChild>{trigger()}</DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
         className="w-64 rounded-md border p-2 shadow-2xl"
       >
-        {navLinks.map((link) => {
+        {registrationPrompt ? (
+          <DropdownMenuItem asChild className="mb-1 p-0">
+            {registrationPrompt}
+          </DropdownMenuItem>
+        ) : null}
+        {links.map((link) => {
           const Icon = link.icon;
-          const isActive = location.pathname === link.href;
+          const isActive = isLinkActive(
+            link,
+            links,
+            location.pathname,
+            location.search
+          );
           return (
             <DropdownMenuItem
               key={link.name}
               asChild
-              className="rounded-md font-semibold text-xs h-10"
+              className="rounded-md font-semibold text-sm h-11"
             >
               <Link
                 to={link.href}
-                className={`flex items-center gap-2 w-full ${
-                  isActive ? "text-primary" : ""
-                }`}
+                aria-label={
+                  link.badge ? `${link.name}, ${link.badge.label}` : undefined
+                }
+                className={cn(
+                  "flex items-center gap-3 w-full",
+                  isActive && "text-primary"
+                )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon aria-hidden="true" className="size-4" />
                 {link.name}
+                {link.badge ? <Count badge={link.badge} /> : null}
               </Link>
             </DropdownMenuItem>
           );
         })}
         <DropdownMenuSeparator />
-
-        {!isVerified && (
-          <DropdownMenuItem
-            asChild
-            className="bg-warning/10 text-warning focus:bg-warning/20 focus:text-warning rounded-md mb-1 border border-warning/20 p-3"
-          >
-            <Link to="/register" className="flex items-center gap-3 w-full">
-              <ShieldAlert className="h-5 w-5" />
-              <div className="flex flex-col">
-                <span className="font-semibold text-xs leading-none">
-                  Finish registration
-                </span>
-                <span className="text-[9px] font-medium opacity-80 mt-0.5">
-                  Needed to bid and to sell
-                </span>
-              </div>
-            </Link>
-          </DropdownMenuItem>
-        )}
-
-        {profileId ? (
-          <DropdownMenuItem
-            asChild
-            className="rounded-md font-semibold text-xs h-10"
-          >
-            <Link
-              to={`/profile/${profileId}`}
-              className="flex items-center gap-2 w-full"
-            >
-              <User className="h-4 w-4" />
-              Public Profile
-            </Link>
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            disabled
-            className="rounded-md font-semibold text-xs h-10 opacity-50"
-          >
-            <div className="flex items-center gap-2 w-full">
-              <User className="h-4 w-4" />
-              Public Profile (Syncing...)
-            </div>
-          </DropdownMenuItem>
-        )}
-
-        {role === "admin" && (
-          <DropdownMenuItem
-            asChild
-            className="rounded-md font-semibold text-xs text-primary focus:bg-primary/10 focus:text-primary h-10"
-          >
-            <Link to="/admin" className="flex items-center gap-2 w-full">
-              <ShieldAlert className="h-4 w-4" />
-              Admin Dashboard
-            </Link>
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
-
         <DropdownMenuItem
-          asChild
-          className="rounded-md font-semibold text-xs h-10"
+          onClick={signOut}
+          className="rounded-md font-semibold text-sm cursor-pointer focus:bg-destructive/10 focus:text-destructive text-destructive h-11 gap-3"
         >
-          <Link to="/dashboard/bids" className="flex items-center gap-2 w-full">
-            <LayoutDashboard className="h-4 w-4" />
-            My Bids
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          asChild
-          className="rounded-md font-semibold text-xs h-10"
-        >
-          <Link
-            to="/dashboard/bids?tab=watching"
-            className="flex items-center gap-2 w-full"
-          >
-            <Heart className="h-4 w-4" />
-            Watchlist
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          asChild
-          className="rounded-md font-semibold text-xs h-10"
-        >
-          <Link
-            to="/dashboard/listings"
-            className="flex items-center gap-2 w-full"
-          >
-            <ClipboardList className="h-4 w-4" />
-            My Listings
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          asChild
-          className="rounded-md font-semibold text-xs h-10"
-        >
-          <Link
-            to="/messages"
-            className="flex items-center gap-2 w-full"
-            aria-label={
-              unreadMessageCount
-                ? `Messages, ${String(unreadMessageCount)} unread`
-                : undefined
-            }
-          >
-            <span className="relative flex">
-              <Mail className="h-4 w-4" />
-              {unreadMessageCount ? (
-                <span
-                  className="absolute -top-1.5 -right-2 h-4 min-w-4 px-1 rounded-full bg-primary text-[9px] font-black text-primary-foreground flex items-center justify-center border-2 border-background animate-in zoom-in"
-                  aria-hidden="true"
-                >
-                  {unreadMessageCount}
-                </span>
-              ) : null}
-            </span>
-            Messages
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          asChild
-          className="rounded-md font-semibold text-xs h-10"
-        >
-          <Link to="/settings" className="flex items-center gap-2 w-full">
-            <Settings className="h-4 w-4" />
-            Settings
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          asChild
-          className="rounded-md font-semibold text-xs h-10"
-        >
-          <Link to="/support" className="flex items-center gap-2 w-full">
-            <MessageSquare className="h-4 w-4" />
-            Support Tickets
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => {
-            onSignOut().catch((err: unknown) => {
-              console.error("Sign out failed:", err);
-              toast.error("Sign out failed. Please try again.");
-            });
-          }}
-          className="rounded-md font-semibold text-xs cursor-pointer focus:bg-destructive/10 focus:text-destructive text-destructive h-10 gap-2"
-        >
-          <LogOut className="h-4 w-4" />
-          Sign Out
+          <LogOut aria-hidden="true" className="size-4" />
+          Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

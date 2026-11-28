@@ -71,7 +71,12 @@ const RegistrationStatus = lazy(
 const Support = lazy(() => import("./pages/Support"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Messages = lazy(() => import("./pages/Messages"));
-const Settings = lazy(() => import("./pages/Settings"));
+const Account = lazy(() => import("./pages/account/Account"));
+const SellerDetails = lazy(() => import("./pages/account/SellerDetails"));
+const DepositPage = lazy(() => import("./pages/account/DepositPage"));
+const AccountNotifications = lazy(
+  () => import("./pages/account/NotificationsPage")
+);
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Dev-only design-system reference. `import.meta.env.DEV` is a build-time constant,
@@ -109,6 +114,28 @@ function withBoundary(element: ReactElement): ReactElement {
 function KycRedirect() {
   const { search } = useLocation();
   return <Navigate to={`/register${search}`} replace />;
+}
+
+/**
+ * Sends the retired `/settings` page to `/account`, keeping the query string.
+ *
+ * @returns A redirect
+ */
+function SettingsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/account${search}`} replace />;
+}
+
+/**
+ * Wraps an Account page in the sign-in guard and an error boundary.
+ *
+ * @param page - The Account page
+ * @returns The guarded page
+ */
+function accountRoute(page: ReactElement): ReactElement {
+  return withBoundary(
+    <RoleProtectedRoute allowedRole="any">{page}</RoleProtectedRoute>
+  );
 }
 
 /**
@@ -156,7 +183,9 @@ function registerRoute(page: ReactElement): ReactElement {
  * - "/notifications" → Notifications (protected, allowedRole="any")
  * - "/messages" → Messages inbox (protected, allowedRole="any")
  * - "/messages/:conversationId" → Messages thread view (protected, allowedRole="any")
- * - "/settings" → Settings (protected, allowedRole="any")
+ * - "/account" → Account (protected, allowedRole="any")
+ * - "/account/seller", "/account/deposit", "/account/notifications" → Account sub-pages (protected)
+ * - "/settings" → redirects to "/account", keeping the query string
  * - "/design-system" → DesignSystem (development builds only)
  * - "*" → NotFound (catch-all for unknown routes)
  *
@@ -314,14 +343,20 @@ function App() {
                 </RoleProtectedRoute>
               )}
             />
+            <Route path="/account" element={accountRoute(<Account />)} />
             <Route
-              path="/settings"
-              element={
-                <RoleProtectedRoute allowedRole="any">
-                  <Settings />
-                </RoleProtectedRoute>
-              }
+              path="/account/seller"
+              element={accountRoute(<SellerDetails />)}
             />
+            <Route
+              path="/account/deposit"
+              element={accountRoute(<DepositPage />)}
+            />
+            <Route
+              path="/account/notifications"
+              element={accountRoute(<AccountNotifications />)}
+            />
+            <Route path="/settings" element={<SettingsRedirect />} />
             {DesignSystem ? (
               <Route path="/design-system" element={<DesignSystem />} />
             ) : null}

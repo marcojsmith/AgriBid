@@ -3,6 +3,7 @@ import { api } from "convex/_generated/api";
 import { Bell, BellOff } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { watchedAlertsAny } from "@/lib/account";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -15,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function AlertsSummary() {
   const prefs = useQuery(api.userPreferences.getMyPreferences);
   if (prefs === undefined) return <Skeleton className="h-12 w-full" />;
-  const on = prefs?.notificationsWatchedLots !== false;
+  const on = watchedAlertsAny(prefs);
   const Icon = on ? Bell : BellOff;
   return (
     <div className="flex items-start gap-3">
@@ -31,7 +32,7 @@ export function AlertsSummary() {
         </p>
       </div>
       <Link
-        to="/settings"
+        to="/account/notifications"
         className="inline-flex min-h-11 items-center text-[15px] font-semibold text-primary underline"
       >
         Change

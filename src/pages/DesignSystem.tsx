@@ -8,6 +8,7 @@ import { Banner } from "@/components/ds/Banner";
 import { BeforeYouBid } from "@/components/ds/BeforeYouBid";
 import { FeesRulesSheet } from "@/components/ds/FeesRulesSheet";
 import { HomeFilters } from "@/components/home/HomeFilters";
+import { DesignSystemAccount } from "@/pages/DesignSystemAccount";
 import { DesignSystemMyBids } from "@/pages/DesignSystemMyBids";
 import { BottomSheet } from "@/components/ds/BottomSheet";
 import { ConditionReport } from "@/components/ds/ConditionReport";
@@ -708,6 +709,18 @@ export default function DesignSystem() {
         </p>
         <div className="relative left-1/2 w-[min(100vw-2rem,1240px)] -translate-x-1/2">
           <DesignSystemMyBids />
+        </div>
+      </section>
+
+      <section aria-labelledby="ds-account" className="space-y-4">
+        <SectionHeader id="ds-account" title="Account" />
+        <p className="text-sm text-muted-foreground">
+          The real Account pages, rendered with fixture data (no sign-in, no
+          backend): one frame per state of <code>profile-r2</code>. Switch the
+          theme above for the dark frames.
+        </p>
+        <div className="relative left-1/2 w-[min(100vw-2rem,1240px)] -translate-x-1/2">
+          <DesignSystemAccount />
         </div>
       </section>
 

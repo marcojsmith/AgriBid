@@ -18,6 +18,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
+import { MAX_COLLECTION_ADDRESS_LENGTH } from "./constants";
 import { logActivity } from "./userActivity";
 import { resolveImageUrls } from "./auctions/helpers";
 import { requireAuth, requireProfile, resolveUserId } from "./lib/auth";
@@ -25,9 +26,6 @@ import { decryptPII, encryptPII } from "./lib/encryption";
 import { loadUnpaidPayments } from "./lib/depositRefund";
 import { collectByFrom } from "./lib/lotPayments";
 import { publicNameForProfile } from "./lib/sellerSlugs";
-
-/** Longest accepted collection address. */
-export const MAX_COLLECTION_ADDRESS_LENGTH = 300;
 
 const paymentStatusValidator = v.union(
   v.literal("awaiting"),

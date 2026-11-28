@@ -131,6 +131,7 @@ export function makeDetails(
     phoneNumber: undefined,
     idNumber: undefined,
     passportNumber: undefined,
+    idNumberLast3: undefined,
     countryOfIssue: undefined,
     streetAddress: undefined,
     town: undefined,
