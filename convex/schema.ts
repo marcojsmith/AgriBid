@@ -11,6 +11,7 @@ import {
   provinceValidator,
   sellerResponseTimeValidator,
 } from "./lib/provinces";
+import { profileFlagReasonValidator } from "./lib/reportReasons";
 
 export default defineSchema({
   // AgriBid Tables
@@ -225,13 +226,9 @@ export default defineSchema({
   profileFlags: defineTable({
     reportedUserId: v.string(),
     reporterId: v.string(),
-    reason: v.union(
-      v.literal("fake_account"),
-      v.literal("fraudulent_listings"),
-      v.literal("abusive_behaviour"),
-      v.literal("identity_misrepresentation"),
-      v.literal("other")
-    ),
+    // New reports use the current reasons; the retired literals stay in the
+    // validator for rows written before the seller page rework.
+    reason: profileFlagReasonValidator,
     details: v.optional(v.string()),
     status: v.union(
       v.literal("pending"),
@@ -342,13 +339,40 @@ export default defineSchema({
     phoneVerified: v.optional(v.boolean()),
     bankingVerified: v.optional(v.boolean()),
     taxNumberVerified: v.optional(v.boolean()),
+    // Seller page: the name buyers see (company, else "Thandi N.") and its URL
+    // slug. Set by `assignSellerSlug`; a slug is kept once set, and an old one
+    // moves to `sellerSlugRedirects` when the name changes.
+    publicName: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    // About text moderation: `bio` is the live, approved text. An edit waits in
+    // `bioPending` until an admin approves or rejects it.
+    bioPending: v.optional(v.string()),
+    bioStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("rejected")
+      )
+    ),
+    bioRejectionReason: v.optional(v.string()),
+    bioSubmittedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_userId", ["userId"])
     .index("by_kycStatus", ["kycStatus"])
     .index("by_role", ["role"])
-    .index("by_isVerified", ["isVerified"]),
+    .index("by_isVerified", ["isVerified"])
+    .index("by_slug", ["slug"])
+    .index("by_bioStatus_and_bioSubmittedAt", ["bioStatus", "bioSubmittedAt"]),
+
+  // Old seller slugs after a rename, so shared links keep working. A slug here
+  // is never handed to another user.
+  sellerSlugRedirects: defineTable({
+    slug: v.string(),
+    userId: v.string(),
+    createdAt: v.number(),
+  }).index("by_slug", ["slug"]),
 
   // Registration documents (one row per user and kind; a replacement updates the row).
   registrationDocuments: defineTable({

@@ -108,7 +108,7 @@ describe("reportProfile mutation", () => {
 
     const result = await reportProfileHandler(mockCtx, {
       reportedUserId,
-      reason: "fake_account",
+      reason: "suspected_fraud",
       details: "Looks like a scam",
     });
 
@@ -118,7 +118,7 @@ describe("reportProfile mutation", () => {
       expect.objectContaining({
         reportedUserId,
         reporterId,
-        reason: "fake_account",
+        reason: "suspected_fraud",
         details: "Looks like a scam",
         status: "pending",
       })

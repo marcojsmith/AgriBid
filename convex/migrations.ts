@@ -16,6 +16,7 @@ import {
   watcherCounterName,
 } from "./lib/lotCounters";
 import { encryptBytes } from "./lib/documentCrypto";
+import { assignSellerSlug, hasSubmittedLot } from "./lib/sellerSlugs";
 import { sniffDocumentType } from "./lib/documentSniff";
 import { extractImageStorageIds } from "./lib/storage";
 import type { Id } from "./_generated/dataModel";
@@ -25,6 +26,9 @@ import type { ActionCtx, MutationCtx } from "./_generated/server";
 export const LOT_NUMBER_BACKFILL_BATCH = 100;
 /** Lots examined per `backfillWatcherCounts` batch (each does an index count). */
 export const WATCHER_BACKFILL_BATCH = 25;
+
+/** Profiles examined per `backfillSellerSlugs` batch (each may read lots and slugs). */
+export const SELLER_SLUG_BACKFILL_BATCH = 25;
 
 /** Result of one migration batch. */
 interface BatchResult {
@@ -514,6 +518,66 @@ export const backfillWatcherCounts = internalMutation({
   }),
   handler: async (ctx, args) =>
     backfillWatcherCountsHandler(ctx, { cursor: args.cursor ?? null }),
+});
+
+/**
+ * One batch of the seller slug backfill.
+ *
+ * Walks `profiles`; every profile with no slug that owns at least one submitted
+ * (non-draft) lot gets a
+ * public name and slug (`assignSellerSlug`, which handles clashes with `-2`,
+ * `-3`). Profiles that already have a slug, and users who never listed, are
+ * left alone, so re-running is safe. Reschedules itself until the table is
+ * exhausted.
+ *
+ * @param ctx - Mutation context.
+ * @param args - Batch arguments.
+ * @param args.cursor - Pagination cursor, `null` for the first batch.
+ * @returns Counts for this batch and whether the migration finished.
+ */
+export async function backfillSellerSlugsHandler(
+  ctx: MutationCtx,
+  args: { cursor: string | null }
+): Promise<BatchResult> {
+  const page = await ctx.db
+    .query("profiles")
+    .paginate({ numItems: SELLER_SLUG_BACKFILL_BATCH, cursor: args.cursor });
+
+  let updated = 0;
+  for (const profile of page.page) {
+    if (profile.slug !== undefined) continue;
+    if (!(await hasSubmittedLot(ctx, profile.userId))) continue;
+    if ((await assignSellerSlug(ctx, profile)) !== null) updated++;
+  }
+
+  if (!page.isDone) {
+    await ctx.scheduler.runAfter(0, internal.migrations.backfillSellerSlugs, {
+      cursor: page.continueCursor,
+    });
+  }
+
+  return {
+    processed: page.page.length,
+    updated,
+    isDone: page.isDone,
+    continueCursor: page.isDone ? null : page.continueCursor,
+  };
+}
+
+/**
+ * Give every seller with a lot a public name and slug.
+ * Run with `bunx convex run migrations:backfillSellerSlugs`. Idempotent.
+ */
+export const backfillSellerSlugs = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.object({
+    processed: v.number(),
+    updated: v.number(),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) =>
+    backfillSellerSlugsHandler(ctx, { cursor: args.cursor ?? null }),
 });
 
 // ---------------------------------------------------------------------------

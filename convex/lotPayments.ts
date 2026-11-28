@@ -24,6 +24,7 @@ import { requireAuth, requireProfile, resolveUserId } from "./lib/auth";
 import { decryptPII, encryptPII } from "./lib/encryption";
 import { loadUnpaidPayments } from "./lib/depositRefund";
 import { collectByFrom } from "./lib/lotPayments";
+import { publicNameForProfile } from "./lib/sellerSlugs";
 
 /** Longest accepted collection address. */
 export const MAX_COLLECTION_ADDRESS_LENGTH = 300;
@@ -92,8 +93,8 @@ async function callerId(ctx: QueryCtx | MutationCtx): Promise<string> {
 }
 
 /**
- * The seller name winners see: the company name when set, otherwise the first
- * name and the surname's initial (`Thandi N.`).
+ * The seller name winners see: the same public name as the seller's page
+ * (company name, else first name and the surname's initial: `Thandi N.`).
  *
  * @param profile - The seller's profile
  * @returns The display name
@@ -102,26 +103,7 @@ export async function sellerDisplayName(
   profile: Doc<"profiles"> | null
 ): Promise<string> {
   if (!profile) return "Seller";
-  const company = profile.companyName?.trim();
-  if (company) return company;
-  const [first, last] = await Promise.all([
-    decryptPII(profile.firstName),
-    decryptPII(profile.lastName),
-  ]);
-  let firstName = first?.trim();
-  let lastName = last?.trim();
-  if (!firstName) {
-    // No separate names: split the registration full name, else the display name.
-    const parts = ((await decryptPII(profile.fullName)) ?? profile.name ?? "")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-    firstName = parts[0];
-    lastName = parts.length > 1 ? parts[parts.length - 1] : undefined;
-  }
-  if (!firstName) return "Seller";
-  const initial = lastName?.charAt(0).toUpperCase();
-  return initial ? `${firstName} ${initial}.` : firstName;
+  return (await publicNameForProfile(profile)) ?? "Seller";
 }
 
 /**

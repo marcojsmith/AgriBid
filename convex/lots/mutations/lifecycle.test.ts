@@ -44,6 +44,12 @@ vi.mock("../../admin/platformSettings", () => ({ getMinPhotosPerLot }));
 
 vi.mock("../../userActivity", () => ({ logActivity }));
 
+const { ensureSellerSlug } = vi.hoisted(() => ({
+  ensureSellerSlug: vi.fn().mockResolvedValue("slug"),
+}));
+
+vi.mock("../../lib/sellerSlugs", () => ({ ensureSellerSlug }));
+
 const { updateCounter } = vi.hoisted(() => ({
   updateCounter: vi.fn().mockResolvedValue(undefined),
 }));
@@ -129,6 +135,7 @@ describe("Lot lifecycle mutations", () => {
           relatedId: "l1",
         })
       );
+      expect(ensureSellerSlug).toHaveBeenCalledWith(mockCtx, "u1");
     });
 
     it("throws when the lot is missing", async () => {

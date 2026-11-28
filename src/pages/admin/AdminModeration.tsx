@@ -19,6 +19,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FLAG_REASON_BADGE_VARIANTS } from "@/lib/auction-badges";
+import { PROFILE_FLAG_REASON_LABELS } from "@/lib/profile-utils";
+import type { ProfileFlagReason } from "@/types/profile";
 import {
   Card,
   CardContent,
@@ -56,12 +58,7 @@ interface PendingProfileFlag {
   _creationTime: number;
   reportedUserId: string;
   reporterId: string;
-  reason:
-    | "fake_account"
-    | "fraudulent_listings"
-    | "abusive_behaviour"
-    | "identity_misrepresentation"
-    | "other";
+  reason: ProfileFlagReason;
   details?: string;
   status: "pending" | "reviewed" | "dismissed";
   adminNotes?: string;
@@ -324,7 +321,9 @@ export default function AdminModeration() {
                           Reported by {flag.reporterName}
                         </CardDescription>
                       </div>
-                      <Badge variant="outline">{flag.reason}</Badge>
+                      <Badge variant="outline">
+                        {PROFILE_FLAG_REASON_LABELS[flag.reason]}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { REPORT_REASON_OPTIONS } from "@/lib/profile-utils";
 import type { ReportReason } from "@/types/profile";
 
 interface ReportDialogProps {
@@ -100,17 +101,11 @@ export function ReportDialog({ userId }: ReportDialogProps) {
                 <SelectValue placeholder="Select a reason" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="fake_account">Fake Account</SelectItem>
-                <SelectItem value="fraudulent_listings">
-                  Fraudulent Listings
-                </SelectItem>
-                <SelectItem value="abusive_behaviour">
-                  Abusive Behaviour
-                </SelectItem>
-                <SelectItem value="identity_misrepresentation">
-                  Identity Misrepresentation
-                </SelectItem>
-                <SelectItem value="other">Other</SelectItem>
+                {REPORT_REASON_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

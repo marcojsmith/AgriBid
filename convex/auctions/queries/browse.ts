@@ -13,8 +13,12 @@ import { getAuthenticatedProfile } from "../../lib/auth";
 import { parseOffsetCursor } from "../../lib/pagination";
 import { sellerResponseTimeValidator } from "../../lib/provinces";
 import { countQuery } from "../../admin_utils";
-import { getSellerRatingSummary } from "../../reviews";
+import { getSellerRatingSummary, MIN_PUBLIC_REVIEWS } from "../../reviews";
+import { canSeeSellerPrivate } from "../../lib/viewer";
 import { MAX_RESULTS_CAP } from "../../constants";
+
+/** Newest sold lots averaged for the owner-only average sale price. */
+const AVG_SALE_PRICE_SAMPLE = 200;
 
 type StatusFilter = "active" | "closed" | "all";
 
@@ -449,7 +453,13 @@ export const getLotById = query({
 });
 
 /**
- * Returns seller profile info including verification status, items sold, and total listings.
+ * Returns seller profile info: items sold, listings, rating and public details.
+ *
+ * The private fields (KYC status, verification flags, bids placed and average
+ * sale price) are only returned to the seller themselves and to admins; every
+ * other caller, signed in or not, gets them left out. The rating is hidden
+ * until the seller has {@link MIN_PUBLIC_REVIEWS} reviews, except for the
+ * seller and admins.
  *
  * @param ctx - Convex Query context
  * @param args - Query arguments
@@ -469,65 +479,100 @@ export const getSellerInfoHandler = async (
 
   if (!profile) return null;
 
-  const [soldLots, activeLots, bidsPlaced, { avgRating, reviewCount }] =
-    await Promise.all([
+  const [soldCount, activeLots, rating, canSeePrivate] = await Promise.all([
+    countQuery(
       ctx.db
         .query("lots")
         .withIndex("by_seller_status", (q) =>
           q.eq("sellerId", sellerId).eq("status", "sold")
         )
-        .collect(),
-      countQuery(
-        ctx.db
-          .query("lots")
-          .withIndex("by_seller_status", (q) =>
-            q.eq("sellerId", sellerId).eq("status", "assigned")
-          )
-      ),
-      countQuery(
-        ctx.db
-          .query("bids")
-          .withIndex("by_bidder", (q) => q.eq("bidderId", sellerId))
-      ),
-      getSellerRatingSummary(ctx, sellerId),
-    ]);
+    ),
+    countQuery(
+      ctx.db
+        .query("lots")
+        .withIndex("by_seller_status", (q) =>
+          q.eq("sellerId", sellerId).eq("status", "assigned")
+        )
+    ),
+    getSellerRatingSummary(ctx, sellerId),
+    canSeeSellerPrivate(ctx, sellerId),
+  ]);
 
-  const soldLotsCount = soldLots.length;
-  const activeListingsCount = activeLots;
-  const totalSoldPrice = soldLots.reduce(
-    (sum, lot) => sum + lot.currentPrice,
-    0
-  );
-  const avgSalePrice =
-    soldLotsCount > 0 ? Math.round(totalSoldPrice / soldLotsCount) : undefined;
+  const showRating = canSeePrivate || rating.reviewCount >= MIN_PUBLIC_REVIEWS;
 
-  return {
-    name: profile.name,
-    isVerified: profile.isVerified,
-    kycStatus: profile.kycStatus,
+  const base = {
+    // Never the account's full name for the public: that is the seller's
+    // public name ("Thandi N." or the business name).
+    name: canSeePrivate ? profile.name : profile.publicName,
     role: profile.role,
     createdAt: profile.createdAt,
-    itemsSold: soldLotsCount,
-    activeListings: activeListingsCount,
-    totalListings: soldLotsCount + activeListingsCount,
+    itemsSold: soldCount,
+    activeListings: activeLots,
+    totalListings: soldCount + activeLots,
     bio: profile.bio,
     companyName: profile.companyName,
     location: profile.location,
     sellerResponseTime: profile.sellerResponseTime,
+    avgRating: showRating ? rating.avgRating : undefined,
+    reviewCount: showRating ? rating.reviewCount : 0,
+  };
+
+  if (!canSeePrivate) {
+    // Same shape for everyone; the private fields are simply absent.
+    return {
+      ...base,
+      isVerified: undefined,
+      kycStatus: undefined,
+      emailVerified: undefined,
+      phoneVerified: undefined,
+      bankingVerified: undefined,
+      taxNumberVerified: undefined,
+      bidsPlaced: undefined,
+      avgSalePrice: undefined,
+    };
+  }
+
+  const [soldLots, bidsPlaced] = await Promise.all([
+    ctx.db
+      .query("lots")
+      .withIndex("by_seller_status", (q) =>
+        q.eq("sellerId", sellerId).eq("status", "sold")
+      )
+      .order("desc")
+      .take(AVG_SALE_PRICE_SAMPLE),
+    countQuery(
+      ctx.db
+        .query("bids")
+        .withIndex("by_bidder", (q) => q.eq("bidderId", sellerId))
+    ),
+  ]);
+  const totalSoldPrice = soldLots.reduce(
+    (sum, lot) => sum + lot.currentPrice,
+    0
+  );
+
+  return {
+    ...base,
+    isVerified: profile.isVerified,
+    kycStatus: profile.kycStatus,
     emailVerified: profile.emailVerified,
     phoneVerified: profile.phoneVerified,
     bankingVerified: profile.bankingVerified,
     taxNumberVerified: profile.taxNumberVerified,
     bidsPlaced,
-    avgSalePrice,
-    avgRating,
-    reviewCount,
+    avgSalePrice:
+      soldLots.length > 0
+        ? Math.round(totalSoldPrice / soldLots.length)
+        : undefined,
   };
 };
 
 /**
  * Query: Get seller profile information.
  * Args: sellerId
+ *
+ * The private fields (KYC status, verification flags, bids placed, average sale
+ * price) are returned only to the seller and to admins.
  *
  * @returns Seller profile or null
  */
@@ -537,14 +582,6 @@ export const getSellerInfo = query({
     v.null(),
     v.object({
       name: v.optional(v.string()),
-      isVerified: v.boolean(),
-      kycStatus: v.optional(
-        v.union(
-          v.literal("pending"),
-          v.literal("verified"),
-          v.literal("rejected")
-        )
-      ),
       role: v.string(),
       createdAt: v.optional(v.number()),
       itemsSold: v.number(),
@@ -554,14 +591,23 @@ export const getSellerInfo = query({
       companyName: v.optional(v.string()),
       location: v.optional(v.string()),
       sellerResponseTime: v.optional(sellerResponseTimeValidator),
+      avgRating: v.optional(v.number()),
+      reviewCount: v.number(),
+      // Owner and admin only:
+      isVerified: v.optional(v.boolean()),
+      kycStatus: v.optional(
+        v.union(
+          v.literal("pending"),
+          v.literal("verified"),
+          v.literal("rejected")
+        )
+      ),
       emailVerified: v.optional(v.boolean()),
       phoneVerified: v.optional(v.boolean()),
       bankingVerified: v.optional(v.boolean()),
       taxNumberVerified: v.optional(v.boolean()),
-      bidsPlaced: v.number(),
+      bidsPlaced: v.optional(v.number()),
       avgSalePrice: v.optional(v.number()),
-      avgRating: v.optional(v.number()),
-      reviewCount: v.number(),
     })
   ),
   handler: getSellerInfoHandler,

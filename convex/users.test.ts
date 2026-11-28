@@ -13,6 +13,7 @@ import {
 } from "./users";
 import * as auth from "./lib/auth";
 import * as adminUtils from "./admin_utils";
+import * as sellerSlugs from "./lib/sellerSlugs";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import type { AuthUser } from "./lib/auth";
@@ -31,6 +32,10 @@ const mockAdminUser: AuthUser = {
   name: "Admin User",
   email: "admin@test.com",
 };
+
+vi.mock("./lib/sellerSlugs", () => ({
+  syncSellerSlug: vi.fn().mockResolvedValue(null),
+}));
 
 vi.mock("./admin_utils", () => ({
   logAudit: vi.fn(),
@@ -819,7 +824,7 @@ describe("Users Coverage", () => {
   });
 
   describe("updateMyProfileHandler", () => {
-    it("patches profile with provided fields", async () => {
+    it("patches profile with provided fields and sends the bio to review", async () => {
       vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
       queryMock.unique.mockResolvedValue({ _id: "p1" as Id<"profiles"> });
 
@@ -833,11 +838,47 @@ describe("Users Coverage", () => {
         "profiles",
         "p1",
         expect.objectContaining({
-          bio: "New bio",
+          bioPending: "New bio",
+          bioStatus: "pending",
           location: "Cape Town",
           companyName: "Farm Co",
         })
       );
+      const patchArgs = mockCtx.db.patch.mock.calls[0][2] as Record<
+        string,
+        unknown
+      >;
+      expect("bio" in patchArgs).toBe(false);
+      expect(sellerSlugs.syncSellerSlug).toHaveBeenCalledWith(
+        mockCtx,
+        expect.objectContaining({ companyName: "Farm Co" })
+      );
+    });
+
+    it("clears the live and pending bio when the bio is emptied", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("user123");
+      queryMock.unique.mockResolvedValue({
+        _id: "p1" as Id<"profiles">,
+        bio: "Old",
+        bioPending: "Newer",
+        bioStatus: "pending",
+      });
+
+      await updateMyProfileHandler(mockCtx as unknown as MutationCtx, {
+        bio: "   ",
+      });
+
+      const patchArgs = mockCtx.db.patch.mock.calls[0][2] as Record<
+        string,
+        unknown
+      >;
+      expect(patchArgs).toMatchObject({
+        bio: undefined,
+        bioPending: undefined,
+        bioStatus: undefined,
+      });
+      expect("bio" in patchArgs).toBe(true);
+      expect(sellerSlugs.syncSellerSlug).not.toHaveBeenCalled();
     });
 
     it("throws ConvexError when profile not found", async () => {

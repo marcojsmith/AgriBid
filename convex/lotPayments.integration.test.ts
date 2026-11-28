@@ -966,6 +966,18 @@ describe("sellerDisplayName", () => {
     ).toBe("Thandi N.");
   });
 
+  it("prefers the registration full name over legacy first and last names", async () => {
+    expect(
+      await sellerDisplayName(
+        doc({
+          firstName: await encryptPII("Old"),
+          lastName: await encryptPII("Surname"),
+          fullName: await encryptPII("Thandi Nkosi"),
+        })
+      )
+    ).toBe("Thandi N.");
+  });
+
   it("falls back to the full name, then the display name", async () => {
     expect(
       await sellerDisplayName(

@@ -54,6 +54,12 @@ vi.mock("../../admin_utils", () => ({
   logAudit: vi.fn(),
 }));
 
+const { ensureSellerSlug } = vi.hoisted(() => ({
+  ensureSellerSlug: vi.fn().mockResolvedValue("slug"),
+}));
+
+vi.mock("../../lib/sellerSlugs", () => ({ ensureSellerSlug }));
+
 const createMockProfile = (userId: string, role: string) => ({
   userId,
   role,
@@ -242,6 +248,19 @@ describe("Create Mutations", () => {
           createdAt: expect.any(Number) as number,
         })
       );
+      expect(ensureSellerSlug).toHaveBeenCalledWith(mockCtx, "u1");
+    });
+
+    it("should not assign a seller slug for drafts", async () => {
+      vi.mocked(auth.getAuthenticatedUserId).mockResolvedValue("u1");
+      mockCtx.db.get.mockResolvedValue({ _id: "cat1" });
+
+      await createLotHandler(mockCtx as unknown as MutationCtx, {
+        ...validArgs,
+        isDraft: true,
+      });
+
+      expect(ensureSellerSlug).not.toHaveBeenCalled();
     });
 
     it("should not log activity for drafts", async () => {

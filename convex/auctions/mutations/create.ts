@@ -9,6 +9,7 @@ import {
 import { normalizeImages } from "../../lib/storage";
 import { provinceValidator, type Province } from "../../lib/provinces";
 import { updateCounter } from "../../admin_utils";
+import { ensureSellerSlug } from "../../lib/sellerSlugs";
 import { logActivity } from "../../userActivity";
 import {
   assertLotEditable,
@@ -268,6 +269,8 @@ export const createLotHandler = async (
       description: `Listing created: ${args.title}`,
       relatedId: lotId,
     });
+    // First submitted lot: give the seller their public page slug.
+    await ensureSellerSlug(ctx, userId);
   }
 
   return lotId;

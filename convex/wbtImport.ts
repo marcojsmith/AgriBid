@@ -11,6 +11,7 @@ import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { updateCounter, getCounter } from "./admin_utils";
 import { recalculateCounters } from "./lib/seedCounters";
+import { ensureSellerSlug } from "./lib/sellerSlugs";
 import {
   auctionLotCounterName,
   bidCounterName,
@@ -87,19 +88,24 @@ export const ensureSeller = internalMutation({
     if (existing) {
       if (
         existing.sellerType === undefined ||
-        existing.vatRegistered === undefined
+        existing.vatRegistered === undefined ||
+        existing.companyName === undefined
       ) {
         await ctx.db.patch("profiles", existing._id, {
           sellerType: existing.sellerType ?? "farming_business",
           vatRegistered: existing.vatRegistered ?? true,
+          // The public seller name (and page slug) is the business name.
+          companyName: existing.companyName ?? WBT_SELLER_NAME,
           updatedAt: now,
         });
       }
+      await ensureSellerSlug(ctx, WBT_SELLER_USER_ID);
       return WBT_SELLER_USER_ID;
     }
     await ctx.db.insert("profiles", {
       userId: WBT_SELLER_USER_ID,
       name: WBT_SELLER_NAME,
+      companyName: WBT_SELLER_NAME,
       role: "seller",
       isVerified: true,
       kycStatus: "verified",
@@ -108,6 +114,7 @@ export const ensureSeller = internalMutation({
       createdAt: now,
       updatedAt: now,
     });
+    await ensureSellerSlug(ctx, WBT_SELLER_USER_ID);
     return WBT_SELLER_USER_ID;
   },
 });
