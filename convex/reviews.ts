@@ -298,7 +298,7 @@ export const getSellerReviewsHandler = async (
         createdAt: review.createdAt,
         // First name only: reviewers are never identified by full name.
         reviewerName: firstWordOf(
-          reviewerProfile?.publicName ?? reviewerProfile?.name
+          reviewerProfile?.name ?? reviewerProfile?.publicName
         ),
       };
     })

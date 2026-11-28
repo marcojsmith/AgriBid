@@ -8,8 +8,10 @@ import {
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
-/** Highest `-N` suffix tried before giving up on a clash. */
-const MAX_SLUG_ATTEMPTS = 1000;
+/** Numbered suffixes (`-2` to `-N`) tried before switching to random ones. */
+const MAX_NUMBERED_ATTEMPTS = 50;
+/** Random suffixes tried after the numbered ones, before giving up. */
+const MAX_RANDOM_ATTEMPTS = 20;
 
 /**
  * Decrypts a stored name, treating an unreadable value as missing so a bad
@@ -91,9 +93,15 @@ async function pickFreeSlug(
   userId: string
 ): Promise<string> {
   if (await slugFreeFor(ctx, base, userId)) return base;
-  for (let n = 2; n <= MAX_SLUG_ATTEMPTS; n++) {
-    const suffix = `-${String(n)}`;
-    const candidate = `${base.slice(0, MAX_SLUG_LENGTH)}${suffix}`;
+  for (let n = 2; n <= MAX_NUMBERED_ATTEMPTS; n++) {
+    const candidate = `${base.slice(0, MAX_SLUG_LENGTH)}-${String(n)}`;
+    if (await slugFreeFor(ctx, candidate, userId)) return candidate;
+  }
+  // A very common name: stop walking the numbers (each try is two reads inside
+  // a lot submission) and use a random suffix instead.
+  for (let i = 0; i < MAX_RANDOM_ATTEMPTS; i++) {
+    const suffix = String(1000 + Math.floor(Math.random() * 9_000_000));
+    const candidate = `${base.slice(0, MAX_SLUG_LENGTH)}-${suffix}`;
     if (await slugFreeFor(ctx, candidate, userId)) return candidate;
   }
   throw new Error("Could not find a free seller slug");
@@ -125,7 +133,17 @@ export async function assignSellerSlug(
 
   const base = slugBaseFor(publicName);
 
-  if (profile.slug !== undefined && slugHasBase(profile.slug, base)) {
+  // Did the name's slug base change? Compare with the base of the name the slug
+  // was made from; parsing `-N` back off the slug would mistake a name that ends
+  // in a number ("Agri 4") for a clash suffix. Rows from before `publicName`
+  // existed fall back to reading the slug.
+  const sameBase =
+    profile.slug !== undefined &&
+    (profile.publicName !== undefined
+      ? slugBaseFor(profile.publicName) === base
+      : slugHasBase(profile.slug, base));
+
+  if (profile.slug !== undefined && sameBase) {
     if (profile.publicName !== publicName) {
       await ctx.db.patch("profiles", profile._id, { publicName });
     }
@@ -154,9 +172,28 @@ export async function assignSellerSlug(
 }
 
 /**
+ * Whether a user has submitted a lot: any lot that is not a draft.
+ *
+ * @param ctx - Query or mutation context
+ * @param userId - The user to check
+ * @returns True when the user has at least one non-draft lot
+ */
+export async function hasSubmittedLot(
+  ctx: QueryCtx,
+  userId: string
+): Promise<boolean> {
+  const lot = await ctx.db
+    .query("lots")
+    .withIndex("by_seller", (q) => q.eq("sellerId", userId))
+    .filter((q) => q.neq(q.field("status"), "draft"))
+    .first();
+  return lot !== null;
+}
+
+/**
  * Brings a seller's public name and slug up to date after something that feeds
  * the name changed (company name, registration name). Does nothing for a user
- * who has never listed anything and has no slug, so buyers never get one.
+ * who has never submitted a lot and has no slug, so buyers never get one.
  *
  * @param ctx - Mutation context
  * @param profile - The profile as currently stored
@@ -166,12 +203,11 @@ export async function syncSellerSlug(
   ctx: MutationCtx,
   profile: Doc<"profiles">
 ): Promise<string | null> {
-  if (profile.slug === undefined) {
-    const lot = await ctx.db
-      .query("lots")
-      .withIndex("by_seller", (q) => q.eq("sellerId", profile.userId))
-      .first();
-    if (!lot) return null;
+  if (
+    profile.slug === undefined &&
+    !(await hasSubmittedLot(ctx, profile.userId))
+  ) {
+    return null;
   }
   return await assignSellerSlug(ctx, profile);
 }

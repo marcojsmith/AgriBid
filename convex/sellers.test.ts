@@ -229,6 +229,23 @@ describe("getSellerPage", () => {
     });
   });
 
+  it("is not_found while the seller's only lots sit in an unpublished sale", async () => {
+    const t = makeContext();
+    const slug = await addSeller(t);
+    const draftSale = await addSale(t, "Draft Sale", "draft");
+    await addLot(t, { auctionId: draftSale, province: "gauteng" });
+    expect(await t.query(api.sellers.getSellerPage, { slug })).toEqual({
+      kind: "not_found",
+    });
+
+    const published = await addSale(t);
+    await addLot(t, { auctionId: published, province: "north_west" });
+    expect(await t.query(api.sellers.getSellerPage, { slug })).toMatchObject({
+      kind: "ok",
+      seller: { province: "north_west" },
+    });
+  });
+
   it("returns the public header without anything private", async () => {
     const t = makeContext();
     const slug = await addSeller(t, {
@@ -585,7 +602,7 @@ describe("getSellerPageReviews", () => {
     expect(json).not.toContain("lotId");
   });
 
-  it("uses a reviewer's public name when they are a seller too", async () => {
+  it("uses the account name, and falls back to the public name when there is none", async () => {
     const t = makeContext();
     const slug = await addSeller(t);
     const lotId = await addLot(t, { status: "sold" });
@@ -597,7 +614,17 @@ describe("getSellerPageReviews", () => {
         .unique();
       if (reviewer) {
         await ctx.db.patch("profiles", reviewer._id, {
+          name: undefined,
           publicName: "Sipho D.",
+        });
+      }
+      const other = await ctx.db
+        .query("profiles")
+        .withIndex("by_userId", (q) => q.eq("userId", "reviewer_2_clerk_id"))
+        .unique();
+      if (other) {
+        await ctx.db.patch("profiles", other._id, {
+          publicName: "Ndlovu Farms",
         });
       }
     });
@@ -605,14 +632,27 @@ describe("getSellerPageReviews", () => {
       slug,
       paginationOpts: PAGE,
     });
-    expect(result.page.map((r) => r.reviewerFirstName)).toContain("Sipho");
+    const names = result.page.map((r) => r.reviewerFirstName);
+    expect(names).toContain("Sipho");
+    expect(names).toContain("Reviewer2");
+    expect(names).not.toContain("Ndlovu");
   });
 });
 
 describe("getSellerSlugByUserId", () => {
+  it("returns null for a seller with no public lot", async () => {
+    const t = makeContext();
+    await addSeller(t);
+    await addLot(t, { status: "draft" });
+    expect(
+      await t.query(api.sellers.getSellerSlugByUserId, { userId: SELLER })
+    ).toBeNull();
+  });
+
   it("returns the slug, or null when there is none", async () => {
     const t = makeContext();
     const slug = await addSeller(t);
+    await addLot(t, { status: "sold" });
     await addProfile(t, OTHER);
     expect(
       await t.query(api.sellers.getSellerSlugByUserId, { userId: SELLER })

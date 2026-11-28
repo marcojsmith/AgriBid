@@ -16,7 +16,7 @@ import {
   watcherCounterName,
 } from "./lib/lotCounters";
 import { encryptBytes } from "./lib/documentCrypto";
-import { assignSellerSlug } from "./lib/sellerSlugs";
+import { assignSellerSlug, hasSubmittedLot } from "./lib/sellerSlugs";
 import { sniffDocumentType } from "./lib/documentSniff";
 import { extractImageStorageIds } from "./lib/storage";
 import type { Id } from "./_generated/dataModel";
@@ -523,7 +523,8 @@ export const backfillWatcherCounts = internalMutation({
 /**
  * One batch of the seller slug backfill.
  *
- * Walks `profiles`; every profile with no slug that owns at least one lot gets a
+ * Walks `profiles`; every profile with no slug that owns at least one submitted
+ * (non-draft) lot gets a
  * public name and slug (`assignSellerSlug`, which handles clashes with `-2`,
  * `-3`). Profiles that already have a slug, and users who never listed, are
  * left alone, so re-running is safe. Reschedules itself until the table is
@@ -545,11 +546,7 @@ export async function backfillSellerSlugsHandler(
   let updated = 0;
   for (const profile of page.page) {
     if (profile.slug !== undefined) continue;
-    const lot = await ctx.db
-      .query("lots")
-      .withIndex("by_seller", (q) => q.eq("sellerId", profile.userId))
-      .first();
-    if (!lot) continue;
+    if (!(await hasSubmittedLot(ctx, profile.userId))) continue;
     if ((await assignSellerSlug(ctx, profile)) !== null) updated++;
   }
 

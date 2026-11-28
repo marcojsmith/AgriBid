@@ -304,6 +304,7 @@ describe("admin bio review", () => {
     await seed(t);
 
     await asAdmin(t).mutation(api.admin.sellerBios.approveBio, {
+      bioSubmittedAt: 100,
       userId: SELLER,
     });
 
@@ -325,6 +326,7 @@ describe("admin bio review", () => {
     await seed(t);
 
     await asAdmin(t).mutation(api.admin.sellerBios.rejectBio, {
+      bioSubmittedAt: 100,
       userId: SELLER,
       reason: "  Please remove the phone number  ",
     });
@@ -355,12 +357,14 @@ describe("admin bio review", () => {
     await seed(t);
     await expect(
       asAdmin(t).mutation(api.admin.sellerBios.rejectBio, {
+        bioSubmittedAt: 100,
         userId: SELLER,
         reason: "   ",
       })
     ).rejects.toThrow("Give a reason");
     await expect(
       asAdmin(t).mutation(api.admin.sellerBios.rejectBio, {
+        bioSubmittedAt: 100,
         userId: SELLER,
         reason: "x".repeat(301),
       })
@@ -371,10 +375,14 @@ describe("admin bio review", () => {
     const t = makeContext();
     await seed(t);
     await expect(
-      asSeller(t).mutation(api.admin.sellerBios.approveBio, { userId: SELLER })
+      asSeller(t).mutation(api.admin.sellerBios.approveBio, {
+        bioSubmittedAt: 100,
+        userId: SELLER,
+      })
     ).rejects.toThrow("Admin");
     await expect(
       asSeller(t).mutation(api.admin.sellerBios.rejectBio, {
+        bioSubmittedAt: 100,
         userId: SELLER,
         reason: "no",
       })
@@ -382,21 +390,63 @@ describe("admin bio review", () => {
     expect((await load(t, SELLER)).bio).toBe("Old text");
   });
 
+  it("refuses to approve or reject text that changed after the admin opened it", async () => {
+    const t = makeContext();
+    await seed(t);
+    // The admin read the text submitted at 100; the seller then edited it.
+    await asSeller(t).mutation(api.users.updateMyProfile, {
+      bio: "Sneaky replacement",
+    });
+    const changed = await load(t, SELLER);
+    expect(changed.bioPending).toBe("Sneaky replacement");
+    expect(changed.bioSubmittedAt).not.toBe(100);
+
+    await expect(
+      asAdmin(t).mutation(api.admin.sellerBios.approveBio, {
+        userId: SELLER,
+        bioSubmittedAt: 100,
+      })
+    ).rejects.toThrow("changed since you opened it");
+    await expect(
+      asAdmin(t).mutation(api.admin.sellerBios.rejectBio, {
+        userId: SELLER,
+        reason: "no",
+        bioSubmittedAt: 100,
+      })
+    ).rejects.toThrow("changed since you opened it");
+    expect((await load(t, SELLER)).bio).toBe("Old text");
+
+    // Reviewing the text actually shown works.
+    await asAdmin(t).mutation(api.admin.sellerBios.approveBio, {
+      userId: SELLER,
+      bioSubmittedAt: changed.bioSubmittedAt ?? 0,
+    });
+    expect((await load(t, SELLER)).bio).toBe("Sneaky replacement");
+  });
+
   it("fails cleanly for a missing profile or nothing pending", async () => {
     const t = makeContext();
     await seed(t);
     await expect(
-      asAdmin(t).mutation(api.admin.sellerBios.approveBio, { userId: "nobody" })
+      asAdmin(t).mutation(api.admin.sellerBios.approveBio, {
+        bioSubmittedAt: 100,
+        userId: "nobody",
+      })
     ).rejects.toThrow("Profile not found");
 
     await asAdmin(t).mutation(api.admin.sellerBios.approveBio, {
+      bioSubmittedAt: 100,
       userId: SELLER,
     });
     await expect(
-      asAdmin(t).mutation(api.admin.sellerBios.approveBio, { userId: SELLER })
+      asAdmin(t).mutation(api.admin.sellerBios.approveBio, {
+        bioSubmittedAt: 100,
+        userId: SELLER,
+      })
     ).rejects.toThrow("no About text waiting");
     await expect(
       asAdmin(t).mutation(api.admin.sellerBios.rejectBio, {
+        bioSubmittedAt: 100,
         userId: SELLER,
         reason: "late",
       })
@@ -502,6 +552,119 @@ describe("slug assignment paths", () => {
     expect((await load(t, SELLER)).slug).toBeUndefined();
   });
 
+  it("a Clerk rename refreshes the public name of a seller without other names", async () => {
+    const t = makeContext();
+    await addProfile(t, SELLER, {
+      name: "Sipho Dlamini",
+      publicName: "Sipho D.",
+      slug: "sipho-d",
+    });
+    await addLot(t, SELLER);
+
+    await t
+      .withIdentity({ subject: SELLER, name: "Sipho Dube" })
+      .mutation(api.users.syncUser, {});
+
+    const profile = await load(t, SELLER);
+    expect(profile.name).toBe("Sipho Dube");
+    expect(profile.publicName).toBe("Sipho D.");
+    expect(profile.slug).toBe("sipho-d");
+
+    await t
+      .withIdentity({ subject: SELLER, name: "Themba Dube" })
+      .mutation(api.users.syncUser, {});
+    const renamed = await load(t, SELLER);
+    expect(renamed.publicName).toBe("Themba D.");
+    expect(renamed.slug).toBe("themba-d");
+  });
+
+  it("saving details or renaming gives a user with only a draft no slug", async () => {
+    const t = makeContext();
+    await addProfile(t, SELLER, { name: "Sipho Dlamini" });
+    await addLot(t, SELLER, "draft");
+    await asSeller(t).mutation(api.users.updateMyProfile, {
+      companyName: "Draft Farm",
+    });
+    expect((await load(t, SELLER)).slug).toBeUndefined();
+  });
+
+  it("treats a trailing number in a name as part of the name, not a clash suffix", async () => {
+    const t = makeContext();
+    await addProfile(t, SELLER, {
+      companyName: "Agri 4",
+      publicName: "Agri 4",
+      slug: "agri-4",
+    });
+    await addLot(t, SELLER);
+    await asSeller(t).mutation(api.users.updateMyProfile, {
+      companyName: "Agri",
+    });
+    const profile = await load(t, SELLER);
+    expect(profile.slug).toBe("agri");
+    const redirects = await t.run(async (ctx) =>
+      ctx.db.query("sellerSlugRedirects").collect()
+    );
+    expect(redirects.map((r) => r.slug)).toEqual(["agri-4"]);
+  });
+
+  it("falls back to a random suffix for a name that is taken many times over", async () => {
+    const t = makeContext();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("profiles", {
+        userId: "holder_0",
+        role: "seller",
+        isVerified: false,
+        slug: "popular",
+        createdAt: NOW,
+        updatedAt: NOW,
+      });
+      for (let n = 2; n <= 50; n++) {
+        await ctx.db.insert("profiles", {
+          userId: `holder_${String(n)}`,
+          role: "seller",
+          isVerified: false,
+          slug: `popular-${String(n)}`,
+          createdAt: NOW,
+          updatedAt: NOW,
+        });
+      }
+    });
+    await addProfile(t, SELLER, { companyName: "Popular" });
+    await addLot(t, SELLER);
+    await asSeller(t).mutation(api.users.updateMyProfile, {
+      companyName: "Popular ",
+      location: "Free State",
+    });
+    // Same name text: no sync needed. Rename to force an assignment.
+    await asSeller(t).mutation(api.users.updateMyProfile, {
+      companyName: "Popular!",
+    });
+    const slug = (await load(t, SELLER)).slug;
+    expect(slug).toMatch(/^popular-\d{4,}$/);
+    expect(Number(slug?.slice("popular-".length))).toBeGreaterThan(50);
+  });
+
+  it("the WBT demo seller gets its business name and a slug", async () => {
+    const t = makeContext();
+    const userId = await t.mutation(internal.wbtImport.ensureSeller, {});
+    const created = await load(t, userId);
+    expect(created.companyName).toBe("We Buy Tractors");
+    expect(created.slug).toBe("we-buy-tractors");
+
+    // An older profile without a company name is brought up to date.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("profiles", created._id, {
+        companyName: undefined,
+        publicName: undefined,
+        slug: undefined,
+      });
+    });
+    await t.mutation(internal.wbtImport.ensureSeller, {});
+    const fixed = await load(t, userId);
+    expect(fixed.companyName).toBe("We Buy Tractors");
+    expect(fixed.slug).toBe("we-buy-tractors");
+  });
+
   describe("lot submission", () => {
     /**
      * Seeds the seller and a category, and relaxes the photo minimum.
@@ -605,13 +768,16 @@ describe("backfillSellerSlugs", () => {
       slug: "kept-slug",
     });
     await addProfile(t, "seller_e");
+    await addProfile(t, "seller_f", { companyName: "Draft Only Farm" });
+    await addLot(t, "seller_f", "draft");
     await addLot(t, "seller_a");
     await addLot(t, "seller_b", "sold");
     await addLot(t, "seller_d");
     await addLot(t, "seller_e");
 
     const first = await t.mutation(internal.migrations.backfillSellerSlugs, {});
-    expect(first).toMatchObject({ isDone: true, updated: 2, processed: 5 });
+    expect(first).toMatchObject({ isDone: true, updated: 2, processed: 6 });
+    expect((await load(t, "seller_f")).slug).toBeUndefined();
 
     expect((await load(t, "seller_a")).slug).toBe("same-farm");
     expect((await load(t, "seller_b")).slug).toBe("same-farm-2");

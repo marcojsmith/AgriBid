@@ -300,6 +300,17 @@ describe("assignSellerSlug", () => {
     expect(await assign(t, "u1")).toBe("alpha-farm");
   });
 
+  it("keeps a legacy slug without publicName when the base is the same", async () => {
+    const t = makeContext();
+    await addProfile(t, "u1", {
+      companyName: "Alpha Farm",
+      slug: "alpha-farm-2",
+    });
+    expect(await assign(t, "u1")).toBe("alpha-farm-2");
+    expect((await load(t, "u1")).publicName).toBe("Alpha Farm");
+    expect(await redirects(t)).toEqual([]);
+  });
+
   it("shortens a long base to make room for the clash suffix", async () => {
     const t = makeContext();
     const long = "x".repeat(80);

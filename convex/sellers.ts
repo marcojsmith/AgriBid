@@ -82,7 +82,8 @@ async function resolveSlug(
 }
 
 /**
- * A seller's newest public lots: in a sale or sold, newest first.
+ * A seller's newest public lots, newest first: sold lots and lots in a
+ * published sale. A lot in a draft sale is not public yet.
  *
  * @param ctx - Query context
  * @param sellerId - The seller's user id
@@ -94,18 +95,17 @@ async function recentPublicLots(
   sellerId: string,
   take: number
 ): Promise<Doc<"lots">[]> {
-  const [assigned, sold] = await Promise.all(
-    (["assigned", "sold"] as const).map((status) =>
-      ctx.db
-        .query("lots")
-        .withIndex("by_seller_status", (q) =>
-          q.eq("sellerId", sellerId).eq("status", status)
-        )
-        .order("desc")
-        .take(take)
-    )
-  );
-  return [...assigned, ...sold]
+  const [sold, current] = await Promise.all([
+    ctx.db
+      .query("lots")
+      .withIndex("by_seller_status", (q) =>
+        q.eq("sellerId", sellerId).eq("status", "sold")
+      )
+      .order("desc")
+      .take(take),
+    currentLots(ctx, sellerId),
+  ]);
+  return [...sold, ...current.lots]
     .sort((a, b) => b._creationTime - a._creationTime)
     .slice(0, take);
 }
@@ -416,8 +416,9 @@ export const getSellerPageReviews = query({
           rating: review.rating,
           comment: review.comment,
           createdAt: review.createdAt,
+          // The account name first: a seller's public name can be a company.
           reviewerFirstName:
-            firstWordOf(reviewer?.publicName ?? reviewer?.name) ?? "Buyer",
+            firstWordOf(reviewer?.name ?? reviewer?.publicName) ?? "Buyer",
           response: review.response,
         };
       })
@@ -433,7 +434,8 @@ export const getSellerPageReviews = query({
 
 /**
  * The slug for a seller's user id, so old `/profile/:userId` links can redirect
- * to `/sellers/:slug`. Null when the user has no slug.
+ * to `/sellers/:slug`. Null unless the user has a slug and a public lot (the
+ * page would be `not_found` otherwise, and the slug carries their name).
  */
 export const getSellerSlugByUserId = query({
   args: { userId: v.string() },
@@ -443,6 +445,8 @@ export const getSellerSlugByUserId = query({
       .query("profiles")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .unique();
-    return profile?.slug ?? null;
+    if (!profile?.slug) return null;
+    const lots = await recentPublicLots(ctx, profile.userId, 1);
+    return lots.length > 0 ? profile.slug : null;
   },
 });

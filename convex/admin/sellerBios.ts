@@ -23,12 +23,15 @@ const ACCOUNT_LINK = "/settings";
  *
  * @param ctx - Mutation context
  * @param userId - The seller's user id
+ * @param reviewedSubmittedAt - The `bioSubmittedAt` of the row the admin read
  * @returns The profile, with its pending text
- * @throws ConvexError when there is no profile or nothing is pending
+ * @throws ConvexError when there is no profile, nothing is pending, or the
+ *   seller edited the text after the admin opened it
  */
 async function loadPendingBio(
   ctx: MutationCtx,
-  userId: string
+  userId: string,
+  reviewedSubmittedAt: number
 ): Promise<Doc<"profiles"> & { bioPending: string }> {
   const profile = await ctx.db
     .query("profiles")
@@ -37,6 +40,13 @@ async function loadPendingBio(
   if (!profile) throw new ConvexError("Profile not found");
   if (profile.bioStatus !== "pending" || profile.bioPending === undefined) {
     throw new ConvexError("There is no About text waiting for review");
+  }
+  // The seller can edit while the admin is reading: only the exact text the
+  // admin saw may be approved or rejected.
+  if (profile.bioSubmittedAt !== reviewedSubmittedAt) {
+    throw new ConvexError(
+      "This About text changed since you opened it. Reload and review it again."
+    );
   }
   return { ...profile, bioPending: profile.bioPending };
 }
@@ -97,14 +107,15 @@ export const listPendingBios = query({
 });
 
 /**
- * Admin: publish a seller's pending About text.
+ * Admin: publish a seller's pending About text. `bioSubmittedAt` is the value
+ * from `listPendingBios`; the call fails if the seller changed the text since.
  */
 export const approveBio = mutation({
-  args: { userId: v.string() },
+  args: { userId: v.string(), bioSubmittedAt: v.number() },
   returns: v.null(),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const profile = await loadPendingBio(ctx, args.userId);
+    const profile = await loadPendingBio(ctx, args.userId, args.bioSubmittedAt);
 
     await ctx.db.patch("profiles", profile._id, {
       bio: profile.bioPending,
@@ -127,9 +138,15 @@ export const approveBio = mutation({
 
 /**
  * Admin: turn down a seller's pending About text, with a reason the seller sees.
+ * `bioSubmittedAt` is the value from `listPendingBios`; the call fails if the
+ * seller changed the text since.
  */
 export const rejectBio = mutation({
-  args: { userId: v.string(), reason: v.string() },
+  args: {
+    userId: v.string(),
+    reason: v.string(),
+    bioSubmittedAt: v.number(),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -142,7 +159,7 @@ export const rejectBio = mutation({
         `Reason is too long. Maximum ${MAX_BIO_REJECTION_REASON_LENGTH.toString()} characters allowed.`
       );
     }
-    const profile = await loadPendingBio(ctx, args.userId);
+    const profile = await loadPendingBio(ctx, args.userId, args.bioSubmittedAt);
 
     await ctx.db.patch("profiles", profile._id, {
       bioPending: undefined,

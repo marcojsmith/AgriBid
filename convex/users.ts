@@ -182,6 +182,14 @@ export const syncUserHandler = async (ctx: MutationCtx) => {
         ...identityFields,
         updatedAt: now,
       });
+      // A Clerk rename can change the public seller name (when no company or
+      // registration name is set); refresh it for sellers.
+      if (
+        identityFields.name !== undefined &&
+        identityFields.name !== existingProfile.name
+      ) {
+        await syncSellerSlug(ctx, { ...existingProfile, ...identityFields });
+      }
     }
 
     return { success: true };
