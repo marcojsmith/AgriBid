@@ -8,6 +8,7 @@ import { Banner } from "@/components/ds/Banner";
 import { BeforeYouBid } from "@/components/ds/BeforeYouBid";
 import { FeesRulesSheet } from "@/components/ds/FeesRulesSheet";
 import { HomeFilters } from "@/components/home/HomeFilters";
+import { DesignSystemMyBids } from "@/pages/DesignSystemMyBids";
 import { BottomSheet } from "@/components/ds/BottomSheet";
 import { ConditionReport } from "@/components/ds/ConditionReport";
 import { CostBox } from "@/components/ds/CostBox";
@@ -695,6 +696,19 @@ export default function DesignSystem() {
             phone: "083 277 0178",
           }}
         />
+      </section>
+
+      <section aria-labelledby="ds-my-bids" className="space-y-4">
+        <SectionHeader id="ds-my-bids" title="My bids" />
+        <p className="text-sm text-muted-foreground">
+          The real page, rendered with fixture data (no sign-in, no backend):
+          one frame per state of <code>mybids-r2</code>. Tap &ldquo;Bid R
+          421&nbsp;000&rdquo; for the confirm sheet and &ldquo;Pay by EFT&rdquo;
+          for the payment sheet.
+        </p>
+        <div className="relative left-1/2 w-[min(100vw-2rem,1240px)] -translate-x-1/2">
+          <DesignSystemMyBids />
+        </div>
       </section>
 
       <FeesRulesSheet

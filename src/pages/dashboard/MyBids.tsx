@@ -1,171 +1,416 @@
-// app/src/pages/dashboard/MyBids.tsx
-import { useState, useMemo } from "react";
-import { usePaginatedQuery, useQuery } from "convex/react";
+import { useCallback, useState, type ReactNode } from "react";
+import { ArrowRight } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  usePaginatedQuery,
+  useQuery,
+  type PaginationStatus,
+} from "convex/react";
 import { api } from "convex/_generated/api";
-import { Link } from "react-router-dom";
-import { Gavel, Loader2 } from "lucide-react";
 
+import { Banner } from "@/components/ds/Banner";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { Button } from "@/components/ui/button";
-import { DashboardListSkeleton } from "@/components/DashboardListSkeleton";
-import { BidCard } from "@/components/dashboard/BidCard";
-import { BidFilters } from "@/components/dashboard/BidFilters";
-import { BidStats } from "@/components/dashboard/BidStats";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BidRow } from "@/components/my-bids/BidRow";
+import { LostRow } from "@/components/my-bids/LostRow";
+import { MyBidsTabs } from "@/components/my-bids/MyBidsTabs";
+import { RegistrationBanner } from "@/components/my-bids/RegistrationBanner";
+import { RegistrationRail } from "@/components/my-bids/RegistrationRail";
+import { TabEmpty } from "@/components/my-bids/TabEmpty";
+import type { MyBidRow, WonLotRow } from "@/components/my-bids/types";
+import { WatchingPanel } from "@/components/my-bids/WatchingPanel";
+import { WonRow } from "@/components/my-bids/WonRow";
+import { useNow } from "@/hooks/useNow";
+import { useVatRate } from "@/hooks/useVatRate";
+import { formatSastDate } from "@/lib/dates";
 import {
-  isMyBidAuction,
-  type MyBidsStats,
-} from "@/components/dashboard/bidTypes";
-import {
-  DASHBOARD_PAGINATION_INITIAL_ITEMS,
-  DASHBOARD_PAGINATION_LOAD_MORE_ITEMS,
-} from "@/lib/constants";
+  defaultTab,
+  formatShortDay,
+  panelId,
+  paymentBanner,
+  parseTab,
+  rowClosesAt,
+  tabId,
+  type MyBidsTab,
+} from "@/lib/myBids";
 
-/** Stable placeholder shown while the stats query has not resolved. */
-const EMPTY_STATS: MyBidsStats = {
-  totalActive: 0,
-  winningCount: 0,
-  outbidCount: 0,
-  totalExposure: 0,
-};
+/** Won lots loaded per page. */
+const WON_PAGE_SIZE = 10;
 
 /**
- * Renders the user's personal bidding dashboard.
- * @returns The MyBids page component
+ * A section heading with an optional note on the right ("Live", "Closes Wed
+ * 25 Nov, 11:00").
+ *
+ * @param props - Component props
+ * @param props.title - The heading
+ * @param props.note - Right-aligned note
+ * @param props.id - Heading id, for the list it names
+ * @returns The heading row
+ */
+function GroupHeading({
+  title,
+  note,
+  id,
+}: {
+  title: string;
+  note?: string;
+  id: string;
+}) {
+  return (
+    <div className="mt-6 flex items-baseline justify-between gap-3 first:mt-2">
+      <h2
+        id={id}
+        className="font-display text-[22px] leading-tight font-semibold"
+      >
+        {title}
+      </h2>
+      {note ? (
+        <p className="text-right text-sm text-muted-foreground">{note}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The note beside "Live": the sale's close time when every lot closes
+ * together, "Soft close" when a lot has been extended, else none.
+ *
+ * @param rows - The open rows
+ * @param now - Current time (ms)
+ * @returns The note
+ */
+function liveNote(rows: readonly MyBidRow[], now: number): string | undefined {
+  if (
+    rows.some(
+      (row) => row.isExtended === true && (row.extendedEndTime ?? 0) > now
+    )
+  ) {
+    return "Soft close";
+  }
+  const ends = new Set(rows.map(rowClosesAt));
+  const [only] = ends;
+  return ends.size === 1 && only !== undefined
+    ? `Closes ${formatSastDate(only)}`
+    : undefined;
+}
+
+/**
+ * The note beside "With the seller": the day the sale closed, when it is the
+ * same for every lot.
+ *
+ * @param rows - The rows with the seller
+ * @returns The note
+ */
+function sellerNote(rows: readonly MyBidRow[]): string | undefined {
+  const ends = new Set(rows.map((row) => row.auctionEndTime));
+  const [only] = ends;
+  return ends.size === 1 && only !== undefined
+    ? `Closed ${formatShortDay(only)}`
+    : undefined;
+}
+
+/**
+ * A skeleton shaped like a row, for the loading state of a tab.
+ *
+ * @returns Three placeholder rows
+ */
+function RowSkeletons() {
+  return (
+    <div aria-hidden="true" className="space-y-4">
+      {Array.from({ length: 3 }, (_, i) => (
+        <div key={i} className="flex gap-3 border-b border-border py-4">
+          <Skeleton className="h-[72px] w-24 shrink-0 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-5 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The Bidding tab: lots open for bids ("Live"), then lots with the seller
+ * ("With the seller").
+ *
+ * @param props - Component props
+ * @param props.rows - The Bidding rows
+ * @param props.vatRatePct - VAT rate in percent
+ * @param props.canBid - Whether the buyer may bid
+ * @returns The panel contents
+ */
+function BiddingPanel({
+  rows,
+  vatRatePct,
+  canBid,
+}: {
+  rows: readonly MyBidRow[];
+  vatRatePct: number | undefined;
+  canBid: boolean;
+}) {
+  const now = useNow();
+  const live = rows.filter((row) => row.status === "assigned");
+  const withSeller = rows.filter((row) => row.status === "under_consideration");
+  if (rows.length === 0) {
+    return (
+      <TabEmpty
+        title="Nothing to bid on"
+        text="Lots you bid on show here."
+        browse
+      />
+    );
+  }
+  return (
+    <>
+      {live.length > 0 ? (
+        <section aria-labelledby="my-bids-live">
+          <GroupHeading
+            id="my-bids-live"
+            title="Live"
+            note={liveNote(live, now)}
+          />
+          {live.map((row) => (
+            <BidRow
+              key={row._id}
+              row={row}
+              vatRatePct={vatRatePct}
+              canBid={canBid}
+            />
+          ))}
+        </section>
+      ) : null}
+      {withSeller.length > 0 ? (
+        <section aria-labelledby="my-bids-seller">
+          <GroupHeading
+            id="my-bids-seller"
+            title="With the seller"
+            note={sellerNote(withSeller)}
+          />
+          {withSeller.map((row) => (
+            <BidRow
+              key={row._id}
+              row={row}
+              vatRatePct={vatRatePct}
+              canBid={canBid}
+            />
+          ))}
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The Won tab: the lots the buyer won, each with its payment. Legacy wins
+ * without a payment record are not listed.
+ *
+ * @param props - Component props
+ * @param props.rows - The won rows loaded so far
+ * @param props.status - Pagination status
+ * @param props.loadMore - Loads the next page
+ * @returns The panel contents
+ */
+function WonPanel({
+  rows,
+  status,
+  loadMore,
+}: {
+  rows: readonly WonLotRow[];
+  status: PaginationStatus;
+  loadMore: (n: number) => void;
+}) {
+  if (status === "LoadingFirstPage") return <RowSkeletons />;
+  if (rows.length === 0) {
+    return <TabEmpty title="No won lots yet" text="Lots you win show here." />;
+  }
+  return (
+    <>
+      {rows.map((row) => (
+        <WonRow key={row.paymentId} row={row} />
+      ))}
+      {status === "CanLoadMore" || status === "LoadingMore" ? (
+        <div className="mt-4 flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={status === "LoadingMore"}
+            onClick={() => {
+              loadMore(WON_PAGE_SIZE);
+            }}
+          >
+            {status === "LoadingMore" ? "Loading…" : "Show more"}
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The buyer's own page: Bidding, Won, Lost and Watching in tabs (kept in the
+ * URL as `?tab=`). Above them: the payment banner on Won, and a registration
+ * banner with its action while the buyer cannot bid yet. A new buyer with
+ * nothing anywhere sees one empty state instead of the tabs. From `lg` a side
+ * column shows registration and alerts.
+ *
+ * @returns The My bids page
  */
 export default function MyBids() {
-  const [filter, setFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("ending");
+  const [params, setParams] = useSearchParams();
+  const overview = useQuery(api.auctions.queries.getMyBidsOverview);
+  const eligibility = useQuery(api.registration.getMyBidEligibility);
+  const summary = useQuery(api.lotPayments.getMyPaymentSummary);
+  const vatRatePct = useVatRate();
+  const now = useNow();
 
-  const serverStats = useQuery(api.auctions.queries.getMyBidsStats);
+  const explicit = parseTab(params.get("tab"));
+  const ready =
+    overview !== undefined &&
+    (overview.counts.bidding > 0 || summary !== undefined);
+  // The default tab is chosen once, when the data first arrives: later
+  // changes (a payment claimed, a lot settled) must not move the buyer.
+  const [chosen, setChosen] = useState<MyBidsTab | null>(null);
+  if (chosen === null && overview !== undefined && ready) {
+    setChosen(
+      defaultTab({
+        biddingCount: overview.counts.bidding,
+        awaitingPayment: (summary?.awaitingCount ?? 0) > 0,
+      })
+    );
+  }
+  const tab: MyBidsTab = explicit ?? chosen ?? "bidding";
 
-  const {
-    results: rawAuctions,
-    status,
-    loadMore,
-  } = usePaginatedQuery(
-    api.auctions.queries.getMyBids,
-    { sort: sortBy === "ending" ? "ending" : undefined },
-    { initialNumItems: DASHBOARD_PAGINATION_INITIAL_ITEMS }
+  const won = usePaginatedQuery(
+    api.lotPayments.getMyWonLots,
+    tab === "won" ? {} : "skip",
+    { initialNumItems: WON_PAGE_SIZE }
   );
 
-  const stats = serverStats ?? EMPTY_STATS;
-
-  // Apply filtering and sorting
-  const filteredAndSortedAuctions = useMemo(() => {
-    let result = rawAuctions.filter(isMyBidAuction);
-
-    // Filter
-    if (filter === "winning") {
-      result = result.filter((a) => a.isWinning && a.status === "assigned");
-    } else if (filter === "outbid") {
-      result = result.filter((a) => a.isOutbid && a.status === "assigned");
-    } else if (filter === "ended") {
-      result = result.filter(
-        (a) =>
-          a.status === "sold" ||
-          a.status === "unsold" ||
-          a.status === "under_consideration"
+  const selectTab = useCallback(
+    (next: MyBidsTab) => {
+      setParams(
+        (current) => {
+          const copy = new URLSearchParams(current);
+          copy.set("tab", next);
+          return copy;
+        },
+        { replace: true }
       );
-    }
+    },
+    [setParams]
+  );
 
-    // Sort
-    if (sortBy === "recent") {
-      result.sort((a, b) => b.lastBidTimestamp - a.lastBidTimestamp);
-    } else if (sortBy === "bid") {
-      result.sort((a, b) => b.myHighestBid - a.myHighestBid);
-    }
+  const pageHead = (
+    <h1 className="font-display text-[28px] leading-tight font-semibold">
+      My bids
+    </h1>
+  );
 
-    return result;
-  }, [rawAuctions, filter, sortBy]);
-
-  const totalBids = useQuery(api.auctions.getMyBidsCount);
-
-  if (status === "LoadingFirstPage") {
+  if (overview === undefined || (explicit === null && !ready)) {
     return (
-      <div className="flex h-[60vh] items-center justify-center bg-background">
-        <DashboardListSkeleton variant="bids" />
+      <div className="mx-auto max-w-[1200px]">
+        {pageHead}
+        <div
+          className="mt-4 space-y-4"
+          role="status"
+          aria-label="Loading my bids"
+        >
+          <Skeleton className="h-12 w-full lg:max-w-[520px]" />
+          <RowSkeletons />
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-8 pb-12">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Gavel className="h-6 w-6 text-primary" />
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight text-primary">
-            My Bids
-          </h1>
-        </div>
-      </div>
+  const { counts } = overview;
+  const brandNew =
+    counts.bidding + counts.won + counts.lost + counts.watching === 0;
+  const canBid = eligibility?.kind === "ok";
+  const banner =
+    tab === "won" ? paymentBanner(won.results, now, summary) : null;
 
-      {rawAuctions.length > 0 && <BidStats stats={stats} />}
-
-      {rawAuctions.length === 0 ? (
-        <div className="max-w-4xl mx-auto space-y-8 py-24 text-center bg-card border border-dashed rounded-lg border-primary/10">
-          <p className="text-muted-foreground text-lg max-w-md mx-auto font-bold">
-            You haven’t placed any bids yet.
-          </p>
-          <Button
-            size="lg"
-            className="h-14 px-12 rounded-lg font-semibold text-xl shadow-xl shadow-primary/20 transition-[transform,shadow,background-color] hover:scale-105 active:scale-95"
-            asChild
-          >
-            <Link to="/">Browse Auctions</Link>
-          </Button>
-        </div>
+  let panel: ReactNode;
+  if (tab === "bidding") {
+    panel = (
+      <BiddingPanel
+        rows={overview.bidding}
+        vatRatePct={vatRatePct}
+        canBid={canBid}
+      />
+    );
+  } else if (tab === "won") {
+    panel = (
+      <WonPanel
+        rows={won.results}
+        status={won.status}
+        loadMore={won.loadMore}
+      />
+    );
+  } else if (tab === "lost") {
+    panel =
+      overview.lost.length === 0 ? (
+        <TabEmpty title="No lost lots" text="Lots you did not win show here." />
       ) : (
-        <div className="space-y-6">
-          <BidFilters
-            filter={filter}
-            onFilterChange={setFilter}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-          />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filteredAndSortedAuctions.map((auction) => (
-              <BidCard key={auction._id} auction={auction} />
-            ))}
-          </div>
-
-          {filteredAndSortedAuctions.length === 0 && (
-            <div className="py-20 text-center">
-              <p className="text-muted-foreground font-bold">
-                No auctions found matching this filter.
-              </p>
-            </div>
-          )}
-
-          <div className="flex flex-col items-center gap-4 pt-8">
-            <p className="text-xs font-semibold text-muted-foreground">
-              Showing {filteredAndSortedAuctions.length} of{" "}
-              {totalBids ?? filteredAndSortedAuctions.length} Auctions
+        <>
+          {overview.lost.map((row) => (
+            <LostRow key={row._id} row={row} />
+          ))}
+          {overview.lost.length < counts.lost ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Showing your latest {overview.lost.length}.
             </p>
-            {status === "CanLoadMore" ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  loadMore(DASHBOARD_PAGINATION_LOAD_MORE_ITEMS);
-                }}
-                className="h-12 px-10 rounded-md font-semibold border hover:bg-primary hover:text-primary-foreground transition-[background-color,color,border-color]"
+          ) : null}
+          <Button asChild variant="outline" className="mt-4 w-full">
+            <Link to="/auctions">
+              See current auctions
+              <ArrowRight aria-hidden="true" />
+            </Link>
+          </Button>
+        </>
+      );
+  } else {
+    panel = <WatchingPanel />;
+  }
+
+  return (
+    <div className="mx-auto max-w-[1200px]">
+      {pageHead}
+      <div className="mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-16">
+        <div className="min-w-0 space-y-4">
+          {eligibility && eligibility.kind !== "ok" ? (
+            <RegistrationBanner eligibility={eligibility} />
+          ) : null}
+          {banner ? <Banner kind={banner.kind}>{banner.text}</Banner> : null}
+          {brandNew ? (
+            <TabEmpty
+              title="No bids yet"
+              text={
+                eligibility?.kind === "incomplete"
+                  ? "You can watch lots now."
+                  : "Lots you bid on show here."
+              }
+              browse
+              primary={eligibility?.kind !== "incomplete"}
+            />
+          ) : (
+            <>
+              <MyBidsTabs value={tab} onChange={selectTab} counts={counts} />
+              <div
+                role="tabpanel"
+                id={panelId(tab)}
+                aria-labelledby={tabId(tab)}
+                tabIndex={0}
               >
-                Load More
-              </Button>
-            ) : status === "LoadingMore" ? (
-              <Button
-                disabled
-                variant="outline"
-                className="h-12 px-10 rounded-md border"
-              >
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading…
-              </Button>
-            ) : null}
-          </div>
+                <RouteErrorBoundary>{panel}</RouteErrorBoundary>
+              </div>
+            </>
+          )}
         </div>
-      )}
+        <RegistrationRail />
+      </div>
     </div>
   );
 }

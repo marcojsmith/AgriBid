@@ -225,7 +225,10 @@ export function UserDropdown({
           asChild
           className="rounded-md font-semibold text-xs h-10"
         >
-          <Link to="/watchlist" className="flex items-center gap-2 w-full">
+          <Link
+            to="/dashboard/bids?tab=watching"
+            className="flex items-center gap-2 w-full"
+          >
             <Heart className="h-4 w-4" />
             Watchlist
           </Link>

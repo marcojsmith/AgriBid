@@ -9,6 +9,11 @@ vi.mock("@/index.css?raw", () => ({
   default: fs.readFileSync("src/index.css", "utf-8"),
 }));
 
+// The My bids frames mount the whole page eleven times; they have their own test.
+vi.mock("./DesignSystemMyBids", () => ({
+  DesignSystemMyBids: () => <div data-testid="my-bids-frames" />,
+}));
+
 import DesignSystem from "./DesignSystem";
 
 const renderPage = () =>
@@ -36,6 +41,7 @@ describe("DesignSystem page", () => {
       "Lot detail blocks",
       "Controls",
       "Page frame and Home blocks",
+      "My bids",
     ]) {
       expect(screen.getByRole("heading", { name })).toBeInTheDocument();
     }

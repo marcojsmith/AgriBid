@@ -54,7 +54,6 @@ const AdminDeposits = lazy(() => import("./pages/admin/AdminDeposits"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const AdminLegal = lazy(() => import("./pages/admin/AdminLegal"));
-const Watchlist = lazy(() => import("./pages/Watchlist"));
 const Login = lazy(() => import("./pages/Login"));
 const SignUp = lazy(() => import("./pages/SignUp"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -140,7 +139,7 @@ function registerRoute(page: ReactElement): ReactElement {
  * - "/terms", "/privacy", "/paia" → LegalPage (published admin-edited markdown)
  * - "/auctions" → AuctionGallery (public gallery of past/present auctions)
  * - "/auctions/:id" → AuctionContainerDetail (public lot list for one auction)
- * - "/watchlist" → Watchlist (protected, allowedRole="any")
+ * - "/watchlist" → redirect to "/dashboard/bids?tab=watching"
  * - "/dashboard/bids" → MyBids (protected, allowedRole="any")
  * - "/dashboard/listings" → MyListings (protected, allowedRole="any")
  * - "/admin/*" → Admin sub-routes (protected, allowedRole="admin")
@@ -200,11 +199,7 @@ function App() {
             />
             <Route
               path="/watchlist"
-              element={
-                <RoleProtectedRoute allowedRole="any">
-                  <Watchlist />
-                </RoleProtectedRoute>
-              }
+              element={<Navigate to="/dashboard/bids?tab=watching" replace />}
             />
             <Route
               path="/dashboard/bids"
